@@ -1,0 +1,10 @@
+let storedDeviceType = null;
+
+export function sendDevice(device) {
+  storedDeviceType = device;
+  console.log("Device stored in backend:", storedDeviceType);
+}
+
+export function getStoredDevice() {
+  return storedDeviceType;
+}
