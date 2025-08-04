@@ -1,23 +1,495 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>PeakExplorer</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emerald Peak Explorer · summit log</title>
+    <!-- Leaflet CSS + JS (lightweight interactive map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Google Fonts for clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Inter", system-ui, -apple-system, sans-serif;
+            background-color: #fafbfc;
+            color: #1e2b2f;
+            line-height: 1.5;
+            scroll-behavior: smooth;
+        }
+
+        /* ----- STICKY HEADER (dark background) ----- */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            width: 100%;
+            background-color: #1c3f3a;    /* deep evergreen / accent dark */
+            color: white;
+            padding: 0.9rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            z-index: 1100;
+            box-shadow: 0 4px 12px rgba(0, 20, 10, 0.15);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 1.6rem;
+            letter-spacing: -0.02em;
+        }
+
+        .logo-icon {
+            background: white;
+            color: #1c3f3a;
+            font-size: 1.8rem;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px 4px 12px 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 0 #b5e4d1;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .nav-buttons button {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: white;
+            padding: 0.5rem 1.4rem;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: 0.2s;
+        }
+
+        .nav-buttons button:hover {
+            background: rgba(255,255,255,0.3);
+            border-color: white;
+        }
+
+        /* ----- HERO SECTION (two columns, light background) ----- */
+        .hero-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            gap: 2.5rem;
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 3.5rem 2rem 4rem;
+            background-color: #ffffff;
+        }
+
+        .hero-image {
+            background: #d0e1da;
+            border-radius: 32px 8px 32px 8px;
+            overflow: hidden;
+            box-shadow: 0 20px 30px -10px rgba(40, 70, 60, 0.2);
+            height: 320px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300"><rect width="400" height="300" fill="%23326754"/><polygon points="40,270 130,130 180,190 240,90 310,200 360,160 380,270" fill="%23578a6b" opacity="0.9"/><polygon points="80,200 150,80 200,150 270,40 330,140 350,110 370,200" fill="%23a1ccb8" opacity="0.8"/><circle cx="120" cy="70" r="12" fill="%23f5f1dc" opacity="0.8"/><circle cx="280" cy="50" r="18" fill="%23f5f1dc" opacity="0.7"/><circle cx="340" cy="110" r="8" fill="%23fcf9e6"/><rect x="30" y="220" width="340" height="10" fill="%233b5246"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .hero-text {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .hero-text h1 {
+            font-size: 2.8rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: #1f3d37;
+            line-height: 1.2;
+        }
+
+        .hero-text p {
+            font-size: 1.3rem;
+            color: #2b4a41;
+            max-width: 540px;
+            font-weight: 350;
+        }
+
+        .cta-button {
+            background-color: #1c3f3a;
+            color: white;
+            border: none;
+            padding: 1rem 2.5rem;
+            border-radius: 60px;
+            font-size: 1.35rem;
+            font-weight: 500;
+            width: fit-content;
+            margin-top: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 8px 14px -6px #12322b;
+            transition: 0.2s;
+            border: 1px solid #296555;
+        }
+
+        .cta-button:hover {
+            background-color: #265b50;
+            transform: translateY(-3px);
+            box-shadow: 0 15px 20px -8px #0f3029;
+        }
+
+        /* ----- MAP SECTION (with stats overlay / sidebar concept) ----- */
+        .map-section {
+            background: #e9f1ed;   /* subtle light background, like the hero but slightly different */
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            border-radius: 48px 48px 0 0;
+        }
+
+        .map-container {
+            flex: 2;
+            min-width: 300px;
+            height: 460px;
+            background: #cbdad1;
+            border-radius: 32px;
+            border: 3px solid white;
+            box-shadow: 0 12px 30px -10px #325e4e;
+            z-index: 500;
+        }
+
+        .stats-sidebar {
+            flex: 0.9;
+            min-width: 250px;
+            background: white;
+            border-radius: 28px;
+            padding: 1.8rem 1.5rem;
+            box-shadow: 0 12px 25px -18px #1e423a, inset 0 1px 4px white;
+            border: 1px solid rgba(80, 120, 100, 0.15);
+        }
+
+        .stats-sidebar h3 {
+            font-size: 1.7rem;
+            font-weight: 550;
+            color: #1c3f3a;
+            border-bottom: 2px solid #d5e7df;
+            padding-bottom: 0.7rem;
+            margin-bottom: 1.6rem;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.25rem;
+            margin: 1rem 0;
+            background: #f4faf7;
+            padding: 0.7rem 1rem;
+            border-radius: 40px;
+            color: #1d463b;
+        }
+
+        .stat-item span:first-child {
+            font-weight: 350;
+        }
+        .stat-item span:last-child {
+            font-weight: 600;
+            background: #204e42;
+            color: white;
+            padding: 0.2rem 1rem;
+            border-radius: 40px;
+        }
+
+        .latest-sub-list {
+            margin-top: 2rem;
+        }
+        .latest-sub-list h4 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: #1a3d33;
+            margin-bottom: 1rem;
+        }
+        .sub-entry {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.7rem 0;
+            border-bottom: 1px dashed #c4d9cf;
+        }
+        .sub-entry .peak-badge {
+            background: #387a66;
+            color: white;
+            border-radius: 50px;
+            padding: 0.2rem 0.9rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .sub-entry .meta {
+            font-size: 0.95rem;
+            color: #2a5145;
+        }
+
+        /* ----- SUBMISSIONS CARD SECTION ----- */
+        .submissions-section {
+            max-width: 1300px;
+            margin: 2rem auto 3rem;
+            padding: 1rem 2rem 3rem;
+        }
+
+        .submissions-section h2 {
+            font-size: 2.2rem;
+            font-weight: 550;
+            color: #1c3f3a;
+            margin-bottom: 2rem;
+            letter-spacing: -0.02em;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 1.8rem;
+        }
+
+        .sub-card {
+            background: white;
+            border-radius: 28px;
+            padding: 1.5rem 1.3rem;
+            box-shadow: 0 10px 20px -10px rgba(30, 60, 50, 0.15), 0 0 0 1px rgba(0,0,0,0.02);
+            transition: 0.2s;
+            border: 1px solid #eef5f1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .sub-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 25px -15px #204e40;
+        }
+
+        .card-user {
+            font-weight: 600;
+            color: #1b4a3b;
+            font-size: 1.2rem;
+            display: flex;
+            gap: 0.3rem;
+            align-items: center;
+        }
+
+        .card-user::before {
+            content: "⛰️";
+            font-size: 1.5rem;
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1));
+        }
+
+        .card-peak {
+            font-size: 1.6rem;
+            font-weight: 550;
+            color: #0e2f27;
+            line-height: 1.2;
+        }
+
+        .card-date {
+            color: #607f73;
+            font-weight: 350;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .card-photo {
+            margin-top: 0.4rem;
+            width: 100%;
+            height: 130px;
+            background: #bed9cd;
+            border-radius: 18px;
+            background-image: repeating-linear-gradient(45deg, #accfc0 0px, #accfc0 8px, #bfdecb 8px, #bfdecb 16px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #214d3e;
+            font-size: 0.9rem;
+            border: 2px dashed #478068;
+        }
+
+        /* small utility */
+        .attribution {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #6a8b7e;
+            padding: 1rem;
+            border-top: 1px solid #d0e2d8;
+        }
+
+        /* responsive touch */
+        @media (max-width: 760px) {
+            .hero-section { grid-template-columns: 1fr; }
+            .sticky-header { padding: 0.8rem 1rem; }
+            .logo-area { font-size: 1.3rem; }
+        }
+
+        /* dummy leaflet size */
+        #peak-map { height: 100%; width: 100%; border-radius: 28px; background: #aac2b6; }
+    </style>
 </head>
 <body>
-    <h1>Welcome to Emerald Peak Tracker!</h1>
-    <p>Submit a peak below:</p>
 
-    <form action="/" method="POST">
-        <input type="text" name="name" placeholder="Your Name" required>
-        <input type="text" name="peak" placeholder="Peak Name" required>
-        <button type="submit">Submit</button>
-    </form>
+    <!-- 1️⃣ Header (sticky, dark, signup/login placeholder) -->
+    <header class="sticky-header">
+        <div class="logo-area">
+            <span class="logo-icon">🗻</span>
+            <span>Emerald Peak Explorer</span>
+        </div>
+        <div class="nav-buttons">
+            <button>Sign Up</button>
+            <button>Login</button>
+        </div>
+    </header>
 
-    <h2>Submissions:</h2>
-    <ul>
-        {% for sub in submissions %}
-            <li>{{ sub.name }} climbed {{ sub.peak }}</li>
-        {% endfor %}
-    </ul>
+    <main>
+        <!-- 2️⃣ Hero Section (two columns: image + text & CTA) -->
+        <div class="hero-section">
+            <div class="hero-image" title="mountain landscape ireland"></div>
+            <div class="hero-text">
+                <h1>Track your climbs across Ireland’s highest peaks</h1>
+                <p>Log summits, discover trails, and join a community of peak baggers. Every Munro, Arderin, and green hill matters.</p>
+                <!-- CTA button scrolls down to map / submission area (map-section roughly) -->
+                <button class="cta-button" onclick="document.getElementById('map-jump').scrollIntoView({behavior:'smooth'});">⬇️ Submit a Peak</button>
+            </div>
+        </div>
+
+        <!-- anchor for scroll (hidden) -->
+        <span id="map-jump" style="display: block; height: 0;"></span>
+
+        <!-- 3️⃣ Map Section + stats overlay / sidebar (interactive leaflet) -->
+        <div class="map-section" id="map-jump">
+            <div class="map-container" id="peak-map"></div>
+            <div class="stats-sidebar">
+                <h3>🏔️ summit stats</h3>
+                <div class="stat-item"><span>Total peaks submitted</span> <span>247</span></div>
+                <div class="stat-item"><span>Top user</span> <span>ClimberMaeve</span></div>
+                <div class="stat-item"><span>This week</span> <span>12</span></div>
+                <div class="latest-sub-list">
+                    <h4>📋 latest submissions</h4>
+                    <div class="sub-entry"><span class="peak-badge">Carrauntoohil</span><span class="meta">by Rian 2h ago</span></div>
+                    <div class="sub-entry"><span class="peak-badge">Lugnaquilla</span><span class="meta">by Siobhán 5h ago</span></div>
+                    <div class="sub-entry"><span class="peak-badge">Galtymore</span><span class="meta">by Dara yesterday</span></div>
+                    <div class="sub-entry"><span class="peak-badge">Mweelrea</span><span class="meta">by Cormac yesterday</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4️⃣ Submissions card section (recent climbs) -->
+        <div class="submissions-section">
+            <h2>✨ recent summit logs</h2>
+            <div class="card-grid">
+                <!-- card 1 -->
+                <div class="sub-card">
+                    <div class="card-user">Aoife Ní Shúilleabháin</div>
+                    <div class="card-peak">Brandon Mountain</div>
+                    <div class="card-date">📅 12 May 2025</div>
+                    <div class="card-photo">📸 summit view</div>
+                </div>
+                <!-- card 2 -->
+                <div class="sub-card">
+                    <div class="card-user">Cian Ó Murchú</div>
+                    <div class="card-peak">Mount Leinster</div>
+                    <div class="card-date">📅 10 May 2025</div>
+                    <div class="card-photo">📸 cairn photo</div>
+                </div>
+                <!-- card 3 -->
+                <div class="sub-card">
+                    <div class="card-user">Orla Doherty</div>
+                    <div class="card-peak">Errigal</div>
+                    <div class="card-date">📅 9 May 2025</div>
+                    <div class="card-photo">📸 misty summit</div>
+                </div>
+                <!-- card 4 -->
+                <div class="sub-card">
+                    <div class="card-user">Liam de Búrca</div>
+                    <div class="card-peak">Slieve Donard</div>
+                    <div class="card-date">📅 7 May 2025</div>
+                    <div class="card-photo">📸 mourne view</div>
+                </div>
+                <!-- card 5 (extra for layout) -->
+                <div class="sub-card">
+                    <div class="card-user">Grainne Ní Mhaoil</div>
+                    <div class="card-peak">Baurtregaum</div>
+                    <div class="card-date">📅 6 May 2025</div>
+                    <div class="card-photo">📸 ridge line</div>
+                </div>
+                <!-- card 6 -->
+                <div class="sub-card">
+                    <div class="card-user">Eoghan Ó Súilleabháin</div>
+                    <div class="card-peak">Purple Mountain</div>
+                    <div class="card-date">📅 4 May 2025</div>
+                    <div class="card-photo">📸 killarney view</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="attribution">
+        🌄 Emerald Peak Explorer — placeholder interactive map with sample peaks (Leaflet)
+    </footer>
+
+    <!-- initialize Leaflet map with some dummy markers (submitted peaks) -->
+    <script>
+        (function() {
+            // map centered on Ireland
+            const map = L.map('peak-map').setView([53.15, -7.95], 7.5);
+
+            // tile layer (light streets)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; CartoDB'
+            }).addTo(map);
+
+            // iconic peaks (ireland / northern ireland) — dummy submitted points
+            const peaks = [
+                { name: "Carrauntoohil", coords: [51.9999, -9.7422], user: "Maeve" },
+                { name: "Lugnaquilla", coords: [52.9669, -6.4645], user: "Rian" },
+                { name: "Galtymore", coords: [52.3661, -8.1789], user: "Siobhán" },
+                { name: "Mweelrea", coords: [53.6373, -9.8301], user: "Dara" },
+                { name: "Errigal", coords: [55.0339, -8.1131], user: "Orla" },
+                { name: "Slieve Donard", coords: [54.18, -5.92], user: "Liam" },
+                { name: "Mount Leinster", coords: [52.617, -6.778], user: "Cian" },
+                { name: "Brandon Mountain", coords: [52.235, -10.254], user: "Aoife" }
+            ];
+
+            // markers (climb submitted icon)
+            peaks.forEach(p => {
+                const marker = L.marker(p.coords)
+                    .bindPopup(`<b>${p.name}</b><br>submitted by ${p.user}`)
+                    .addTo(map);
+            });
+
+            // optional circle area to show "recent activity"
+            L.circle([53.27, -9.05], {
+                color: '#326755',
+                fillColor: '#4c8b73',
+                fillOpacity: 0.15,
+                radius: 38000
+            }).addTo(map).bindTooltip('wild atlantic way hotspots', {sticky: true});
+        })();
+    </script>
+
+    <!-- smooth scroll for the CTA (already inline) no extra js needed -->
 </body>
-</html> 
+</html>
