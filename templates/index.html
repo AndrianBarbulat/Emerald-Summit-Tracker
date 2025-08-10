@@ -1,77 +1,184 @@
-<!-- Map Section + stats overlay / sidebar (interactive leaflet) -->
+<!DOCTYPE html>
+<html lang="en">
 
-<div class="map-section" id="map-jump">
-    <div class="map-container" id="peak-map"></div>
-    <div class="stats-sidebar">
-        @@ -388,54 +40,50 @@ <h3>🏔️ summit stats</h3>
-        <div class="stat-item"><span>This week</span> <span>12</span></div>
-        <div class="latest-sub-list">
-            <h4>📋 latest submissions</h4>
-            <div class="sub-entry"><span class="peak-badge">Carrauntoohil</span><span class="meta">by Rian 2h
-                    ago</span></div>
-            <div class="sub-entry"><span class="peak-badge">Lugnaquilla</span><span class="meta">by Siobhán 5h
-                    ago</span></div>
-            <div class="sub-entry"><span class="peak-badge">Galtymore</span><span class="meta">by Dara
-                    yesterday</span></div>
-            <div class="sub-entry"><span class="peak-badge">Mweelrea</span><span class="meta">by Cormac
-                    yesterday</span></div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emerald Peak Explorer</title>
+    
+    <!-- Bulma CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Your custom CSS (minimal) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="sticky-header has-background-success-dark p-4">
+        <div class="container is-flex is-justify-content-space-between is-align-items-center">
+            <div class="is-flex is-align-items-center">
+                <span class="icon is-large has-text-white">
+                    <i class="fas fa-mountain fa-2x"></i>
+                </span>
+                <span class="title is-4 has-text-white ml-2">Emerald Peak Explorer</span>
+            </div>
+            <div class="buttons">
+                <button class="button is-light is-inverted">Sign Up</button>
+                <button class="button is-light is-inverted">Login</button>
+            </div>
         </div>
-    </div>
-</div> <!-- Submissions card section (recent climbs) -->
+    </header>
 
+    <main>
 
-<div class="submissions-section">
-    <h2>✨ recent summit logs</h2>
-    <div class="card-grid"> <!-- card 1 -->
+        <!-- Hero Section -->
+        <section class="section">
+            <div class="container">
+                <div class="columns is-vcentered is-multiline">
+                    <div class="column is-6">
+                        <div class="hero-image p-6">
+                            <span class="icon is-large has-text-white">
+                                <i class="fas fa-mountain-sun fa-4x"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="column is-6">
+                        <h1 class="title is-1 has-text-success-dark">Track your climbs across Ireland's highest peaks</h1>
+                        <p class="subtitle is-4 mt-4">Log summits, discover trails, and join a community of peak baggers. Every Munro, Arderin, and green hill matters.</p>
+                        <button class="button is-success is-large mt-4" onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'});">
+                            <span class="icon"><i class="fas fa-arrow-down"></i></span>
+                            <span>Submit a Peak</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <div class="sub-card">
-            <div class="card-user">Aoife Ní Shúilleabháin</div>
-            <div class="card-peak">Brandon Mountain</div>
-            <div class="card-date">📅 12 May 2025</div>
-            <div class="card-photo">📸 summit view</div>
-        </div> <!-- card 2 -->
+        <!-- Map Section -->
+        <section id="map-section" class="section has-background-success-light">
+            <div class="container">
+                <div class="columns is-multiline">
+                    <div class="column is-8">
+                        <div class="map-container" id="peak-map"></div>
+                    </div>
+                    <div class="column is-4">
+                        <div class="box">
+                            <h3 class="title is-4 has-text-success-dark">
+                                <span class="icon"><i class="fas fa-chart-line"></i></span>
+                                Summit Stats
+                            </h3>
+                            
+                            <div class="field is-grouped is-justify-content-space-between mt-4">
+                                <span>Total peaks submitted</span>
+                                <span class="tag is-success is-medium">247</span>
+                            </div>
+                            <div class="field is-grouped is-justify-content-space-between">
+                                <span>Top user</span>
+                                <span class="tag is-success is-medium">ClimberMaeve</span>
+                            </div>
+                            <div class="field is-grouped is-justify-content-space-between">
+                                <span>This week</span>
+                                <span class="tag is-success is-medium">12</span>
+                            </div>
 
-        <div class="sub-card">
-            <div class="card-user">Cian Ó Murchú</div>
-            <div class="card-peak">Mount Leinster</div>
-            <div class="card-date">📅 10 May 2025</div>
-            <div class="card-photo">📸 cairn photo</div>
-        </div> <!-- card 3 -->
+                            <h4 class="title is-6 mt-5 mb-3">📋 Latest submissions</h4>
+                            
+                            <div class="box is-shadowless p-2 has-background-success-light">
+                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
+                                    <span class="tag is-success">Carrauntoohil</span>
+                                    <span class="has-text-grey">by Rian 2h ago</span>
+                                </div>
+                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
+                                    <span class="tag is-success">Lugnaquilla</span>
+                                    <span class="has-text-grey">by Siobhán 5h ago</span>
+                                </div>
+                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
+                                    <span class="tag is-success">Galtymore</span>
+                                    <span class="has-text-grey">by Dara yesterday</span>
+                                </div>
+                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
+                                    <span class="tag is-success">Mweelrea</span>
+                                    <span class="has-text-grey">by Cormac yesterday</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-        <div class="sub-card">
-            <div class="card-user">Orla Doherty</div>
-            <div class="card-peak">Errigal</div>
-            <div class="card-date">📅 9 May 2025</div>
-            <div class="card-photo">📸 misty summit</div>
-        </div> <!-- card 4 -->
+        <!-- Submissions Section -->
+        <section class="section">
+            <div class="container">
+                <h2 class="title is-2 has-text-success-dark mb-6">✨ Recent summit logs</h2>
+                
+                <div class="columns is-multiline">
+                    <!-- Card 1 -->
+                    <div class="column is-4">
+                        <div class="box">
+                            <p class="is-size-5 has-text-weight-bold">
+                                <span class="icon"><i class="fas fa-user"></i></span>
+                                Aoife Ní Shúilleabháin
+                            </p>
+                            <p class="title is-3 mt-2">Brandon Mountain</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 12 May 2025</p>
+                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
+                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
+                                <p class="has-text-success-dark">summit view</p>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="sub-card">
-            <div class="card-user">Liam de Búrca</div>
-            <div class="card-peak">Slieve Donard</div>
-            <div class="card-date">📅 7 May 2025</div>
-            <div class="card-photo">📸 mourne view</div>
-        </div> <!-- card 5 (extra for layout) -->
+                    <!-- Card 2 -->
+                    <div class="column is-4">
+                        <div class="box">
+                            <p class="is-size-5 has-text-weight-bold">
+                                <span class="icon"><i class="fas fa-user"></i></span>
+                                Cian Ó Murchú
+                            </p>
+                            <p class="title is-3 mt-2">Mount Leinster</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 10 May 2025</p>
+                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
+                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
+                                <p class="has-text-success-dark">cairn photo</p>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="sub-card">
-            <div class="card-user">Grainne Ní Mhaoil</div>
-            <div class="card-peak">Baurtregaum</div>
-            <div class="card-date">📅 6 May 2025</div>
-            <div class="card-photo">📸 ridge line</div>
-        </div> <!-- card 6 -->
-
-        <div class="sub-card">
-            <div class="card-user">Eoghan Ó Súilleabháin</div>
-            <div class="card-peak">Purple Mountain</div>
-            @@ -445,51 +93,9 @@ <h2>✨ recent summit logs</h2>
-        </div>
-    </div>
+                    <!-- Card 3 -->
+                    <div class="column is-4">
+                        <div class="box">
+                            <p class="is-size-5 has-text-weight-bold">
+                                <span class="icon"><i class="fas fa-user"></i></span>
+                                Orla Doherty
+                            </p>
+                            <p class="title is-3 mt-2">Errigal</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 9 May 2025</p>
+                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
+                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
+                                <p class="has-text-success-dark">misty summit</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
-    <footer class="attribution"> 🌄 Emerald Peak Explorer — placeholder interactive map with sample peaks (Leaflet)
 
-
+    <footer class="footer has-background-success-dark has-text-white">
+        <div class="content has-text-centered">
+            <p>🌄 Emerald Peak Explorer — Track your Irish mountain adventures</p>
+        </div>
     </footer>
+
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-
-    </body>
-
-    </html>
+</body>
+</html>
