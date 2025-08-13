@@ -20,3 +20,48 @@ document.addEventListener('DOMContentLoaded', function() {
             .addTo(map);
     });
 });
+
+function openModal(type) {
+    document.getElementById('auth-modal').classList.add('is-active');
+
+    if (type === 'login') {
+        document.getElementById('login-form').style.display = 'block';
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('modal-title').textContent = 'Login';
+    } else {
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'Sign Up';
+    }
+}
+
+function closeModal() {
+    document.getElementById('auth-modal').classList.remove('is-active');
+}
+
+function switchToLogin() {
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('signup-form').style.display = 'none';
+    document.getElementById('modal-title').textContent = 'Login';
+}
+
+function switchToSignup() {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('signup-form').style.display = 'block';
+    document.getElementById('modal-title').textContent = 'Sign Up';
+}
+
+// Close modal if clicked outside
+window.addEventListener('click', function (event) {
+    const modal = document.getElementById('auth-modal');
+    if (event.target === modal) {
+        closeModal();
+    }
+});
+
+// Close with Escape key
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});
