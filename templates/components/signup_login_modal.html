@@ -1,0 +1,117 @@
+<!-- Modal Component -->
+<div class="modal" id="auth-modal">
+    <div class="modal-background" onclick="closeModal()"></div>
+    <div class="modal-card">
+        <header class="modal-card-head has-background-success-dark">
+            <p class="modal-card-title has-text-white" id="modal-title">Login</p>
+            <button class="delete" aria-label="close" onclick="closeModal()"></button>
+        </header>
+        <section class="modal-card-body">
+            
+            <!-- Login Form -->
+            <div id="login-form">
+                <div class="field">
+                    <label class="label">Email</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="email" placeholder="your@email.com">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Password</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="password" placeholder="********">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input type="checkbox">
+                            Remember me
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field mt-5">
+                    <div class="control">
+                        <button class="button is-success is-fullwidth">Login</button>
+                    </div>
+                </div>
+
+                <div class="has-text-centered mt-4">
+                    <p>Don't have an account? <a href="#" onclick="switchToSignup(); return false;">Sign up</a></p>
+                </div>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signup-form" style="display: none;">
+                <div class="field">
+                    <label class="label">Full Name</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="text" placeholder="John Doe">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-user"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Email</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="email" placeholder="your@email.com">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Password</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="password" placeholder="********">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Confirm Password</label>
+                    <div class="control has-icons-left">
+                        <input class="input" type="password" placeholder="********">
+                        <span class="icon is-small is-left">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <label class="checkbox">
+                            <input type="checkbox">
+                            I agree to the <a href="#">terms and conditions</a>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="field mt-5">
+                    <div class="control">
+                        <button class="button is-success is-fullwidth">Sign Up</button>
+                    </div>
+                </div>
+
+                <div class="has-text-centered mt-4">
+                    <p>Already have an account? <a href="#" onclick="switchToLogin(); return false;">Login</a></p>
+                </div>
+            </div>
+
+        </section>
+    </div>
+</div>
