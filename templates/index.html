@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Emerald Peak Explorer</title>
-    
+
     <!-- Bulma CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
     <!-- Font Awesome -->
@@ -22,23 +22,9 @@
 <body>
 
     <!-- Header -->
-    <header class="sticky-header has-background-success-dark p-4">
-        <div class="container is-flex is-justify-content-space-between is-align-items-center">
-            <div class="is-flex is-align-items-center">
-                <span class="icon is-large has-text-white">
-                    <i class="fas fa-mountain fa-2x"></i>
-                </span>
-                <span class="title is-4 has-text-white ml-2">Emerald Peak Explorer</span>
-            </div>
-            <div class="buttons">
-                <button class="button is-light is-inverted" onclick="openModal('signup')">Sign Up</button>
-                <button class="button is-light is-inverted" onclick="openModal('login')">Login</button>
-            </div>
-        </div>
-    </header>
+    {% include 'components/header.html' %}
 
     <main>
-
         <!-- Hero Section -->
         <section class="section">
             <div class="container">
@@ -51,9 +37,12 @@
                         </div>
                     </div>
                     <div class="column is-6">
-                        <h1 class="title is-1 has-text-success-dark">Track your climbs across Ireland's highest peaks</h1>
-                        <p class="subtitle is-4 mt-4">Log summits, discover trails, and join a community of peak baggers. Every Munro, Arderin, and green hill matters.</p>
-                        <button class="button is-success is-large mt-4" onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'});">
+                        <h1 class="title is-1 has-text-success-dark">Track your climbs across Ireland's highest peaks
+                        </h1>
+                        <p class="subtitle is-4 mt-4">Log summits, discover trails, and join a community of peak
+                            baggers. Every Munro, Arderin, and green hill matters.</p>
+                        <button class="button is-success is-large mt-4"
+                            onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'});">
                             <span class="icon"><i class="fas fa-arrow-down"></i></span>
                             <span>Submit a Peak</span>
                         </button>
@@ -75,7 +64,7 @@
                                 <span class="icon"><i class="fas fa-chart-line"></i></span>
                                 Summit Stats
                             </h3>
-                            
+
                             <div class="field is-grouped is-justify-content-space-between mt-4">
                                 <span>Total peaks submitted</span>
                                 <span class="tag is-success is-medium">247</span>
@@ -90,7 +79,7 @@
                             </div>
 
                             <h4 class="title is-6 mt-5 mb-3">📋 Latest submissions</h4>
-                            
+
                             <div class="box is-shadowless p-2 has-background-success-light">
                                 <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
                                     <span class="tag is-success">Carrauntoohil</span>
@@ -119,7 +108,7 @@
         <section class="section">
             <div class="container">
                 <h2 class="title is-2 has-text-success-dark mb-6">✨ Recent summit logs</h2>
-                
+
                 <div class="columns is-multiline">
                     <!-- Card 1 -->
                     <div class="column is-4">
@@ -129,7 +118,8 @@
                                 Aoife Ní Shúilleabháin
                             </p>
                             <p class="title is-3 mt-2">Brandon Mountain</p>
-                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 12 May 2025</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 12 May
+                                2025</p>
                             <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
                                 <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
                                 <p class="has-text-success-dark">summit view</p>
@@ -145,7 +135,8 @@
                                 Cian Ó Murchú
                             </p>
                             <p class="title is-3 mt-2">Mount Leinster</p>
-                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 10 May 2025</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 10 May
+                                2025</p>
                             <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
                                 <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
                                 <p class="has-text-success-dark">cairn photo</p>
@@ -161,7 +152,8 @@
                                 Orla Doherty
                             </p>
                             <p class="title is-3 mt-2">Errigal</p>
-                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 9 May 2025</p>
+                            <p class="subtitle is-6"><span class="icon"><i class="far fa-calendar"></i></span> 9 May
+                                2025</p>
                             <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-3">
                                 <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
                                 <p class="has-text-success-dark">misty summit</p>
@@ -173,15 +165,13 @@
         </section>
     </main>
 
-    <footer class="footer has-background-success-dark has-text-white">
-        <div class="content has-text-centered">
-            <p>🌄 Emerald Peak Explorer — Track your Irish mountain adventures</p>
-        </div>
-    </footer>
+    <!-- Footer -->
+    {% include 'components/footer.html' %}
 
     {% include 'components/signup_login_modal.html' %}
 
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 </body>
+
 </html>
