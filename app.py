@@ -50,6 +50,12 @@ def login():
 
     return redirect("/home")
 
+@app.route("/logout")   
+def logout():
+    supabase.auth.sign_out()
+    print("User logged out")
+    return redirect("/")
+
 
 @app.route("/home")
 def home():
