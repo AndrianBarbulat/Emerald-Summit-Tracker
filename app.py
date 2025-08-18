@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, jsonify, render_template, request, redirect, session
+import json
 from supabase import create_client
 import os
 from dotenv import load_dotenv
@@ -12,7 +13,7 @@ submissions = []
 url = os.getenv("SUPABASE_URL")
 key = os.getenv("SUPABASE_KEY")
 supabase = create_client(url, key)
-
+app.secret_key = "dev-secret-key"
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -38,28 +39,49 @@ def signup():
     return redirect("/home")
 
 
+#login  
+
 @app.route("/login", methods=["POST"])
 def login():
     email = request.form.get("email")
     password = request.form.get("password")
 
-    supabase.auth.sign_in_with_password({
+    result = supabase.auth.sign_in_with_password({
         "email": email,
         "password": password
     })
 
-    return redirect("/home")
+    if result.user:
+        session["user"] = result.user.model_dump() 
+        return redirect("/home")
 
+    return "Login failed"
+
+@app.route("/home")
+def home():
+    user = session.get("user")
+    if user:
+        # pass user info to template
+        return render_template("home.html", user=user)
+    return redirect("/")
+
+    
+
+#get current user
+@app.route("/current_user")
+def current_user():
+    user = supabase.auth.get_user()
+    if user:
+        return jsonify(user)
+    else:
+        return "No user is currently logged in."
+
+# logout
 @app.route("/logout")   
 def logout():
     supabase.auth.sign_out()
     print("User logged out")
     return redirect("/")
-
-
-@app.route("/home")
-def home():
-    return render_template("home.html")
 
 
 if __name__ == "__main__":

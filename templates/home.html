@@ -24,92 +24,20 @@
     <!-- Header -->
     {% include 'components/header_logged_In.html' %}
 
-    <main>
-        <!-- Hero Section -->
-        <section class="section">
-            <div class="container">
-                <div class="columns is-vcentered is-multiline">
-                    <div class="column is-6">
-                        <div class="hero-image p-6">
-                            <span class="icon is-large has-text-white">
-                                <i class="fas fa-mountain-sun fa-4x"></i>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="column is-6">
-                        <h1 class="title is-1 has-text-success-dark">Track your climbs across Ireland's highest peaks
-                        </h1>
-                        <p class="subtitle is-4 mt-4">Log summits, discover trails, and join a community of peak
-                            baggers. Every Munro, Arderin, and green hill matters.</p>
-                        <button class="button is-success is-large mt-4"
-                            onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'});">
-                            <span class="icon"><i class="fas fa-arrow-down"></i></span>
-                            <span>Submit a Peak</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Map Section -->
-        <section id="map-section" class="section has-background-success-light">
-            <div class="container">
-                <div class="columns is-multiline">
-                    <div class="column is-8">
-                        <div class="map-container" id="peak-map"></div>
-                    </div>
-                    <div class="column is-4">
-                        <div class="box">
-                            <h3 class="title is-4 has-text-success-dark">
-                                <span class="icon"><i class="fas fa-chart-line"></i></span>
-                                Summit Stats
-                            </h3>
-
-                            <div class="field is-grouped is-justify-content-space-between mt-4">
-                                <span>Total peaks submitted</span>
-                                <span class="tag is-success is-medium">247</span>
-                            </div>
-                            <div class="field is-grouped is-justify-content-space-between">
-                                <span>Top user</span>
-                                <span class="tag is-success is-medium">ClimberMaeve</span>
-                            </div>
-                            <div class="field is-grouped is-justify-content-space-between">
-                                <span>This week</span>
-                                <span class="tag is-success is-medium">12</span>
-                            </div>
-
-                            <h4 class="title is-6 mt-5 mb-3">📋 Latest submissions</h4>
-
-                            <div class="box is-shadowless p-2 has-background-success-light">
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Carrauntoohil</span>
-                                    <span class="has-text-grey">by Rian 2h ago</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Lugnaquilla</span>
-                                    <span class="has-text-grey">by Siobhán 5h ago</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Galtymore</span>
-                                    <span class="has-text-grey">by Dara yesterday</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Mweelrea</span>
-                                    <span class="has-text-grey">by Cormac yesterday</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-    
-    </main>
+    <!-- Main Content -->
+    <section class="section">
+        <div class="container">
+            <h1 class="title">Welcome to Emerald Peak Explorer!</h1>
+            <p class="subtitle">Discover the beauty of Emerald Peak and share your adventures with our community.</p>
+            <h1>Welcome {{ user.email }}</h1>
+            <!-- Map Container -->
+            <div id="map" style="height: 400px;"></div>
+        </div>
+    </section>
 
     <!-- Footer -->
     {% include 'components/footer.html' %}
-
+    <script src="{{ url_for('static', filename='home.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 </body>
