@@ -31,12 +31,17 @@ def signup():
     email = request.form.get("email")
     password = request.form.get("password")
 
-    supabase.auth.sign_up({
+    result = supabase.auth.sign_up({
         "email": email,
         "password": password
     })
 
-    return redirect("/home")
+    if result.user:
+        session["user"] = result.user.model_dump()
+        print("New user signed up:")
+        return redirect("/home")
+
+    return "Signup failed"
 
 
 #login  

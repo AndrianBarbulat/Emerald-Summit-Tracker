@@ -4,42 +4,402 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald Peak Explorer</title>
+    <title>Emerald Summit Explorer - Dashboard</title>
 
     <!-- Bulma CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Your custom CSS (minimal) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
 </head>
 
 <body>
 
     <!-- Header -->
-    {% include 'components/header_logged_In.html' %}
+    {% include 'components/header_logged_in.html' %}
 
-    <!-- Main Content -->
-    <section class="section">
-        <div class="container">
-            <h1 class="title">Welcome to Emerald Peak Explorer!</h1>
-            <p class="subtitle">Discover the beauty of Emerald Peak and share your adventures with our community.</p>
-            <h1>Welcome {{ user.email }}</h1>
-            <!-- Map Container -->
-            <div id="map" style="height: 400px;"></div>
-        </div>
-    </section>
+    <main>
+        <!-- Welcome Section -->
+        <section class="section welcome-section">
+            <div class="container">
+                <div class="columns is-vcentered">
+                    <div class="column">
+                        <h1 class="title is-2">
+                            Welcome back, <span class="has-text-success">{{ user.user_metadata.full_name or user.email.split('@')[0] }}</span>!
+                        </h1>
+                        <p class="subtitle is-5 mt-2">Continue exploring Ireland's peaks and track your progress.</p>
+                    </div>
+                    <div class="column is-narrow">
+                        <div class="buttons are-medium">
+                            <button class="button is-success">
+                                <span class="icon"><i class="fas fa-map"></i></span>
+                                <span>Explore Map</span>
+                            </button>
+                            <button class="button is-warning">
+                                <span class="icon"><i class="fas fa-plus"></i></span>
+                                <span>Add Climbed Peak</span>
+                            </button>
+                            <button class="button is-info is-outlined">
+                                <span class="icon"><i class="fas fa-list"></i></span>
+                                <span>View My List</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Dashboard Grid -->
+        <section class="section pt-0">
+            <div class="container">
+                <div class="columns is-multiline">
+
+                    <!-- Left Column -->
+                    <div class="column is-8">
+                        
+                        <!-- Progress Overview Card -->
+                        <div class="box mb-5">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-success"><i class="fas fa-chart-line"></i></span>
+                                Progress Overview
+                            </h2>
+                            
+                            <div class="columns is-multiline">
+                                <div class="column is-6">
+                                    <div class="mb-3">
+                                        <span class="is-size-5">12 <span class="has-text-grey-light">/ 275</span></span>
+                                        <span class="tag is-success ml-2">4%</span>
+                                        <p class="has-text-grey">Peaks Completed</p>
+                                    </div>
+                                    
+                                    <!-- Progress Bar -->
+                                    <progress class="progress is-success" value="12" max="275">4%</progress>
+                                </div>
+                                
+                                <div class="column is-6">
+                                    <div class="columns is-multiline">
+                                        <div class="column is-6 mb-3">
+                                            <p class="has-text-grey is-size-7">HIGHEST PEAK</p>
+                                            <p class="has-text-weight-bold">Carrauntoohil <span class="has-text-grey">(1038m)</span></p>
+                                        </div>
+                                        <div class="column is-6 mb-3">
+                                            <p class="has-text-grey is-size-7">LAST PEAK</p>
+                                            <p class="has-text-weight-bold">Lugnaquilla <span class="has-text-grey">(925m)</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity Card -->
+                        <div class="box mb-5">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-info"><i class="fas fa-history"></i></span>
+                                Recent Activity
+                            </h2>
+                            
+                            <div class="timeline">
+                                <!-- Activity Item 1 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <span class="tag is-success">Climbed</span>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Carrauntoohil</span> - You reached the summit!
+                                        <span class="has-text-grey is-size-7 ml-2">2 days ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 2 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <span class="tag is-warning">Bucket List</span>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Errigal</span> - Added to your bucket list
+                                        <span class="has-text-grey is-size-7 ml-2">5 days ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 3 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <span class="tag is-info">Photo</span>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Slieve Donard</span> - Uploaded 3 photos
+                                        <span class="has-text-grey is-size-7 ml-2">1 week ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Activity Item 4 -->
+                                <div class="columns is-mobile">
+                                    <div class="column is-narrow">
+                                        <span class="tag is-success">Climbed</span>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Mount Leinster</span> - You reached the summit!
+                                        <span class="has-text-grey is-size-7 ml-2">2 weeks ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="has-text-centered mt-4">
+                                <a href="#" class="has-text-success">View All Activity <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
+                        </div>
+
+                        <!-- Latest Community Activity Card -->
+                        <div class="box">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-danger"><i class="fas fa-users"></i></span>
+                                Latest Community Activity
+                            </h2>
+                            
+                            <div class="community-list">
+                                <!-- Community Item 1 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <figure class="image is-24x24">
+                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
+                                        </figure>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Maeve</span> climbed <span class="has-text-weight-bold">Carrauntoohil</span>
+                                        <span class="has-text-grey is-size-7 ml-2">1h ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Community Item 2 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <figure class="image is-24x24">
+                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
+                                        </figure>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Rian</span> added <span class="has-text-weight-bold">Errigal</span> to bucket list
+                                        <span class="has-text-grey is-size-7 ml-2">3h ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Community Item 3 -->
+                                <div class="columns is-mobile mb-3">
+                                    <div class="column is-narrow">
+                                        <figure class="image is-24x24">
+                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
+                                        </figure>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Siobhán</span> uploaded photos from <span class="has-text-weight-bold">Galtymore</span>
+                                        <span class="has-text-grey is-size-7 ml-2">5h ago</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Community Item 4 -->
+                                <div class="columns is-mobile">
+                                    <div class="column is-narrow">
+                                        <figure class="image is-24x24">
+                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
+                                        </figure>
+                                    </div>
+                                    <div class="column">
+                                        <span class="has-text-weight-bold">Dara</span> climbed <span class="has-text-weight-bold">Mweelrea</span>
+                                        <span class="has-text-grey is-size-7 ml-2">1d ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="column is-4">
+                        
+                        <!-- Achievements Card -->
+                        <div class="box mb-5">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
+                                Achievements
+                            </h2>
+                            
+                            <div class="columns is-multiline">
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2">
+                                        <span class="icon is-large has-text-success">
+                                            <i class="fas fa-flag fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold">First Summit</p>
+                                        <span class="tag is-success is-light is-small">Earned</span>
+                                    </div>
+                                </div>
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2">
+                                        <span class="icon is-large has-text-warning">
+                                            <i class="fas fa-mountain fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold">5 Peaks</p>
+                                        <span class="tag is-success is-light is-small">Earned</span>
+                                    </div>
+                                </div>
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2">
+                                        <span class="icon is-large has-text-grey-light">
+                                            <i class="fas fa-cloud fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold">1000m Club</p>
+                                        <span class="tag is-light is-small">Locked</span>
+                                    </div>
+                                </div>
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2">
+                                        <span class="icon is-large has-text-grey-light">
+                                            <i class="fas fa-crown fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold">10 Peaks</p>
+                                        <span class="tag is-light is-small">Locked</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="has-text-centered mt-2">
+                                <a href="#" class="is-size-7 has-text-success">View All Badges <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
+                        </div>
+
+                        <!-- Suggested Peaks Card -->
+                        <div class="box mb-5">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-success"><i class="fas fa-lightbulb"></i></span>
+                                Suggested for You
+                            </h2>
+                            
+                            <!-- Peak 1 -->
+                            <div class="columns is-mobile mb-3">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Donegal</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-warning is-light">Bucket List</span>
+                                </div>
+                                <div class="column is-narrow">
+                                    <div class="buttons are-small">
+                                        <button class="button is-small is-success">View</button>
+                                        <button class="button is-small is-warning is-light">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Peak 2 -->
+                            <div class="columns is-mobile mb-3">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Galtymore <span class="has-text-grey is-size-7">(918m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Tipperary</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-light">Not Attempted</span>
+                                </div>
+                                <div class="column is-narrow">
+                                    <div class="buttons are-small">
+                                        <button class="button is-small is-success">View</button>
+                                        <button class="button is-small is-warning is-light">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Peak 3 -->
+                            <div class="columns is-mobile">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Mweelrea <span class="has-text-grey is-size-7">(814m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Mayo</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-light">Not Attempted</span>
+                                </div>
+                                <div class="column is-narrow">
+                                    <div class="buttons are-small">
+                                        <button class="button is-small is-success">View</button>
+                                        <button class="button is-small is-warning is-light">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bucket List Preview Card -->
+                        <div class="box">
+                            <h2 class="title is-4 mb-4">
+                                <span class="icon has-text-warning"><i class="fas fa-bookmark"></i></span>
+                                Your Bucket List
+                            </h2>
+                            
+                            <!-- Bucket Item 1 -->
+                            <div class="columns is-mobile mb-3">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Donegal</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-warning">Bucket List</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Bucket Item 2 -->
+                            <div class="columns is-mobile mb-3">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Slieve Donard <span class="has-text-grey is-size-7">(850m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Down</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-warning">Bucket List</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Bucket Item 3 -->
+                            <div class="columns is-mobile mb-3">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Mount Leinster <span class="has-text-grey is-size-7">(794m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Carlow</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-warning">Bucket List</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Bucket Item 4 -->
+                            <div class="columns is-mobile">
+                                <div class="column">
+                                    <p class="has-text-weight-bold">Purple Mountain <span class="has-text-grey is-size-7">(832m)</span></p>
+                                    <p class="is-size-7 has-text-grey">Kerry</p>
+                                </div>
+                                <div class="column is-narrow">
+                                    <span class="tag is-warning">Bucket List</span>
+                                </div>
+                            </div>
+                            
+                            <div class="has-text-centered mt-4">
+                                <a href="#" class="has-text-success">View Full Bucket List <i class="fas fa-arrow-right ml-1"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <!-- Footer -->
     {% include 'components/footer.html' %}
-    <script src="{{ url_for('static', filename='home.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
+ 
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 
 </html>

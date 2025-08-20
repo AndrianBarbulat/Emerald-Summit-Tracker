@@ -1,0 +1,93 @@
+/* Home page specific styles */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8faf9;
+}
+
+/* Welcome section */
+.welcome-section {
+    background: linear-gradient(135deg, #f0f7f3 0%, #e6f0ea 100%);
+    border-bottom: 1px solid rgba(28, 63, 58, 0.1);
+}
+
+/* Progress bar customization */
+.progress::-webkit-progress-value {
+    transition: width 0.3s ease;
+}
+
+/* Activity timeline */
+.timeline .columns {
+    border-left: 2px solid #dbdbdb;
+    padding-left: 1rem;
+    margin-left: 0.5rem;
+    position: relative;
+}
+
+.timeline .columns::before {
+    content: '';
+    position: absolute;
+    left: -0.65rem;
+    top: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #48c78e;
+}
+
+/* Color indicators */
+.tag.is-success.is-light {
+    background-color: rgba(72, 199, 142, 0.2);
+    color: #1c3f3a;
+}
+
+.tag.is-warning.is-light {
+    background-color: rgba(255, 224, 138, 0.3);
+    color: #946c00;
+}
+
+/* Hover effects */
+.button.is-success:hover,
+.button.is-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.box {
+    transition: box-shadow 0.2s ease;
+}
+
+.box:hover {
+    box-shadow: 0 8px 16px rgba(28, 63, 58, 0.1);
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 768px) {
+    .welcome-section .buttons {
+        margin-top: 1rem;
+    }
+    
+    .welcome-section .buttons .button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .columns .column.is-narrow {
+        width: 100%;
+    }
+}
+
+/* Achievement icons */
+.has-text-warning .fa-trophy {
+    filter: drop-shadow(0 2px 4px rgba(255, 215, 0, 0.3));
+}
+
+.has-text-success .fa-flag {
+    filter: drop-shadow(0 2px 4px rgba(72, 199, 142, 0.3));
+}
+
+/* Community avatars */
+.image i {
+    font-size: 1.5rem;
+    line-height: 1.5;
+}
