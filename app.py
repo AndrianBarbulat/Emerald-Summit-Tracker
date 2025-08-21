@@ -89,5 +89,14 @@ def logout():
     return redirect("/")
 
 
+@app.route("/account")
+def account_settings():
+    """Account settings page - view and edit user profile"""
+    user = session.get("user")
+    if not user:
+        return redirect("/")
+    
+    return render_template("account_settings.html", user=user)
+
 if __name__ == "__main__":
     app.run(debug=True)
