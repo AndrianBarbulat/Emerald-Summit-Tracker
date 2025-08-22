@@ -89,6 +89,19 @@ def logout():
     return redirect("/")
 
 
+@app.route("/summit-list")
+def summit_list():
+    user = session.get("user")
+    if not user:
+        return redirect("/")
+    peaks = [
+        {"name": "Carrauntoohil", "height": "1038m", "county": "Kerry"},
+        {"name": "Lugnaquilla", "height": "925m", "county": "Wicklow"},
+        {"name": "Errigal", "height": "751m", "county": "Donegal"},
+        {"name": "Mweelrea", "height": "814m", "county": "Mayo"}
+    ]
+    return render_template("summit_list.html", user=user, peaks=peaks)
+
 @app.route("/account")
 def account_settings():
     """Account settings page - view and edit user profile"""
