@@ -5,3 +5,5 @@ node_modules/
 .wix/
 jsconfig.json
 .env
+__pycache__/
+*.py[cod]

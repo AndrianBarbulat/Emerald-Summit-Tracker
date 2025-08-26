@@ -1,18 +1,10 @@
 from flask import Flask, jsonify, render_template, request, redirect, session
-import json
-from supabase import create_client
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
+from supabase_utils import supabase
 
 app = Flask(__name__)
 
 submissions = []
 
-url = os.getenv("SUPABASE_URL")
-key = os.getenv("SUPABASE_KEY")
-supabase = create_client(url, key)
 app.secret_key = "dev-secret-key"
 
 @app.route("/", methods=["GET", "POST"])
@@ -28,6 +20,9 @@ def index():
 
 @app.route("/signup", methods=["POST"])
 def signup():
+    if supabase is None:
+        return "Supabase is not configured", 500
+
     email = request.form.get("email")
     password = request.form.get("password")
 
@@ -48,6 +43,9 @@ def signup():
 
 @app.route("/login", methods=["POST"])
 def login():
+    if supabase is None:
+        return "Supabase is not configured", 500
+
     email = request.form.get("email")
     password = request.form.get("password")
 
@@ -75,6 +73,9 @@ def home():
 #get current user
 @app.route("/current_user")
 def current_user():
+    if supabase is None:
+        return "Supabase is not configured", 500
+
     user = supabase.auth.get_user()
     if user:
         return jsonify(user)
@@ -84,7 +85,8 @@ def current_user():
 # logout
 @app.route("/logout")   
 def logout():
-    supabase.auth.sign_out()
+    if supabase is not None:
+        supabase.auth.sign_out()
     print("User logged out")
     return redirect("/")
 
