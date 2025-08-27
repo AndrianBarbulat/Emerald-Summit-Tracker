@@ -131,6 +131,18 @@ def get_profile_by_display_name(display_name: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def create_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    try:
+        query = _table(TABLE_PROFILES)
+        if query is None:
+            return None
+        payload = {"user_id": user_id, **(data or {})}
+        response = query.insert(payload).execute()
+        return response.data[0] if response.data else None
+    except Exception:
+        return None
+
+
 def get_user_climbs(user_id: str) -> List[Dict[str, Any]]:
     try:
         query = _table(TABLE_CLIMBS)

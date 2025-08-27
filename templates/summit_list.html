@@ -36,9 +36,23 @@
                     <tbody>
                         {% for peak in peaks %}
                         <tr>
-                            <td>{{ peak.name }}</td>
-                            <td>{{ peak.height }}</td>
-                            <td>{{ peak.county }}</td>
+                            <td>
+                                {% if peak.id %}
+                                <a href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a>
+                                {% else %}
+                                {{ peak.name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if peak.height_m %}
+                                {{ peak.height_m }}m
+                                {% elif peak.height %}
+                                {{ peak.height }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ peak.county or '-' }}</td>
                             <td><span class="tag is-light">Not started</span></td>
                         </tr>
                         {% endfor %}

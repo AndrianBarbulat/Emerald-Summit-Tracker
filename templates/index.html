@@ -78,25 +78,19 @@
                                 <span class="tag is-success is-medium">12</span>
                             </div>
 
-                            <h4 class="title is-6 mt-5 mb-3">📋 Latest submissions</h4>
+                            <h4 class="title is-6 mt-5 mb-3">Latest submissions</h4>
 
                             <div class="box is-shadowless p-2 has-background-success-light">
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Carrauntoohil</span>
-                                    <span class="has-text-grey">by Rian 2h ago</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Lugnaquilla</span>
-                                    <span class="has-text-grey">by Siobhán 5h ago</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Galtymore</span>
-                                    <span class="has-text-grey">by Dara yesterday</span>
-                                </div>
-                                <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                    <span class="tag is-success">Mweelrea</span>
-                                    <span class="has-text-grey">by Cormac yesterday</span>
-                                </div>
+                                {% if recent_climbs %}
+                                    {% for climb in recent_climbs %}
+                                    <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
+                                        <span class="tag is-success">{{ climb.peak_name }}</span>
+                                        <span class="has-text-grey">by {{ climb.climber_name }} {{ climb.relative_time }}</span>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="p-2 has-text-grey">No recent climbs yet.</div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -170,6 +164,9 @@
 
     {% include 'components/signup_login_modal.html' %}
 
+    <script>
+        window.peaksData = {{ map_peaks|tojson }};
+    </script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 
 </body>

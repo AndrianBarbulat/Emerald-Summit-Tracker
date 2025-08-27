@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ peak.name or 'Peak Detail' }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+</head>
+<body>
+    {% if profile %}
+        {% include 'components/header_logged_in.html' %}
+    {% else %}
+        {% include 'components/header.html' %}
+    {% endif %}
+
+    <section class="section">
+        <div class="container">
+            <a href="{{ url_for('summit_list') }}" class="button is-light mb-4">Back to summit list</a>
+            <div class="box">
+                <h1 class="title is-3">{{ peak.name or 'Unnamed Peak' }}</h1>
+                <div class="content">
+                    <p><strong>Height Rank:</strong> {{ peak.height_rank or '-' }}</p>
+                    <p><strong>Height:</strong> {{ peak.height_m or '-' }}{% if peak.height_m %}m{% endif %}</p>
+                    <p><strong>Prominence:</strong> {{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</p>
+                    <p><strong>County:</strong> {{ peak.county or '-' }}</p>
+                    <p><strong>Province:</strong> {{ peak.province or '-' }}</p>
+                    <p><strong>Range/Area:</strong> {{ peak.range_area or '-' }}</p>
+                    <p><strong>OSI/OSNI Grid:</strong> {{ peak.osi_osni_grid or '-' }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% include 'components/footer.html' %}
+</body>
+</html>

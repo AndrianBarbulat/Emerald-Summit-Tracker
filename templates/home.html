@@ -28,7 +28,7 @@
                 <div class="columns is-vcentered">
                     <div class="column">
                         <h1 class="title is-2">
-                            Welcome back, <span class="has-text-success">{{ user.user_metadata.full_name or user.email.split('@')[0] }}</span>!
+                            Welcome back, <span class="has-text-success">{{ profile.display_name or 'Climber' }}</span>!
                         </h1>
                         <p class="subtitle is-5 mt-2">Continue exploring Ireland's peaks and track your progress.</p>
                     </div>
