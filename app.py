@@ -1,16 +1,12 @@
-import re
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session
 
 from api_routes import api_bp
 from supabase_utils import (
-    create_user_profile,
     get_all_peaks,
     get_community_recent_climbs,
     get_peak_by_id,
-    get_profile_by_display_name,
-    get_user_profile,
     supabase,
 )
 
@@ -19,47 +15,43 @@ app.secret_key = "dev-secret-key"
 app.register_blueprint(api_bp)
 
 
-def _sanitize_display_name(base_name: str) -> str:
-    cleaned = re.sub(r"[^a-zA-Z0-9_]+", "_", (base_name or "").strip())
-    cleaned = re.sub(r"_+", "_", cleaned).strip("_").lower()
-    return cleaned or "climber"
+def get_session_context() -> dict:
+    return {
+        "user": session.get("user"),
+        "profile": session.get("profile"),
+    }
 
 
-def _next_unique_display_name(base_name: str) -> str:
-    candidate = _sanitize_display_name(base_name)
-    if get_profile_by_display_name(candidate) is None:
-        return candidate
-
-    for suffix in range(1, 200):
-        candidate_with_suffix = f"{candidate}{suffix}"
-        if get_profile_by_display_name(candidate_with_suffix) is None:
-            return candidate_with_suffix
-
-    timestamp_suffix = int(datetime.now(tz=timezone.utc).timestamp())
-    return f"{candidate}_{timestamp_suffix}"
+def _minimal_profile(user_id: str, email: str) -> dict:
+    email_value = (email or "").strip().lower()
+    display_name = email_value.split("@")[0] if "@" in email_value else "climber"
+    return {
+        "id": user_id,
+        "email": email_value,
+        "display_name": display_name or "climber",
+    }
 
 
-def _ensure_profile(user_id: str, email: str) -> dict:
-    profile = get_user_profile(user_id)
-    if profile:
-        return profile
+def _fetch_profile_for_session(user_id: str, email: str) -> dict:
+    if supabase is None:
+        return _minimal_profile(user_id, email)
 
-    display_base = (email or "").split("@")[0]
-    unique_display_name = _next_unique_display_name(display_base)
-    profile = create_user_profile(
-        user_id,
-        {
-            "email": email,
-            "display_name": unique_display_name,
-        },
-    )
-    if profile:
-        return profile
+    try:
+        profile = (
+            supabase.table("profiles")
+            .select("*")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        if profile and profile.data:
+            return profile.data
+    except Exception as exc:
+        app.logger.exception("Profile fetch failed for user_id=%s: %s", user_id, exc)
+        return _minimal_profile(user_id, email)
 
-    return (
-        get_user_profile(user_id)
-        or {"user_id": user_id, "email": email, "display_name": unique_display_name}
-    )
+    app.logger.warning("Profile row not found for user_id=%s. Using minimal profile.", user_id)
+    return _minimal_profile(user_id, email)
 
 
 def _is_display_name_conflict(error_message: str) -> bool:
@@ -169,6 +161,7 @@ def index():
         "index.html",
         map_peaks=map_peaks,
         recent_climbs=recent_climbs,
+        **get_session_context(),
     )
 
 
@@ -192,13 +185,13 @@ def signup():
                 "Try an email with a different prefix before '@'.",
                 409,
             )
-        return f"Signup failed: {error_message}", 400
+        return f"Signup failed: {exc}", 400
 
     if not result or not result.user:
         return "Signup failed", 400
 
     session["user"] = result.user.model_dump()
-    session["profile"] = _ensure_profile(result.user.id, email)
+    session["profile"] = _fetch_profile_for_session(result.user.id, result.user.email or email)
     return redirect("/home")
 
 
@@ -223,24 +216,16 @@ def login():
         return "Login failed", 401
 
     session["user"] = result.user.model_dump()
-    session["profile"] = _ensure_profile(result.user.id, email)
+    session["profile"] = _fetch_profile_for_session(result.user.id, result.user.email or email)
     return redirect("/home")
 
 
 @app.route("/home")
 def home():
-    profile = session.get("profile")
-    if profile:
-        return render_template("home.html", profile=profile)
-
-    user = session.get("user")
-    if user and user.get("id"):
-        profile = get_user_profile(user["id"])
-        if profile:
-            session["profile"] = profile
-            return render_template("home.html", profile=profile)
-
-    return redirect("/")
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+    return render_template("home.html", **context)
 
 
 # get current user
@@ -260,36 +245,46 @@ def current_user():
 @app.route("/logout")
 def logout():
     if supabase is not None:
-        supabase.auth.sign_out()
+        try:
+            supabase.auth.sign_out()
+        except Exception as exc:
+            app.logger.warning("Supabase sign out failed: %s", exc)
+    session.pop("user", None)
+    session.pop("profile", None)
     print("User logged out")
     return redirect("/")
 
 
 @app.route("/summit-list")
 def summit_list():
-    if not session.get("user"):
+    context = get_session_context()
+    if not context["profile"]:
         return redirect("/")
 
     peaks = get_all_peaks()
-    return render_template("summit_list.html", profile=session.get("profile"), peaks=peaks)
+    return render_template("summit_list.html", peaks=peaks, **context)
 
 
 @app.route("/peak/<int:peak_id>")
 def peak_detail(peak_id: int):
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
     peak = get_peak_by_id(peak_id)
     if peak is None:
         abort(404)
-    return render_template("peak_detail.html", profile=session.get("profile"), peak=peak)
+    return render_template("peak_detail.html", peak=peak, **context)
 
 
 @app.route("/account")
 def account_settings():
     """Account settings page - view and edit user profile"""
-    user = session.get("user")
-    if not user:
+    context = get_session_context()
+    if not context["profile"]:
         return redirect("/")
 
-    return render_template("account_settings.html", user=user)
+    return render_template("account_settings.html", **context)
 
 
 if __name__ == "__main__":
