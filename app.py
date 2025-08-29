@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session
@@ -32,23 +33,87 @@ def _minimal_profile(user_id: str, email: str) -> dict:
     }
 
 
+def _sanitize_display_name(email: str) -> str:
+    base = (email or "").split("@")[0].strip().lower()
+    cleaned = re.sub(r"[^a-z0-9._-]+", "_", base)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("._-")
+    return cleaned or "climber"
+
+
+def _profile_row_by_id(user_id: str):
+    try:
+        response = (
+            supabase.table("profiles")
+            .select("*")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        data = response.data or []
+        return data[0] if data else None
+    except Exception as exc:
+        app.logger.exception("Profile lookup failed for user_id=%s: %s", user_id, exc)
+        return None
+
+
+def _try_create_profile_row(user_id: str, email: str, display_name: str):
+    payload_variants = [
+        {"id": user_id, "email": email, "display_name": display_name},
+        {"id": user_id, "display_name": display_name},
+        {"id": user_id},
+    ]
+    last_error = ""
+
+    for payload in payload_variants:
+        try:
+            response = supabase.table("profiles").insert(payload).execute()
+            data = response.data or []
+            if data:
+                return data[0], ""
+        except Exception as exc:
+            last_error = str(exc)
+            if _is_display_name_conflict(last_error):
+                return None, last_error
+            continue
+
+    return None, last_error
+
+
 def _fetch_profile_for_session(user_id: str, email: str) -> dict:
     if supabase is None:
         return _minimal_profile(user_id, email)
 
-    try:
-        profile = (
-            supabase.table("profiles")
-            .select("*")
-            .eq("id", user_id)
-            .single()
-            .execute()
-        )
-        if profile and profile.data:
-            return profile.data
-    except Exception as exc:
-        app.logger.exception("Profile fetch failed for user_id=%s: %s", user_id, exc)
-        return _minimal_profile(user_id, email)
+    existing_profile = _profile_row_by_id(user_id)
+    if existing_profile:
+        return existing_profile
+
+    normalized_email = (email or "").strip().lower()
+    base_name = _sanitize_display_name(normalized_email)
+    id_suffix = (user_id or "")[:8] or "user"
+    candidate_names = [
+        base_name,
+        f"{base_name}_{id_suffix}",
+        f"{base_name}_{int(datetime.now(tz=timezone.utc).timestamp())}",
+    ]
+
+    for candidate in candidate_names:
+        created, create_error = _try_create_profile_row(user_id, normalized_email, candidate)
+        if created:
+            return created
+        if create_error and _is_display_name_conflict(create_error):
+            app.logger.warning(
+                "Profile create conflict for user_id=%s display_name=%s. Retrying with a new suffix.",
+                user_id,
+                candidate,
+            )
+            continue
+        if create_error:
+            app.logger.warning("Profile create failed for user_id=%s: %s", user_id, create_error)
+            break
+
+    existing_profile = _profile_row_by_id(user_id)
+    if existing_profile:
+        return existing_profile
 
     app.logger.warning("Profile row not found for user_id=%s. Using minimal profile.", user_id)
     return _minimal_profile(user_id, email)

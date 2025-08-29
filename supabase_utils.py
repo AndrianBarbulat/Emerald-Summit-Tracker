@@ -103,7 +103,7 @@ def get_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
         query = _table(TABLE_PROFILES)
         if query is None:
             return None
-        response = query.select("*").eq("user_id", user_id).limit(1).execute()
+        response = query.select("*").eq("id", user_id).limit(1).execute()
         return response.data[0] if response.data else None
     except Exception:
         return None
@@ -114,7 +114,7 @@ def update_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str
         query = _table(TABLE_PROFILES)
         if query is None:
             return None
-        response = query.update(data).eq("user_id", user_id).execute()
+        response = query.update(data).eq("id", user_id).execute()
         return response.data[0] if response.data else None
     except Exception:
         return None
@@ -136,7 +136,7 @@ def create_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str
         query = _table(TABLE_PROFILES)
         if query is None:
             return None
-        payload = {"user_id": user_id, **(data or {})}
+        payload = {"id": user_id, **(data or {})}
         response = query.insert(payload).execute()
         return response.data[0] if response.data else None
     except Exception:
