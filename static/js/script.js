@@ -1,63 +1,93 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize map
-    const map = L.map('peak-map').setView([53.15, -7.95], 7.5);
+    const mapElement = document.getElementById('peak-map');
+    if (mapElement && window.L) {
+        const map = L.map('peak-map').setView([53.15, -7.95], 7.5);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap, CartoDB'
-    }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap, CartoDB'
+        }).addTo(map);
 
-    // Peak markers from server-rendered Supabase data.
-    const peaks = Array.isArray(window.peaksData) ? window.peaksData : [];
+        const peaks = Array.isArray(window.peaksData) ? window.peaksData : [];
+        peaks.forEach(peak => {
+            const lat = Number(peak.latitude);
+            const lon = Number(peak.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                return;
+            }
 
-    peaks.forEach(peak => {
-        const lat = Number(peak.latitude);
-        const lon = Number(peak.longitude);
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-            return;
-        }
-
-        const popupCounty = peak.county ? `<br>${peak.county}` : '';
-        const popupHeight = peak.height_m ? `<br>${peak.height_m}m` : '';
-        L.marker([lat, lon])
-            .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupHeight}`)
-            .addTo(map);
-    });
+            const popupCounty = peak.county ? `<br>${peak.county}` : '';
+            const popupHeight = peak.height_m ? `<br>${peak.height_m}m` : '';
+            L.marker([lat, lon])
+                .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupHeight}`)
+                .addTo(map);
+        });
+    }
 });
 
 function openModal(type) {
-    document.getElementById('auth-modal').classList.add('is-active');
+    const modal = document.getElementById('auth-modal');
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add('is-active');
+
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const modalTitle = document.getElementById('modal-title');
+    if (!loginForm || !signupForm || !modalTitle) {
+        return;
+    }
 
     if (type === 'login') {
-        document.getElementById('login-form').style.display = 'block';
-        document.getElementById('signup-form').style.display = 'none';
-        document.getElementById('modal-title').textContent = 'Login';
-    } else {
-        document.getElementById('login-form').style.display = 'none';
-        document.getElementById('signup-form').style.display = 'block';
-        document.getElementById('modal-title').textContent = 'Sign Up';
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+        modalTitle.textContent = 'Login';
+        return;
     }
+
+    loginForm.style.display = 'none';
+    signupForm.style.display = 'block';
+    modalTitle.textContent = 'Sign Up';
 }
 
 function closeModal() {
-    document.getElementById('auth-modal').classList.remove('is-active');
+    const modal = document.getElementById('auth-modal');
+    if (modal) {
+        modal.classList.remove('is-active');
+    }
 }
 
 function switchToLogin() {
-    document.getElementById('login-form').style.display = 'block';
-    document.getElementById('signup-form').style.display = 'none';
-    document.getElementById('modal-title').textContent = 'Login';
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const modalTitle = document.getElementById('modal-title');
+    if (!loginForm || !signupForm || !modalTitle) {
+        return;
+    }
+
+    loginForm.style.display = 'block';
+    signupForm.style.display = 'none';
+    modalTitle.textContent = 'Login';
 }
 
 function switchToSignup() {
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('signup-form').style.display = 'block';
-    document.getElementById('modal-title').textContent = 'Sign Up';
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const modalTitle = document.getElementById('modal-title');
+    if (!loginForm || !signupForm || !modalTitle) {
+        return;
+    }
+
+    loginForm.style.display = 'none';
+    signupForm.style.display = 'block';
+    modalTitle.textContent = 'Sign Up';
 }
 
 // Close modal if clicked outside
 window.addEventListener('click', function(event) {
     const modal = document.getElementById('auth-modal');
-    if (event.target === modal) {
+    if (modal && event.target === modal) {
         closeModal();
     }
 });

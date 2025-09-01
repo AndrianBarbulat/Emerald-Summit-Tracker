@@ -1,27 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald Summit Explorer - Dashboard</title>
+{% block title %}Emerald Summit Explorer - Dashboard{% endblock %}
 
-    <!-- Bulma CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
-</head>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+{% endblock %}
 
-<body>
-
-    <!-- Header -->
-    {% include 'components/header_logged_in.html' %}
-
-    <main>
+{% block content %}
         <!-- Welcome Section -->
         <section class="section welcome-section">
             <div class="container">
@@ -397,13 +382,8 @@
                 </div>
             </div>
         </section>
-    </main>
+{% endblock %}
 
-    <!-- Footer -->
-    {% include 'components/footer.html' %}
-
- 
-    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
-</body>
-
-</html>
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/home.js') }}"></script>
+{% endblock %}

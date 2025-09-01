@@ -1,30 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald Peak Explorer</title>
+{% block title %}Emerald Peak Explorer{% endblock %}
 
-    <!-- Bulma CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Your custom CSS (minimal) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
 
-<body>
-
-    <!-- Header -->
-    {% include 'components/header.html' %}
-
-    <main>
+{% block content %}
         <!-- Hero Section -->
         <section class="section">
             <div class="container">
@@ -157,18 +139,11 @@
                 </div>
             </div>
         </section>
-    </main>
+{% endblock %}
 
-    <!-- Footer -->
-    {% include 'components/footer.html' %}
-
-    {% include 'components/signup_login_modal.html' %}
-
-    <script>
-        window.peaksData = {{ map_peaks|tojson }};
-    </script>
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
-
-</body>
-
-</html>
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    window.peaksData = {{ map_peaks|tojson }};
+</script>
+{% endblock %}

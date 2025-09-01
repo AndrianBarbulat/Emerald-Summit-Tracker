@@ -1,27 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emerald Summit Explorer - Account Settings</title>
+{% block title %}Emerald Summit Explorer - Account Settings{% endblock %}
 
-    <!-- Bulma CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
-</head>
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+{% endblock %}
 
-<body>
-
-    <!-- Header -->
-    {% include 'components/header_logged_in.html' %}
-
-    <main>
+{% block content %}
         <!-- Page Header -->
         <section class="section pb-2">
             <div class="container">
@@ -303,34 +288,28 @@
                 </div>
             </div>
         </section>
-    </main>
+{% endblock %}
 
-    <!-- Footer -->
-    {% include 'components/footer.html' %}
-
-    <script>
-        // Toggle notification close button
-        document.addEventListener('DOMContentLoaded', function() {
-            const deleteButtons = document.querySelectorAll('.notification .delete');
-            deleteButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    this.parentElement.style.display = 'none';
-                });
-            });
-
-            // Smooth scroll for sidebar links
-            document.querySelectorAll('.menu-list a').forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const targetId = this.getAttribute('href');
-                    const targetElement = document.querySelector(targetId);
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth' });
-                    }
-                });
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteButtons = document.querySelectorAll('.notification .delete');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                this.parentElement.style.display = 'none';
             });
         });
-    </script>
-</body>
 
-</html>
+        document.querySelectorAll('.menu-list a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

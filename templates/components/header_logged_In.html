@@ -7,10 +7,10 @@
             <span class="title is-4 has-text-white ml-2">Emerald Peak Explorer</span>
         </div>
         <div class="buttons">
+            <a href="/home" class="button is-light is-inverted {% if active_page == 'dashboard' %}has-background-white has-text-success-dark{% endif %}">Dashboard</a>
+            <a href="/summit-list" class="button is-light is-inverted {% if active_page == 'summits' %}has-background-white has-text-success-dark{% endif %}">Summit List</a>
+            <a href="/account" class="button is-light is-inverted {% if active_page == 'account' %}has-background-white has-text-success-dark{% endif %}">Account Settings</a>
             <a href="/logout" class="button is-light is-inverted">Logout</a>
-        </div>
-        <div class="buttons">
-            <a href="/account" class="button is-light is-inverted">Account Settings</a>
         </div>
     </div>
 </header>

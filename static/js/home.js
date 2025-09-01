@@ -6,7 +6,9 @@ function initUser(user) {
     console.log("User email:", user.email);
 }
 
-console.log("Home page loaded for user:", userData.email);
+if (window.userData && window.userData.email) {
+    console.log("Home page loaded for user:", window.userData.email);
+}
 
 
 document.addEventListener('DOMContentLoaded', function() {

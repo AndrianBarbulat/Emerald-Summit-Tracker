@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Emerald Peak Explorer{% endblock %}</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if session.get('profile') %}
+        {% include 'components/header_logged_In.html' %}
+    {% else %}
+        {% include 'components/header.html' %}
+        {% include 'components/signup_login_modal.html' %}
+    {% endif %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {% include 'components/footer.html' %}
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

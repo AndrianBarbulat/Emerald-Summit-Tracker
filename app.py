@@ -226,6 +226,7 @@ def index():
         "index.html",
         map_peaks=map_peaks,
         recent_climbs=recent_climbs,
+        active_page="index",
         **get_session_context(),
     )
 
@@ -290,7 +291,7 @@ def home():
     context = get_session_context()
     if not context["profile"]:
         return redirect("/")
-    return render_template("home.html", **context)
+    return render_template("home.html", active_page="dashboard", **context)
 
 
 # get current user
@@ -327,7 +328,7 @@ def summit_list():
         return redirect("/")
 
     peaks = get_all_peaks()
-    return render_template("summit_list.html", peaks=peaks, **context)
+    return render_template("summit_list.html", peaks=peaks, active_page="summits", **context)
 
 
 @app.route("/peak/<int:peak_id>")
@@ -339,7 +340,7 @@ def peak_detail(peak_id: int):
     peak = get_peak_by_id(peak_id)
     if peak is None:
         abort(404)
-    return render_template("peak_detail.html", peak=peak, **context)
+    return render_template("peak_detail.html", peak=peak, active_page="summits", **context)
 
 
 @app.route("/account")
@@ -349,7 +350,7 @@ def account_settings():
     if not context["profile"]:
         return redirect("/")
 
-    return render_template("account_settings.html", **context)
+    return render_template("account_settings.html", active_page="account", **context)
 
 
 if __name__ == "__main__":
