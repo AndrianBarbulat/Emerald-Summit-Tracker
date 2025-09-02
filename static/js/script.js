@@ -1,4 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const navbarBurger = document.querySelector('.navbar-burger');
+    if (navbarBurger) {
+        navbarBurger.addEventListener('click', function() {
+            const targetId = navbarBurger.dataset.target;
+            const navbarMenu = targetId ? document.getElementById(targetId) : null;
+            if (!navbarMenu) {
+                return;
+            }
+
+            const isActive = navbarBurger.classList.toggle('is-active');
+            navbarMenu.classList.toggle('is-active', isActive);
+            navbarBurger.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+        });
+    }
+
     const mapElement = document.getElementById('peak-map');
     if (mapElement && window.L) {
         const map = L.map('peak-map').setView([53.15, -7.95], 7.5);

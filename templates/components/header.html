@@ -1,15 +1,55 @@
-<header class="sticky-header has-background-success-dark p-4">
-    <div class="container is-flex is-justify-content-space-between is-align-items-center">
-        <div class="is-flex is-align-items-center">
-            <span class="icon is-large has-text-white">
-                <i class="fas fa-mountain fa-2x"></i>
-            </span>
-            <span class="title is-4 has-text-white ml-2">Emerald Peak Explorer</span>
+<nav class="navbar is-fixed-top site-navbar" role="navigation" aria-label="main navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item site-navbar__brand" href="{{ url_for('index') }}">
+                <span class="icon site-navbar__icon" aria-hidden="true">
+                    <i class="fas fa-mountain"></i>
+                </span>
+                <span class="site-navbar__title">
+                    <span>Emerald Peak</span>
+                    <span class="site-navbar__title-accent">Explorer</span>
+                </span>
+            </a>
+
+            <a
+                role="button"
+                class="navbar-burger"
+                aria-label="menu"
+                aria-expanded="false"
+                data-target="publicNavbarMenu"
+            >
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
         </div>
-        <div class="buttons">
-            <a href="/" class="button is-light is-inverted {% if active_page == 'index' %}has-background-white has-text-success-dark{% endif %}">Home</a>
-            <button class="button is-light is-inverted" onclick="openModal('signup')">Sign Up</button>
-            <button class="button is-light is-inverted" onclick="openModal('login')">Login</button>
+
+        <div id="publicNavbarMenu" class="navbar-menu">
+            <div class="navbar-end">
+                <a
+                    href="{{ url_for('index') }}#map-section"
+                    class="navbar-item {% if active_page == 'index' %}is-active{% endif %}"
+                >
+                    Explore Map
+                </a>
+                <a
+                    href="{{ url_for('summit_list') }}"
+                    class="navbar-item {% if active_page == 'summits' %}is-active{% endif %}"
+                >
+                    Summit List
+                </a>
+                <div class="navbar-item">
+                    <div class="buttons site-navbar__actions">
+                        <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">
+                            Sign Up
+                        </button>
+                        <button type="button" class="button site-navbar__login" onclick="openModal('login')">
+                            Login
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</header>
+</nav>
