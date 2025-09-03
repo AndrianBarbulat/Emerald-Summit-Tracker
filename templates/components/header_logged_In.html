@@ -1,16 +1,63 @@
-<header class="sticky-header has-background-success-dark p-4">
-    <div class="container is-flex is-justify-content-space-between is-align-items-center">
-        <div class="is-flex is-align-items-center">
-            <span class="icon is-large has-text-white">
-                <i class="fas fa-mountain fa-2x"></i>
-            </span>
-            <span class="title is-4 has-text-white ml-2">Emerald Peak Explorer</span>
+<nav class="navbar is-fixed-top site-navbar" role="navigation" aria-label="authenticated navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item site-navbar__brand" href="/home">
+                <span class="icon site-navbar__icon" aria-hidden="true">
+                    <i class="fas fa-mountain"></i>
+                </span>
+                <span class="site-navbar__title">
+                    <span>Emerald Peak</span>
+                    <span class="site-navbar__title-accent">Explorer</span>
+                </span>
+            </a>
+
+            <a
+                role="button"
+                class="navbar-burger"
+                aria-label="menu"
+                aria-expanded="false"
+                data-target="authenticatedNavbarMenu"
+            >
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </a>
         </div>
-        <div class="buttons">
-            <a href="/home" class="button is-light is-inverted {% if active_page == 'dashboard' %}has-background-white has-text-success-dark{% endif %}">Dashboard</a>
-            <a href="/summit-list" class="button is-light is-inverted {% if active_page == 'summits' %}has-background-white has-text-success-dark{% endif %}">Summit List</a>
-            <a href="/account" class="button is-light is-inverted {% if active_page == 'account' %}has-background-white has-text-success-dark{% endif %}">Account Settings</a>
-            <a href="/logout" class="button is-light is-inverted">Logout</a>
+
+        <div id="authenticatedNavbarMenu" class="navbar-menu site-navbar__menu">
+            <div class="navbar-start site-navbar__center-links">
+                <a href="/home" class="navbar-item {{ 'is-active' if active_page == 'dashboard' else '' }}">Dashboard</a>
+                <a href="/map" class="navbar-item {{ 'is-active' if active_page == 'map' else '' }}">Map</a>
+                <a href="/summit-list" class="navbar-item {{ 'is-active' if active_page == 'summits' else '' }}">Summit List</a>
+                <a href="/leaderboard" class="navbar-item {{ 'is-active' if active_page == 'leaderboard' else '' }}">Leaderboard</a>
+            </div>
+
+            <div class="navbar-end">
+                <div class="navbar-item has-dropdown is-hoverable site-navbar__user-dropdown">
+                    <a
+                        class="navbar-link site-navbar__user-trigger"
+                        href="#"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        data-navbar-dropdown-toggle
+                    >
+                        <span class="icon site-navbar__user-icon" aria-hidden="true">
+                            <i class="fas fa-circle-user"></i>
+                        </span>
+                        <span class="site-navbar__display-name">{{ profile.display_name or 'Climber' }}</span>
+                    </a>
+
+                    <div class="navbar-dropdown is-right">
+                        <a href="/profile/me" class="navbar-item">My Profile</a>
+                        <a href="/my-climbs" class="navbar-item">My Climbs</a>
+                        <a href="/my-bucket-list" class="navbar-item">Bucket List</a>
+                        <a href="/account" class="navbar-item">Account Settings</a>
+                        <hr class="navbar-divider">
+                        <a href="/logout" class="navbar-item">Logout</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</header>
+</nav>

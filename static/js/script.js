@@ -1,6 +1,20 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const navbarBurger = document.querySelector('.navbar-burger');
-    if (navbarBurger) {
+    const isMobileNavbar = function() {
+        return window.matchMedia('(max-width: 1023px)').matches;
+    };
+
+    const closeMobileDropdowns = function() {
+        document.querySelectorAll('.site-navbar .has-dropdown.is-active').forEach(function(dropdown) {
+            dropdown.classList.remove('is-active');
+
+            const trigger = dropdown.querySelector('[data-navbar-dropdown-toggle]');
+            if (trigger) {
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    };
+
+    document.querySelectorAll('.navbar-burger').forEach(function(navbarBurger) {
         navbarBurger.addEventListener('click', function() {
             const targetId = navbarBurger.dataset.target;
             const navbarMenu = targetId ? document.getElementById(targetId) : null;
@@ -11,8 +25,38 @@ document.addEventListener('DOMContentLoaded', function() {
             const isActive = navbarBurger.classList.toggle('is-active');
             navbarMenu.classList.toggle('is-active', isActive);
             navbarBurger.setAttribute('aria-expanded', isActive ? 'true' : 'false');
+
+            if (!isActive) {
+                closeMobileDropdowns();
+            }
         });
-    }
+    });
+
+    document.querySelectorAll('[data-navbar-dropdown-toggle]').forEach(function(dropdownToggle) {
+        dropdownToggle.addEventListener('click', function(event) {
+            event.preventDefault();
+
+            if (!isMobileNavbar()) {
+                return;
+            }
+
+            const dropdown = dropdownToggle.closest('.has-dropdown');
+            if (!dropdown) {
+                return;
+            }
+
+            const nextState = !dropdown.classList.contains('is-active');
+            closeMobileDropdowns();
+            dropdown.classList.toggle('is-active', nextState);
+            dropdownToggle.setAttribute('aria-expanded', nextState ? 'true' : 'false');
+        });
+    });
+
+    window.addEventListener('resize', function() {
+        if (!isMobileNavbar()) {
+            closeMobileDropdowns();
+        }
+    });
 
     const mapElement = document.getElementById('peak-map');
     if (mapElement && window.L) {
