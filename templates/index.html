@@ -4,65 +4,123 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 {% endblock %}
 
 {% block content %}
-        <!-- Hero Section -->
-        <section class="section">
-            <div class="container">
-                <div class="columns is-vcentered is-multiline">
-                    <div class="column is-6">
-                        <div class="hero-image p-6">
-                            <span class="icon is-large has-text-white">
-                                <i class="fas fa-mountain-sun fa-4x"></i>
-                            </span>
+        <section class="landing-hero">
+            <div class="container landing-hero__content">
+                <div class="columns is-vcentered is-variable is-7 is-multiline">
+                    <div class="column is-6-desktop">
+                        <div class="landing-hero__copy">
+                            <span class="landing-hero__eyebrow">Emerald Peak Explorer</span>
+                            <h1 class="landing-hero__title">Track Your Climbs Across Ireland's Highest Peaks</h1>
+                            <p class="landing-hero__subtitle">
+                                Log summits, discover standout routes, and follow Ireland's most iconic mountain days
+                                with a shared map of peaks, places, and recent climbs.
+                            </p>
+                            <div class="buttons landing-hero__actions">
+                                {% if profile %}
+                                <a class="button landing-hero__cta-primary" href="/home">
+                                    Start Exploring
+                                </a>
+                                {% else %}
+                                <button type="button" class="button landing-hero__cta-primary" onclick="openModal('signup')">
+                                    Start Exploring
+                                </button>
+                                {% endif %}
+                                <a class="button landing-hero__cta-secondary" href="#map-section">
+                                    View All Peaks
+                                </a>
+                            </div>
                         </div>
                     </div>
-                    <div class="column is-6">
-                        <h1 class="title is-1 has-text-success-dark">Track your climbs across Ireland's highest peaks
-                        </h1>
-                        <p class="subtitle is-4 mt-4">Log summits, discover trails, and join a community of peak
-                            baggers. Every Munro, Arderin, and green hill matters.</p>
-                        <button class="button is-success is-large mt-4"
-                            onclick="document.getElementById('map-section').scrollIntoView({behavior:'smooth'});">
-                            <span class="icon"><i class="fas fa-arrow-down"></i></span>
-                            <span>Submit a Peak</span>
-                        </button>
+                    <div class="column is-6-desktop">
+                        <div class="landing-hero__visual">
+                            <div class="landing-hero__icon-shell">
+                                <span class="icon landing-hero__icon" aria-hidden="true">
+                                    <i class="fas fa-mountain-sun"></i>
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Map Section -->
-        <section id="map-section" class="section has-background-success-light">
+        <section class="landing-stats-strip">
+            <div class="container">
+                <div class="landing-stats-card">
+                    <div class="columns is-mobile is-multiline">
+                        <div class="column is-12-mobile is-4-tablet">
+                            <div class="landing-stat">
+                                <span class="landing-stat__icon" aria-hidden="true">
+                                    <i class="fas fa-mountain"></i>
+                                </span>
+                                <div>
+                                    <span class="landing-stat__value">{{ landing_stats.peaks }}</span>
+                                    <span class="landing-stat__label">Peaks</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-12-mobile is-4-tablet">
+                            <div class="landing-stat">
+                                <span class="landing-stat__icon" aria-hidden="true">
+                                    <i class="fas fa-map-location-dot"></i>
+                                </span>
+                                <div>
+                                    <span class="landing-stat__value">{{ landing_stats.counties }}</span>
+                                    <span class="landing-stat__label">Counties</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="column is-12-mobile is-4-tablet">
+                            <div class="landing-stat">
+                                <span class="landing-stat__icon" aria-hidden="true">
+                                    <i class="fas fa-compass"></i>
+                                </span>
+                                <div>
+                                    <span class="landing-stat__value">{{ landing_stats.provinces }}</span>
+                                    <span class="landing-stat__label">Provinces</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="map-section" class="section has-background-success-light landing-map-section">
             <div class="container">
                 <div class="columns is-multiline">
                     <div class="column is-8">
                         <div class="map-container" id="peak-map"></div>
                     </div>
                     <div class="column is-4">
-                        <div class="box">
+                        <div class="box landing-map-sidebar">
                             <h3 class="title is-4 has-text-success-dark">
                                 <span class="icon"><i class="fas fa-chart-line"></i></span>
-                                Summit Stats
+                                Summit Snapshot
                             </h3>
 
-                            <div class="field is-grouped is-justify-content-space-between mt-4">
-                                <span>Total peaks submitted</span>
-                                <span class="tag is-success is-medium">247</span>
-                            </div>
-                            <div class="field is-grouped is-justify-content-space-between">
-                                <span>Top user</span>
-                                <span class="tag is-success is-medium">ClimberMaeve</span>
-                            </div>
-                            <div class="field is-grouped is-justify-content-space-between">
-                                <span>This week</span>
-                                <span class="tag is-success is-medium">12</span>
+                            <div class="landing-map-stats">
+                                <div class="landing-map-stats__row">
+                                    <span class="landing-map-stats__label">Total peaks mapped</span>
+                                    <span class="landing-map-stats__value">{{ landing_stats.peaks }}</span>
+                                </div>
+                                <div class="landing-map-stats__row">
+                                    <span class="landing-map-stats__label">Counties covered</span>
+                                    <span class="landing-map-stats__value">{{ landing_stats.counties }}</span>
+                                </div>
+                                <div class="landing-map-stats__row">
+                                    <span class="landing-map-stats__label">Provinces represented</span>
+                                    <span class="landing-map-stats__value">{{ landing_stats.provinces }}</span>
+                                </div>
                             </div>
 
                             <h4 class="title is-6 mt-5 mb-3">Latest submissions</h4>
 
-                            <div class="box is-shadowless p-2 has-background-success-light">
+                            <div class="box is-shadowless p-2 landing-recent-submissions">
                                 {% if recent_climbs %}
                                     {% for climb in recent_climbs %}
                                     <div class="is-flex is-justify-content-space-between is-align-items-center p-2">

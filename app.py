@@ -184,6 +184,29 @@ def _build_map_peaks(peaks: list[dict]) -> list[dict]:
     return map_peaks
 
 
+def _count_distinct_values(peaks: list[dict], field_name: str) -> int:
+    values = set()
+    for peak in peaks:
+        raw_value = peak.get(field_name)
+        if raw_value is None:
+            continue
+
+        normalized = str(raw_value).strip().lower()
+        if normalized:
+            values.add(normalized)
+
+    return len(values)
+
+
+def _build_landing_stats(peaks: list[dict]) -> dict:
+    province_count = _count_distinct_values(peaks, "province") or 4
+    return {
+        "peaks": len(peaks),
+        "counties": _count_distinct_values(peaks, "county"),
+        "provinces": province_count,
+    }
+
+
 def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[dict]:
     enriched = []
     for climb in recent_climbs:
@@ -217,6 +240,7 @@ def index():
     all_peaks = get_all_peaks()
     peaks_by_id = {peak.get("id"): peak for peak in all_peaks if peak.get("id") is not None}
     map_peaks = _build_map_peaks(all_peaks)
+    landing_stats = _build_landing_stats(all_peaks)
     recent_climbs = _enrich_recent_climbs(
         get_community_recent_climbs(limit=4),
         peaks_by_id,
@@ -225,6 +249,7 @@ def index():
     return render_template(
         "index.html",
         map_peaks=map_peaks,
+        landing_stats=landing_stats,
         recent_climbs=recent_climbs,
         active_page="index",
         **get_session_context(),
