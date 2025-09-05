@@ -94,7 +94,27 @@
             <div class="container">
                 <div class="columns is-multiline">
                     <div class="column is-8">
-                        <div class="map-container" id="peak-map"></div>
+                        <div class="landing-map-frame">
+                            <div class="map-container landing-map-canvas" id="peak-map"></div>
+                        </div>
+                        <div class="landing-map-legend" aria-label="Map legend">
+                            <span class="landing-map-legend__item">
+                                <span class="landing-map-legend__swatch landing-map-legend__swatch--munster"></span>
+                                Munster
+                            </span>
+                            <span class="landing-map-legend__item">
+                                <span class="landing-map-legend__swatch landing-map-legend__swatch--leinster"></span>
+                                Leinster
+                            </span>
+                            <span class="landing-map-legend__item">
+                                <span class="landing-map-legend__swatch landing-map-legend__swatch--ulster"></span>
+                                Ulster
+                            </span>
+                            <span class="landing-map-legend__item">
+                                <span class="landing-map-legend__swatch landing-map-legend__swatch--connacht"></span>
+                                Connacht
+                            </span>
+                        </div>
                     </div>
                     <div class="column is-4">
                         <div class="box landing-map-sidebar">
@@ -123,8 +143,11 @@
                             <div class="box is-shadowless p-2 landing-recent-submissions">
                                 {% if recent_climbs %}
                                     {% for climb in recent_climbs %}
-                                    <div class="is-flex is-justify-content-space-between is-align-items-center p-2">
-                                        <span class="tag is-success">{{ climb.peak_name }}</span>
+                                    <div class="landing-recent-submissions__item">
+                                        <span class="landing-recent-submissions__peak">
+                                            <span class="landing-recent-submissions__dot"></span>
+                                            <span>{{ climb.peak_name }}</span>
+                                        </span>
                                         <span class="has-text-grey">by {{ climb.climber_name }} {{ climb.relative_time }}</span>
                                     </div>
                                     {% endfor %}
@@ -202,6 +225,7 @@
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    window.peaksData = {{ map_peaks|tojson }};
+    const peaks = {{ peaks | tojson }};
+    window.peaksData = peaks;
 </script>
 {% endblock %}

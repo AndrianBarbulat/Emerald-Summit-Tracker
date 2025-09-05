@@ -176,6 +176,7 @@ def _build_map_peaks(peaks: list[dict]) -> list[dict]:
                 "id": peak.get("id"),
                 "name": peak.get("name"),
                 "county": peak.get("county"),
+                "province": peak.get("province"),
                 "height_m": peak.get("height_m"),
                 "latitude": lat,
                 "longitude": lon,
@@ -248,7 +249,7 @@ def index():
 
     return render_template(
         "index.html",
-        map_peaks=map_peaks,
+        peaks=map_peaks,
         landing_stats=landing_stats,
         recent_climbs=recent_climbs,
         active_page="index",

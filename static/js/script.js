@@ -61,13 +61,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const mapElement = document.getElementById('peak-map');
     if (mapElement && window.L) {
         const map = L.map('peak-map').setView([53.15, -7.95], 7.5);
+        const provinceColors = {
+            munster: '#74C69D',
+            leinster: '#5B8FB9',
+            ulster: '#E67E22',
+            connacht: '#8E6BB5'
+        };
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap, CartoDB'
+        L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
         }).addTo(map);
 
-        const peaks = Array.isArray(window.peaksData) ? window.peaksData : [];
-        peaks.forEach(peak => {
+        const peakList = Array.isArray(window.peaksData) ? window.peaksData : [];
+        peakList.forEach(function(peak) {
             const lat = Number(peak.latitude);
             const lon = Number(peak.longitude);
             if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
@@ -75,9 +81,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const popupCounty = peak.county ? `<br>${peak.county}` : '';
+            const popupProvince = peak.province ? `<br>${peak.province}` : '';
             const popupHeight = peak.height_m ? `<br>${peak.height_m}m` : '';
-            L.marker([lat, lon])
-                .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupHeight}`)
+            const provinceKey = String(peak.province || '').trim().toLowerCase();
+            const markerColor = provinceColors[provinceKey] || '#74C69D';
+
+            L.circleMarker([lat, lon], {
+                color: '#FFFFFF',
+                fillColor: markerColor,
+                fillOpacity: 0.95,
+                radius: 6,
+                weight: 2
+            })
+                .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupProvince}${popupHeight}`)
                 .addTo(map);
         });
     }
