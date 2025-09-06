@@ -367,6 +367,63 @@
     background: #8E6BB5;
 }
 
+.landing-logs + .section {
+    display: none;
+}
+
+.landing-log-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-light-grey);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    height: 100%;
+    padding: 1.4rem 1.25rem 1.3rem;
+    position: relative;
+}
+
+.landing-log-card__accent {
+    background: var(--color-mint);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    height: 4px;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.landing-log-card__province {
+    background: rgba(27, 67, 50, 0.08);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: 999px;
+    color: var(--color-forest);
+    font-size: 0.75rem;
+    font-weight: 700;
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+}
+
+.landing-log-card__user {
+    color: var(--color-grey);
+    font-size: 0.98rem;
+    font-weight: 500;
+    margin-bottom: 0.7rem;
+}
+
+.landing-log-card__peak {
+    color: var(--color-forest);
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+}
+
+.landing-log-card__date {
+    color: var(--color-grey);
+    font-size: 0.92rem;
+    margin-bottom: 0;
+}
+
 @media screen and (max-width: 1023px) {
     .landing-hero {
         padding: 4.25rem 0 5.5rem;
@@ -416,6 +473,10 @@
 
     .landing-map-canvas {
         min-height: 440px;
+    }
+
+    .landing-log-card {
+        padding-top: 1.55rem;
     }
 }
 
@@ -477,5 +538,9 @@
     .landing-recent-submissions__item {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .landing-log-card__province {
+        position: static;
     }
 }
