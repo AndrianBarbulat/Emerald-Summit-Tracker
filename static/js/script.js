@@ -52,6 +52,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    document.addEventListener('click', function(event) {
+        if (!isMobileNavbar()) {
+            return;
+        }
+
+        if (event.target.closest('.site-navbar .has-dropdown')) {
+            return;
+        }
+
+        closeMobileDropdowns();
+    });
+
     window.addEventListener('resize', function() {
         if (!isMobileNavbar()) {
             closeMobileDropdowns();

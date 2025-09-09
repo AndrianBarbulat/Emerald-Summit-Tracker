@@ -28,11 +28,27 @@
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
+html {
+    scroll-padding-top: 72px;
+}
+
 body {
     background-color: var(--color-cream);
     font-family: 'Inter', sans-serif;
     color: var(--color-slate);
     padding-top: 52px;
+}
+
+.button {
+    min-height: 2.75rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    touch-action: manipulation;
+}
+
+.button.is-small {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
 }
 
 .box {
@@ -125,11 +141,20 @@ body {
     border-color: var(--color-white);
 }
 
+.site-navbar .navbar-item,
+.site-navbar .navbar-link,
 .site-navbar .navbar-burger,
 .site-navbar .navbar-burger:hover,
 .site-navbar .navbar-burger:focus {
     background: transparent;
     color: var(--color-white);
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+.site-navbar .navbar-burger {
+    height: 52px;
+    width: 52px;
 }
 
 .site-navbar .navbar-burger span {
@@ -278,6 +303,22 @@ body {
     margin: 0;
 }
 
+@media screen and (min-width: 769px) and (max-width: 1023px) {
+    .site-footer .columns {
+        flex-wrap: wrap;
+    }
+
+    .site-footer .column {
+        flex: 0 0 50%;
+        width: 50%;
+    }
+
+    .site-footer .column:last-child {
+        flex-basis: 100%;
+        width: 100%;
+    }
+}
+
 @media screen and (max-width: 1023px) {
     .site-navbar__menu {
         align-items: stretch;
@@ -349,5 +390,44 @@ body {
 
     .site-footer__links {
         justify-items: center;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .site-navbar .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .site-navbar__brand {
+        column-gap: 0.55rem;
+        font-size: 0.95rem;
+        max-width: calc(100% - 3.75rem);
+    }
+
+    .site-navbar__title {
+        gap: 0.2rem;
+    }
+
+    .site-navbar .navbar-item,
+    .site-navbar .navbar-link {
+        font-size: 0.9375rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .site-navbar__display-name {
+        max-width: 100%;
+    }
+
+    .site-footer.footer {
+        padding: 2.5rem 1rem 1.25rem;
+    }
+
+    .site-footer__title,
+    .site-footer__copy,
+    .site-footer__links a,
+    .site-footer__bottom p {
+        font-size: 0.875rem;
     }
 }

@@ -7,10 +7,10 @@
 {% endblock %}
 
 {% block content %}
-    <section class="section">
+    <section class="section summit-list-page">
         <div class="container">
             <div class="box">
-                <div class="level">
+                <div class="level summit-list-page__header">
                     <div class="level-left">
                         <div>
                             <h1 class="title is-3"><i class="fas fa-mountain"></i> Summit List</h1>
@@ -21,40 +21,42 @@
                         <a href="{{ url_for('home') }}" class="button is-link is-light"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
                     </div>
                 </div>
-                <table class="table is-fullwidth is-striped">
-                    <thead>
-                        <tr>
-                            <th>Peak</th>
-                            <th>Height</th>
-                            <th>County</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for peak in peaks %}
-                        <tr>
-                            <td>
-                                {% if peak.id %}
-                                <a href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a>
-                                {% else %}
-                                {{ peak.name }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if peak.height_m %}
-                                {{ peak.height_m }}m
-                                {% elif peak.height %}
-                                {{ peak.height }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                            <td>{{ peak.county or '-' }}</td>
-                            <td><span class="tag is-light">Not started</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container summit-list-page__table-wrap">
+                    <table class="table is-fullwidth is-striped">
+                        <thead>
+                            <tr>
+                                <th>Peak</th>
+                                <th>Height</th>
+                                <th>County</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for peak in peaks %}
+                            <tr>
+                                <td>
+                                    {% if peak.id %}
+                                    <a href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a>
+                                    {% else %}
+                                    {{ peak.name }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if peak.height_m %}
+                                    {{ peak.height_m }}m
+                                    {% elif peak.height %}
+                                    {{ peak.height }}
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td>{{ peak.county or '-' }}</td>
+                                <td><span class="tag is-light">Not started</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 <div class="has-text-right">
                     <a class="button is-success" href="#"><span class="icon"><i class="fas fa-plus"></i></span><span>Add Summit</span></a>
                 </div>

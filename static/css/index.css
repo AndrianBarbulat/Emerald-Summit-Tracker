@@ -249,6 +249,7 @@
     border: 1px solid rgba(27, 67, 50, 0.12);
     border-radius: 24px;
     box-shadow: var(--shadow-md);
+    height: 100%;
 }
 
 .landing-map-stats {
@@ -377,6 +378,14 @@
     position: relative;
 }
 
+.landing-logs__grid .column {
+    display: flex;
+}
+
+.landing-logs__grid .landing-log-card {
+    width: 100%;
+}
+
 .landing-log-card__accent {
     background: var(--color-mint);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
@@ -476,6 +485,26 @@
     }
 }
 
+@media screen and (min-width: 769px) and (max-width: 1023px) {
+    .landing-stats-card .columns {
+        justify-content: center;
+    }
+
+    .landing-stats-card .column {
+        flex: 0 0 50%;
+        width: 50%;
+    }
+
+    .landing-stats-card .column:last-child {
+        flex-basis: 100%;
+        width: 100%;
+    }
+
+    .landing-map-layout {
+        row-gap: 1.5rem;
+    }
+}
+
 @media screen and (max-width: 768px) {
     .landing-hero {
         padding: 3.8rem 0 5rem;
@@ -538,5 +567,138 @@
 
     .landing-log-card__province {
         position: static;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .landing-hero {
+        padding: 3rem 0 4.25rem;
+    }
+
+    .landing-hero__eyebrow,
+    .landing-hero__subtitle,
+    .landing-stat__label,
+    .landing-map-stats__label,
+    .landing-map-legend__item,
+    .landing-log-card__user,
+    .landing-log-card__date,
+    .landing-log-card__province {
+        font-size: 0.875rem;
+    }
+
+    .landing-hero__title {
+        font-size: 2rem;
+        line-height: 1.02;
+    }
+
+    .landing-hero__subtitle {
+        margin-bottom: 1.5rem;
+    }
+
+    .landing-hero__actions {
+        gap: 0.75rem;
+    }
+
+    .landing-hero__actions .button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .landing-hero__visual::before {
+        height: 13rem;
+        width: 13rem;
+    }
+
+    .landing-hero__visual::after {
+        height: 16rem;
+        width: 16rem;
+    }
+
+    .landing-hero__icon-shell {
+        height: 10.25rem;
+        width: 10.25rem;
+    }
+
+    .landing-stats-strip {
+        margin-top: -1.5rem;
+    }
+
+    .landing-stats-card {
+        border-radius: 18px;
+        padding: 0.9rem;
+    }
+
+    .landing-stats-card .column {
+        padding: 0.55rem 0.5rem;
+    }
+
+    .landing-stat {
+        flex-direction: column;
+        gap: 0.65rem;
+        text-align: center;
+    }
+
+    .landing-stat__icon {
+        flex-basis: 3rem;
+        height: 3rem;
+        width: 3rem;
+    }
+
+    .landing-stat__value {
+        font-size: 1.5rem;
+    }
+
+    .landing-map-section {
+        padding-top: 3.5rem;
+    }
+
+    .landing-map-layout {
+        row-gap: 1rem;
+    }
+
+    .landing-map-frame {
+        border-radius: var(--radius-md);
+    }
+
+    .landing-map-canvas {
+        min-height: 300px;
+    }
+
+    .landing-map-sidebar {
+        border-radius: var(--radius-md);
+    }
+
+    .landing-map-stats__row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    .landing-map-legend {
+        gap: 0.65rem 0.85rem;
+        margin-top: 0.85rem;
+    }
+
+    .landing-recent-submissions__item {
+        gap: 0.45rem;
+        padding: 0.75rem;
+    }
+
+    .landing-log-card {
+        padding: 1.1rem 1rem 1rem;
+    }
+
+    .landing-log-card__peak {
+        font-size: 1.35rem;
+    }
+
+    .landing-log-card__province {
+        padding-left: 0.65rem;
+        padding-right: 0.65rem;
+    }
+
+    .card-image-placeholder {
+        margin-top: 1rem !important;
+        padding: 1rem !important;
     }
 }
