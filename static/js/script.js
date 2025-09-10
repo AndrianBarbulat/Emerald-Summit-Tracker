@@ -70,6 +70,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    document.querySelectorAll('form[data-auth-form]').forEach(function(authForm) {
+        authForm.addEventListener('submit', function(event) {
+            if (!validateAuthForm(authForm)) {
+                event.preventDefault();
+            }
+        });
+
+        authForm.querySelectorAll('.input').forEach(function(input) {
+            input.addEventListener('input', function() {
+                clearAuthFieldError(input);
+
+                if (input.name === 'password') {
+                    const confirmInput = authForm.querySelector('[data-auth-confirm]');
+                    if (confirmInput && confirmInput.value.trim() && confirmInput.value === input.value) {
+                        clearAuthFieldError(confirmInput);
+                    }
+                }
+            });
+        });
+    });
+
     const mapElement = document.getElementById('peak-map');
     if (mapElement && window.L) {
         const map = L.map('peak-map').setView([53.15, -7.95], 7.5);
@@ -111,64 +132,157 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-function openModal(type) {
+const AUTH_MODAL_COPY = {
+    login: {
+        title: 'Welcome Back',
+        subtitle: 'Log in to keep tracking every summit.'
+    },
+    signup: {
+        title: 'Join the Adventure',
+        subtitle: 'Create your account and start logging peaks across Ireland.'
+    }
+};
+
+function authModalElements() {
     const modal = document.getElementById('auth-modal');
     if (!modal) {
+        return {};
+    }
+
+    return {
+        modal: modal,
+        loginForm: document.getElementById('login-form'),
+        signupForm: document.getElementById('signup-form'),
+        modalTitle: document.getElementById('modal-title'),
+        modalSubtitle: document.getElementById('modal-subtitle')
+    };
+}
+
+function clearAuthFieldError(input) {
+    if (!input) {
         return;
     }
 
-    modal.classList.add('is-active');
+    input.classList.remove('is-danger');
+    input.removeAttribute('aria-invalid');
 
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const modalTitle = document.getElementById('modal-title');
-    if (!loginForm || !signupForm || !modalTitle) {
+    const field = input.closest('.field');
+    const errorMessage = field ? field.querySelector('.auth-modal__error') : null;
+    if (errorMessage) {
+        errorMessage.textContent = '';
+    }
+}
+
+function setAuthFieldError(input, message) {
+    if (!input) {
         return;
     }
 
-    if (type === 'login') {
-        loginForm.style.display = 'block';
-        signupForm.style.display = 'none';
-        modalTitle.textContent = 'Login';
+    input.classList.add('is-danger');
+    input.setAttribute('aria-invalid', 'true');
+
+    const field = input.closest('.field');
+    const errorMessage = field ? field.querySelector('.auth-modal__error') : null;
+    if (errorMessage) {
+        errorMessage.textContent = message;
+    }
+}
+
+function clearAuthValidation(scope) {
+    const root = scope || document.getElementById('auth-modal');
+    if (!root) {
         return;
     }
 
-    loginForm.style.display = 'none';
-    signupForm.style.display = 'block';
-    modalTitle.textContent = 'Sign Up';
+    root.querySelectorAll('.input').forEach(function(input) {
+        clearAuthFieldError(input);
+    });
+}
+
+function validateAuthForm(form) {
+    if (!form) {
+        return true;
+    }
+
+    clearAuthValidation(form);
+
+    let isValid = true;
+    let firstInvalidInput = null;
+    form.querySelectorAll('[data-auth-required]').forEach(function(input) {
+        const label = input.dataset.fieldLabel || 'This field';
+        if (!input.value.trim()) {
+            setAuthFieldError(input, label + ' is required.');
+            if (!firstInvalidInput) {
+                firstInvalidInput = input;
+            }
+            isValid = false;
+        }
+    });
+
+    const passwordInput = form.querySelector('input[name="password"]');
+    const confirmInput = form.querySelector('[data-auth-confirm]');
+    if (
+        isValid &&
+        passwordInput &&
+        confirmInput &&
+        confirmInput.value.trim() &&
+        passwordInput.value !== confirmInput.value
+    ) {
+        setAuthFieldError(confirmInput, 'Passwords must match.');
+        if (!firstInvalidInput) {
+            firstInvalidInput = confirmInput;
+        }
+        isValid = false;
+    }
+
+    if (firstInvalidInput) {
+        firstInvalidInput.focus();
+    }
+
+    return isValid;
+}
+
+function setAuthMode(type) {
+    const elements = authModalElements();
+    if (!elements.modal || !elements.loginForm || !elements.signupForm || !elements.modalTitle || !elements.modalSubtitle) {
+        return;
+    }
+
+    const mode = type === 'signup' ? 'signup' : 'login';
+    const copy = AUTH_MODAL_COPY[mode];
+
+    elements.modal.dataset.authMode = mode;
+    elements.loginForm.style.display = mode === 'login' ? 'block' : 'none';
+    elements.signupForm.style.display = mode === 'signup' ? 'block' : 'none';
+    elements.modalTitle.textContent = copy.title;
+    elements.modalSubtitle.textContent = copy.subtitle;
+    clearAuthValidation(elements.modal);
+}
+
+function openModal(type) {
+    const elements = authModalElements();
+    if (!elements.modal) {
+        return;
+    }
+
+    setAuthMode(type);
+    elements.modal.classList.add('is-active');
 }
 
 function closeModal() {
-    const modal = document.getElementById('auth-modal');
-    if (modal) {
-        modal.classList.remove('is-active');
+    const elements = authModalElements();
+    if (elements.modal) {
+        clearAuthValidation(elements.modal);
+        elements.modal.classList.remove('is-active');
     }
 }
 
 function switchToLogin() {
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const modalTitle = document.getElementById('modal-title');
-    if (!loginForm || !signupForm || !modalTitle) {
-        return;
-    }
-
-    loginForm.style.display = 'block';
-    signupForm.style.display = 'none';
-    modalTitle.textContent = 'Login';
+    setAuthMode('login');
 }
 
 function switchToSignup() {
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    const modalTitle = document.getElementById('modal-title');
-    if (!loginForm || !signupForm || !modalTitle) {
-        return;
-    }
-
-    loginForm.style.display = 'none';
-    signupForm.style.display = 'block';
-    modalTitle.textContent = 'Sign Up';
+    setAuthMode('signup');
 }
 
 // Close modal if clicked outside

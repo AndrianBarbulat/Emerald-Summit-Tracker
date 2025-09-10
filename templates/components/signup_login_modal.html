@@ -1,116 +1,163 @@
-<!-- Modal Component -->
-<div class="modal" id="auth-modal">
+<div class="modal auth-modal" id="auth-modal">
     <div class="modal-background" onclick="closeModal()"></div>
-    <div class="modal-card">
-        <header class="modal-card-head has-background-success-dark">
-            <p class="modal-card-title has-text-white" id="modal-title">Login</p>
-            <button class="delete" aria-label="close" onclick="closeModal()"></button>
+    <div class="modal-card auth-modal__card">
+        <header class="modal-card-head auth-modal__head">
+            <div>
+                <p class="modal-card-title auth-modal__title" id="modal-title">Welcome Back</p>
+                <p class="auth-modal__subtitle" id="modal-subtitle">Log in to keep tracking every summit.</p>
+            </div>
+            <button class="delete auth-modal__close" aria-label="close" onclick="closeModal()"></button>
         </header>
-        <section class="modal-card-body">
-
-            <!-- Login Form -->
-            <form action="/login" method="POST">
+        <section class="modal-card-body auth-modal__body">
+            <form action="/login" method="POST" novalidate data-auth-form="login">
                 <div id="login-form">
-                    <div class="field">
-                        <label class="label">Email</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="login-email">Email</label>
                         <div class="control has-icons-left">
-                            <input class="input" type="email" name="email" placeholder="your@email.com">
+                            <input
+                                class="input"
+                                id="login-email"
+                                type="email"
+                                name="email"
+                                placeholder="your@email.com"
+                                required
+                                data-auth-required
+                                data-field-label="Email"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-envelope"></i>
                             </span>
                         </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
-                    <div class="field">
-                        <label class="label">Password</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="login-password">Password</label>
                         <div class="control has-icons-left">
-                            <input class="input" type="password" name="password" placeholder="********">
+                            <input
+                                class="input"
+                                id="login-password"
+                                type="password"
+                                name="password"
+                                placeholder="********"
+                                required
+                                data-auth-required
+                                data-field-label="Password"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-lock"></i>
                             </span>
                         </div>
-                    </div>
-
-                    <div class="field">
-                        <div class="control">
-                            <label class="checkbox">
-                                <input type="checkbox">
-                                Remember me
-                            </label>
-                        </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
                     <div class="field mt-5">
                         <div class="control">
-                            <button type="submit" class="button is-success is-fullwidth">Login</button>
+                            <button type="submit" class="button is-fullwidth auth-modal__submit auth-modal__submit--login">
+                                Log In
+                            </button>
                         </div>
                     </div>
 
-                    <div class="has-text-centered mt-4">
-                        <p>Don't have an account? <a href="#" onclick="switchToSignup(); return false;">Sign up</a></p>
+                    <div class="has-text-centered mt-4 auth-modal__toggle-copy">
+                        <p>New here? <a class="auth-modal__toggle-link" href="#" onclick="switchToSignup(); return false;">Create an account</a></p>
                     </div>
                 </div>
             </form>
-            <!-- Signup Form -->
-            <form action="/signup" method="POST">
+
+            <form action="/signup" method="POST" novalidate data-auth-form="signup">
                 <div id="signup-form" style="display: none;">
-                    <div class="field">
-                        <label class="label">Full Name</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="signup-name">Full Name</label>
                         <div class="control has-icons-left">
-                            <input class="input" type="text" placeholder="John Doe">
+                            <input
+                                class="input"
+                                id="signup-name"
+                                type="text"
+                                name="display_name"
+                                placeholder="John Doe"
+                                required
+                                data-auth-required
+                                data-field-label="Full name"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-user"></i>
                             </span>
                         </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
-                    <div class="field">
-                        <label class="label">Email</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="signup-email">Email</label>
                         <div class="control has-icons-left">
-                            <input class="input" name="email" type="email" placeholder="your@email.com">
+                            <input
+                                class="input"
+                                id="signup-email"
+                                name="email"
+                                type="email"
+                                placeholder="your@email.com"
+                                required
+                                data-auth-required
+                                data-field-label="Email"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-envelope"></i>
                             </span>
                         </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
-                    <div class="field">
-                        <label class="label">Password</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="signup-password">Password</label>
                         <div class="control has-icons-left">
-                            <input class="input" type="password" name="password" placeholder="********">
+                            <input
+                                class="input"
+                                id="signup-password"
+                                type="password"
+                                name="password"
+                                placeholder="********"
+                                required
+                                data-auth-required
+                                data-field-label="Password"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-lock"></i>
                             </span>
                         </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
-                    <div class="field">
-                        <label class="label">Confirm Password</label>
+                    <div class="field auth-modal__field">
+                        <label class="label" for="signup-confirm-password">Confirm Password</label>
                         <div class="control has-icons-left">
-                            <input class="input" type="password" placeholder="********">
+                            <input
+                                class="input"
+                                id="signup-confirm-password"
+                                type="password"
+                                name="confirm_password"
+                                placeholder="********"
+                                required
+                                data-auth-required
+                                data-auth-confirm
+                                data-field-label="Confirm password"
+                            >
                             <span class="icon is-small is-left">
                                 <i class="fas fa-lock"></i>
                             </span>
                         </div>
-                    </div>
-
-                    <div class="field">
-                        <div class="control">
-                            <label class="checkbox">
-                                <input type="checkbox">
-                                I agree to the <a href="#">terms and conditions</a>
-                            </label>
-                        </div>
+                        <p class="help auth-modal__error" aria-live="polite"></p>
                     </div>
 
                     <div class="field mt-5">
                         <div class="control">
-                            <button class="button is-success is-fullwidth">Sign Up</button>
+                            <button type="submit" class="button is-fullwidth auth-modal__submit auth-modal__submit--signup">
+                                Sign Up
+                            </button>
                         </div>
                     </div>
 
-                    <div class="has-text-centered mt-4">
-                        <p>Already have an account? <a href="#" onclick="switchToLogin(); return false;">Login</a></p>
+                    <div class="has-text-centered mt-4 auth-modal__toggle-copy">
+                        <p>Already have an account? <a class="auth-modal__toggle-link" href="#" onclick="switchToLogin(); return false;">Log in</a></p>
                     </div>
                 </div>
             </form>
