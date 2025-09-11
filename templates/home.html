@@ -7,31 +7,33 @@
 {% endblock %}
 
 {% block content %}
+    <div class="dashboard-page">
         <!-- Welcome Section -->
-        <section class="section welcome-section">
+        <section class="section welcome-section dashboard-welcome">
             <div class="container">
-                <div class="columns is-vcentered">
-                    <div class="column">
-                        <h1 class="title is-2">
-                            Welcome back, <span class="has-text-success">{{ profile.display_name or 'Climber' }}</span>!
+                <div class="columns is-vcentered dashboard-welcome__layout">
+                    <div class="column dashboard-welcome__intro">
+                        <p class="dashboard-welcome__eyebrow">Dashboard</p>
+                        <h1 class="title is-2 dashboard-welcome__title">
+                            Welcome back, <span class="has-text-success dashboard-welcome__accent">{{ profile.display_name or 'Climber' }}</span>!
                         </h1>
-                        <p class="subtitle is-5 mt-2">Continue exploring Ireland's peaks and track your progress.</p>
+                        <p class="subtitle is-5 mt-2 dashboard-welcome__subtitle">Continue exploring Ireland's peaks and track your progress.</p>
                     </div>
-                    <div class="column is-narrow">
-                        <div class="buttons are-medium welcome-section__actions">
-                            <button class="button is-success">
+                    <div class="column is-narrow dashboard-welcome__actions-column">
+                        <div class="buttons are-medium welcome-section__actions dashboard-welcome__actions">
+                            <button class="button is-success dashboard-welcome__button">
                                 <span class="icon"><i class="fas fa-map"></i></span>
                                 <span>Explore Map</span>
                             </button>
-                            <button class="button is-warning">
+                            <button class="button is-warning dashboard-welcome__button">
                                 <span class="icon"><i class="fas fa-plus"></i></span>
                                 <span>Add Climbed Peak</span>
                             </button>
-                            <a class="button is-info" href="{{ url_for('summit_list') }}">
+                            <a class="button is-info dashboard-welcome__button" href="{{ url_for('summit_list') }}">
                                 <span class="icon"><i class="fas fa-mountain"></i></span>
                                 <span>Summit List</span>
                             </a>
-                            <button class="button is-info is-outlined">
+                            <button class="button is-info is-outlined dashboard-welcome__button">
                                 <span class="icon"><i class="fas fa-list"></i></span>
                                 <span>View My List</span>
                             </button>
@@ -42,41 +44,45 @@
         </section>
 
         <!-- Main Dashboard Grid -->
-        <section class="section pt-0 home-dashboard">
+        <section class="section pt-0 home-dashboard dashboard-page__main">
             <div class="container">
-                <div class="columns is-multiline">
+                <div class="columns is-multiline dashboard-grid">
 
                     <!-- Left Column -->
-                    <div class="column is-12-tablet is-8-desktop">
+                    <div class="column is-12-tablet is-8-desktop dashboard-grid__primary">
                         
                         <!-- Progress Overview Card -->
-                        <div class="box mb-5">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box mb-5 dashboard-card dashboard-progress-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-success"><i class="fas fa-chart-line"></i></span>
                                 Progress Overview
                             </h2>
                             
-                            <div class="columns is-multiline">
+                            <div class="columns is-multiline dashboard-progress-card__content">
                                 <div class="column is-6">
-                                    <div class="mb-3">
+                                    <div class="mb-3 dashboard-progress-card__summary">
                                         <span class="is-size-5">12 <span class="has-text-grey-light">/ 275</span></span>
-                                        <span class="tag is-success ml-2">4%</span>
-                                        <p class="has-text-grey">Peaks Completed</p>
+                                        <span class="tag is-success ml-2 dashboard-progress-card__status">4%</span>
+                                        <p class="has-text-grey dashboard-progress-card__caption">Peaks Completed</p>
                                     </div>
                                     
                                     <!-- Progress Bar -->
-                                    <progress class="progress is-success" value="12" max="275">4%</progress>
+                                    <progress class="progress is-success dashboard-progress-card__bar" value="12" max="275">4%</progress>
                                 </div>
                                 
                                 <div class="column is-6">
-                                    <div class="columns is-multiline">
+                                    <div class="columns is-multiline dashboard-progress-card__stats">
                                         <div class="column is-6 mb-3">
-                                            <p class="has-text-grey is-size-7">HIGHEST PEAK</p>
-                                            <p class="has-text-weight-bold">Carrauntoohil <span class="has-text-grey">(1038m)</span></p>
+                                            <div class="dashboard-progress-card__stat">
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">HIGHEST PEAK</p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">Carrauntoohil <span class="has-text-grey">(1038m)</span></p>
+                                            </div>
                                         </div>
                                         <div class="column is-6 mb-3">
-                                            <p class="has-text-grey is-size-7">LAST PEAK</p>
-                                            <p class="has-text-weight-bold">Lugnaquilla <span class="has-text-grey">(925m)</span></p>
+                                            <div class="dashboard-progress-card__stat">
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">LAST PEAK</p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">Lugnaquilla <span class="has-text-grey">(925m)</span></p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -84,120 +90,120 @@
                         </div>
 
                         <!-- Recent Activity Card -->
-                        <div class="box mb-5">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box mb-5 dashboard-card dashboard-activity-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-info"><i class="fas fa-history"></i></span>
                                 Recent Activity
                             </h2>
                             
-                            <div class="timeline">
+                            <div class="timeline dashboard-timeline">
                                 <!-- Activity Item 1 -->
-                                <div class="columns is-mobile mb-3">
-                                    <div class="column is-narrow">
-                                        <span class="tag is-success">Climbed</span>
+                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
+                                    <div class="column is-narrow dashboard-timeline__marker">
+                                        <span class="tag is-success dashboard-timeline__tag">Climbed</span>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-timeline__content">
                                         <span class="has-text-weight-bold">Carrauntoohil</span> - You reached the summit!
-                                        <span class="has-text-grey is-size-7 ml-2">2 days ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">2 days ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Activity Item 2 -->
-                                <div class="columns is-mobile mb-3">
-                                    <div class="column is-narrow">
-                                        <span class="tag is-warning">Bucket List</span>
+                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
+                                    <div class="column is-narrow dashboard-timeline__marker">
+                                        <span class="tag is-warning dashboard-timeline__tag">Bucket List</span>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-timeline__content">
                                         <span class="has-text-weight-bold">Errigal</span> - Added to your bucket list
-                                        <span class="has-text-grey is-size-7 ml-2">5 days ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">5 days ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Activity Item 3 -->
-                                <div class="columns is-mobile mb-3">
-                                    <div class="column is-narrow">
-                                        <span class="tag is-info">Photo</span>
+                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
+                                    <div class="column is-narrow dashboard-timeline__marker">
+                                        <span class="tag is-info dashboard-timeline__tag">Photo</span>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-timeline__content">
                                         <span class="has-text-weight-bold">Slieve Donard</span> - Uploaded 3 photos
-                                        <span class="has-text-grey is-size-7 ml-2">1 week ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">1 week ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Activity Item 4 -->
-                                <div class="columns is-mobile">
-                                    <div class="column is-narrow">
-                                        <span class="tag is-success">Climbed</span>
+                                <div class="columns is-mobile dashboard-timeline__item">
+                                    <div class="column is-narrow dashboard-timeline__marker">
+                                        <span class="tag is-success dashboard-timeline__tag">Climbed</span>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-timeline__content">
                                         <span class="has-text-weight-bold">Mount Leinster</span> - You reached the summit!
-                                        <span class="has-text-grey is-size-7 ml-2">2 weeks ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">2 weeks ago</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="has-text-centered mt-4">
+                            <div class="has-text-centered mt-4 dashboard-card__footer-link">
                                 <a href="#" class="has-text-success">View All Activity <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
 
                         <!-- Latest Community Activity Card -->
-                        <div class="box">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box dashboard-card dashboard-community-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-danger"><i class="fas fa-users"></i></span>
                                 Latest Community Activity
                             </h2>
                             
-                            <div class="community-list">
+                            <div class="community-list dashboard-community-feed">
                                 <!-- Community Item 1 -->
-                                <div class="columns is-mobile mb-3">
+                                <div class="columns is-mobile mb-3 dashboard-community-feed__item">
                                     <div class="column is-narrow">
-                                        <figure class="image is-24x24">
-                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
-                                        </figure>
+                                        <div class="dashboard-community-feed__avatar">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-community-feed__content">
                                         <span class="has-text-weight-bold">Maeve</span> climbed <span class="has-text-weight-bold">Carrauntoohil</span>
-                                        <span class="has-text-grey is-size-7 ml-2">1h ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">1h ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Community Item 2 -->
-                                <div class="columns is-mobile mb-3">
+                                <div class="columns is-mobile mb-3 dashboard-community-feed__item">
                                     <div class="column is-narrow">
-                                        <figure class="image is-24x24">
-                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
-                                        </figure>
+                                        <div class="dashboard-community-feed__avatar">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-community-feed__content">
                                         <span class="has-text-weight-bold">Rian</span> added <span class="has-text-weight-bold">Errigal</span> to bucket list
-                                        <span class="has-text-grey is-size-7 ml-2">3h ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">3h ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Community Item 3 -->
-                                <div class="columns is-mobile mb-3">
+                                <div class="columns is-mobile mb-3 dashboard-community-feed__item">
                                     <div class="column is-narrow">
-                                        <figure class="image is-24x24">
-                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
-                                        </figure>
+                                        <div class="dashboard-community-feed__avatar">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-community-feed__content">
                                         <span class="has-text-weight-bold">Siobhán</span> uploaded photos from <span class="has-text-weight-bold">Galtymore</span>
-                                        <span class="has-text-grey is-size-7 ml-2">5h ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">5h ago</span>
                                     </div>
                                 </div>
                                 
                                 <!-- Community Item 4 -->
-                                <div class="columns is-mobile">
+                                <div class="columns is-mobile dashboard-community-feed__item">
                                     <div class="column is-narrow">
-                                        <figure class="image is-24x24">
-                                            <i class="fas fa-user-circle has-text-grey fa-lg"></i>
-                                        </figure>
+                                        <div class="dashboard-community-feed__avatar">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
                                     </div>
-                                    <div class="column">
+                                    <div class="column dashboard-community-feed__content">
                                         <span class="has-text-weight-bold">Dara</span> climbed <span class="has-text-weight-bold">Mweelrea</span>
-                                        <span class="has-text-grey is-size-7 ml-2">1d ago</span>
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">1d ago</span>
                                     </div>
                                 </div>
                             </div>
@@ -205,76 +211,76 @@
                     </div>
 
                     <!-- Right Column -->
-                    <div class="column is-12-tablet is-4-desktop">
+                    <div class="column is-12-tablet is-4-desktop dashboard-grid__secondary">
                         
                         <!-- Achievements Card -->
-                        <div class="box mb-5">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box mb-5 dashboard-card dashboard-achievements-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
                                 Achievements
                             </h2>
                             
-                            <div class="columns is-multiline">
+                            <div class="columns is-multiline dashboard-achievement-grid">
                                 <div class="column is-6">
-                                    <div class="has-text-centered p-2">
-                                        <span class="icon is-large has-text-success">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
+                                        <span class="icon is-large has-text-success dashboard-achievement-grid__icon">
                                             <i class="fas fa-flag fa-2x"></i>
                                         </span>
-                                        <p class="is-size-7 has-text-weight-bold">First Summit</p>
-                                        <span class="tag is-success is-light is-small">Earned</span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">First Summit</p>
+                                        <span class="tag is-success is-light is-small dashboard-achievement-grid__status">Earned</span>
                                     </div>
                                 </div>
                                 <div class="column is-6">
-                                    <div class="has-text-centered p-2">
-                                        <span class="icon is-large has-text-warning">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
+                                        <span class="icon is-large has-text-warning dashboard-achievement-grid__icon">
                                             <i class="fas fa-mountain fa-2x"></i>
                                         </span>
-                                        <p class="is-size-7 has-text-weight-bold">5 Peaks</p>
-                                        <span class="tag is-success is-light is-small">Earned</span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">5 Peaks</p>
+                                        <span class="tag is-success is-light is-small dashboard-achievement-grid__status">Earned</span>
                                     </div>
                                 </div>
                                 <div class="column is-6">
-                                    <div class="has-text-centered p-2">
-                                        <span class="icon is-large has-text-grey-light">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
+                                        <span class="icon is-large has-text-grey-light dashboard-achievement-grid__icon">
                                             <i class="fas fa-cloud fa-2x"></i>
                                         </span>
-                                        <p class="is-size-7 has-text-weight-bold">1000m Club</p>
-                                        <span class="tag is-light is-small">Locked</span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">1000m Club</p>
+                                        <span class="tag is-light is-small dashboard-achievement-grid__status">Locked</span>
                                     </div>
                                 </div>
                                 <div class="column is-6">
-                                    <div class="has-text-centered p-2">
-                                        <span class="icon is-large has-text-grey-light">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
+                                        <span class="icon is-large has-text-grey-light dashboard-achievement-grid__icon">
                                             <i class="fas fa-crown fa-2x"></i>
                                         </span>
-                                        <p class="is-size-7 has-text-weight-bold">10 Peaks</p>
-                                        <span class="tag is-light is-small">Locked</span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">10 Peaks</p>
+                                        <span class="tag is-light is-small dashboard-achievement-grid__status">Locked</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="has-text-centered mt-2">
+                            <div class="has-text-centered mt-2 dashboard-card__footer-link">
                                 <a href="#" class="is-size-7 has-text-success">View All Badges <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
 
                         <!-- Suggested Peaks Card -->
-                        <div class="box mb-5">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box mb-5 dashboard-card dashboard-peaks-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-success"><i class="fas fa-lightbulb"></i></span>
                                 Suggested for You
                             </h2>
                             
                             <!-- Peak 1 -->
-                            <div class="columns is-mobile mb-3">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Donegal</p>
+                            <div class="columns is-mobile mb-3 dashboard-peak-list__item">
+                                <div class="column dashboard-peak-list__details">
+                                    <p class="has-text-weight-bold dashboard-peak-list__name">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Donegal</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__status">
                                     <span class="tag is-warning is-light">Bucket List</span>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__actions">
                                     <div class="buttons are-small">
                                         <button class="button is-small is-success">View</button>
                                         <button class="button is-small is-warning is-light">
@@ -285,15 +291,15 @@
                             </div>
                             
                             <!-- Peak 2 -->
-                            <div class="columns is-mobile mb-3">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Galtymore <span class="has-text-grey is-size-7">(918m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Tipperary</p>
+                            <div class="columns is-mobile mb-3 dashboard-peak-list__item">
+                                <div class="column dashboard-peak-list__details">
+                                    <p class="has-text-weight-bold dashboard-peak-list__name">Galtymore <span class="has-text-grey is-size-7">(918m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Tipperary</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__status">
                                     <span class="tag is-light">Not Attempted</span>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__actions">
                                     <div class="buttons are-small">
                                         <button class="button is-small is-success">View</button>
                                         <button class="button is-small is-warning is-light">
@@ -304,15 +310,15 @@
                             </div>
                             
                             <!-- Peak 3 -->
-                            <div class="columns is-mobile">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Mweelrea <span class="has-text-grey is-size-7">(814m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Mayo</p>
+                            <div class="columns is-mobile dashboard-peak-list__item">
+                                <div class="column dashboard-peak-list__details">
+                                    <p class="has-text-weight-bold dashboard-peak-list__name">Mweelrea <span class="has-text-grey is-size-7">(814m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Mayo</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__status">
                                     <span class="tag is-light">Not Attempted</span>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-peak-list__actions">
                                     <div class="buttons are-small">
                                         <button class="button is-small is-success">View</button>
                                         <button class="button is-small is-warning is-light">
@@ -324,57 +330,57 @@
                         </div>
 
                         <!-- Bucket List Preview Card -->
-                        <div class="box">
-                            <h2 class="title is-4 mb-4">
+                        <div class="box dashboard-card dashboard-bucket-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-warning"><i class="fas fa-bookmark"></i></span>
                                 Your Bucket List
                             </h2>
                             
                             <!-- Bucket Item 1 -->
-                            <div class="columns is-mobile mb-3">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Donegal</p>
+                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
+                                <div class="column dashboard-bucket-list__details">
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Donegal</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-bucket-list__status">
                                     <span class="tag is-warning">Bucket List</span>
                                 </div>
                             </div>
                             
                             <!-- Bucket Item 2 -->
-                            <div class="columns is-mobile mb-3">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Slieve Donard <span class="has-text-grey is-size-7">(850m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Down</p>
+                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
+                                <div class="column dashboard-bucket-list__details">
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Slieve Donard <span class="has-text-grey is-size-7">(850m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Down</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-bucket-list__status">
                                     <span class="tag is-warning">Bucket List</span>
                                 </div>
                             </div>
                             
                             <!-- Bucket Item 3 -->
-                            <div class="columns is-mobile mb-3">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Mount Leinster <span class="has-text-grey is-size-7">(794m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Carlow</p>
+                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
+                                <div class="column dashboard-bucket-list__details">
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Mount Leinster <span class="has-text-grey is-size-7">(794m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Carlow</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-bucket-list__status">
                                     <span class="tag is-warning">Bucket List</span>
                                 </div>
                             </div>
                             
                             <!-- Bucket Item 4 -->
-                            <div class="columns is-mobile">
-                                <div class="column">
-                                    <p class="has-text-weight-bold">Purple Mountain <span class="has-text-grey is-size-7">(832m)</span></p>
-                                    <p class="is-size-7 has-text-grey">Kerry</p>
+                            <div class="columns is-mobile dashboard-bucket-list__item">
+                                <div class="column dashboard-bucket-list__details">
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Purple Mountain <span class="has-text-grey is-size-7">(832m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Kerry</p>
                                 </div>
-                                <div class="column is-narrow">
+                                <div class="column is-narrow dashboard-bucket-list__status">
                                     <span class="tag is-warning">Bucket List</span>
                                 </div>
                             </div>
                             
-                            <div class="has-text-centered mt-4">
+                            <div class="has-text-centered mt-4 dashboard-card__footer-link">
                                 <a href="#" class="has-text-success">View Full Bucket List <i class="fas fa-arrow-right ml-1"></i></a>
                             </div>
                         </div>
@@ -382,6 +388,7 @@
                 </div>
             </div>
         </section>
+    </div>
 {% endblock %}
 
 {% block extra_js %}

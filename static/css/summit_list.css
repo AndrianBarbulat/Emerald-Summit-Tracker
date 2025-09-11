@@ -1,0 +1,57 @@
+.summit-list-page__header {
+    align-items: flex-start;
+}
+
+.summit-list-page__table-wrap {
+    border-radius: var(--radius-md);
+}
+
+.summit-list-page .table {
+    background: transparent;
+}
+
+@media screen and (min-width: 769px) and (max-width: 1023px) {
+    .summit-list-page__header {
+        display: block;
+    }
+
+    .summit-list-page .level-right {
+        justify-content: flex-start;
+        margin-top: 1rem;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .summit-list-page .box {
+        padding: 1rem;
+    }
+
+    .summit-list-page .subtitle.is-6,
+    .summit-list-page .is-size-7 {
+        font-size: 0.875rem !important;
+    }
+
+    .summit-list-page .level-right {
+        margin-top: 1rem;
+    }
+
+    .summit-list-page .level-right .button,
+    .summit-list-page .has-text-right .button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .summit-list-page .has-text-right {
+        text-align: left !important;
+    }
+
+    .summit-list-page__table-wrap {
+        margin-left: -0.25rem;
+        margin-right: -0.25rem;
+    }
+
+    .summit-list-page__table-wrap .table {
+        font-size: 0.875rem;
+        min-width: 34rem;
+    }
+}
