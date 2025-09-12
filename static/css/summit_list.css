@@ -1,57 +1,306 @@
-.summit-list-page__header {
-    align-items: flex-start;
+.summit-list-page {
+    background:
+        radial-gradient(circle at top right, rgba(116, 198, 157, 0.1), transparent 24%),
+        linear-gradient(180deg, rgba(245, 241, 235, 0.64) 0%, #ffffff 100%);
+    min-height: calc(100vh - 52px);
 }
 
-.summit-list-page__table-wrap {
+.summit-list-page__hero {
+    align-items: flex-end;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.summit-list-page__title {
+    align-items: center;
+    color: var(--color-forest);
+    display: flex;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+}
+
+.summit-list-page__title .icon {
+    color: var(--color-gold);
+}
+
+.summit-list-page__subtitle {
+    color: var(--color-grey);
+    margin-bottom: 0;
+    max-width: 40rem;
+}
+
+.summit-list-page__back {
+    border-radius: 999px;
+}
+
+.summit-list-filters {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.25rem;
+}
+
+.summit-list-filters .label {
+    color: var(--color-forest);
+    font-weight: 600;
+}
+
+.summit-list-filters .input,
+.summit-list-filters .select select {
+    border-radius: var(--radius-sm);
+}
+
+.summit-list-filters__clear-column {
+    align-items: flex-end;
+    display: flex;
+}
+
+.summit-list-filters__clear {
+    min-width: 100%;
+}
+
+.summit-list-results__count {
+    color: var(--color-grey);
+    font-size: 0.95rem;
+    margin-bottom: 0.85rem;
+}
+
+.summit-list-table-wrap {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
     border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
 }
 
-.summit-list-page .table {
+.summit-list-table {
     background: transparent;
+    margin-bottom: 0;
 }
 
-@media screen and (min-width: 769px) and (max-width: 1023px) {
-    .summit-list-page__header {
-        display: block;
+.summit-list-table thead th {
+    background: rgba(27, 67, 50, 0.06);
+    color: var(--color-forest);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.summit-list-table tbody tr:nth-child(even) {
+    background: rgba(245, 241, 235, 0.38);
+}
+
+.summit-list-table td:last-child,
+.summit-list-table th:last-child {
+    text-align: center;
+}
+
+.summit-list-table__link {
+    color: var(--color-forest);
+    font-weight: 700;
+}
+
+.summit-list-table__link:hover,
+.summit-list-table__link:focus {
+    color: var(--color-sage);
+}
+
+.summit-status {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.45rem;
+    font-weight: 600;
+}
+
+.summit-status--climbed {
+    color: #2e8b57;
+}
+
+.summit-status--bucket {
+    color: #c58b12;
+}
+
+.summit-status--none {
+    color: var(--color-grey);
+}
+
+.summit-card-grid {
+    display: none;
+}
+
+.summit-card {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1rem;
+}
+
+.summit-card + .summit-card {
+    margin-top: 0.9rem;
+}
+
+.summit-card__header {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+}
+
+.summit-card__rank {
+    color: var(--color-grey);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.summit-card__title {
+    margin: 0;
+}
+
+.summit-card__title a {
+    color: var(--color-forest);
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.summit-card__province {
+    background: rgba(116, 198, 157, 0.16);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: 999px;
+    color: var(--color-forest);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35rem 0.7rem;
+    white-space: nowrap;
+}
+
+.summit-card__meta-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summit-card__meta {
+    background: rgba(245, 241, 235, 0.65);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+}
+
+.summit-card__meta-label {
+    color: var(--color-grey);
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+    text-transform: uppercase;
+}
+
+.summit-card__meta-value {
+    color: var(--color-forest);
+    display: block;
+    font-weight: 600;
+}
+
+.summit-card__status {
+    border-top: 1px solid rgba(27, 67, 50, 0.08);
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+}
+
+.summit-list-empty {
+    border: 1px dashed rgba(27, 67, 50, 0.18);
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.summit-list-empty .title {
+    color: var(--color-forest);
+}
+
+.summit-list-pagination {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.25rem;
+}
+
+.summit-list-pagination__info {
+    color: var(--color-grey);
+    font-weight: 600;
+    margin: 0;
+    min-width: 6.5rem;
+    text-align: center;
+}
+
+@media screen and (max-width: 1023px) {
+    .summit-list-page__hero {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
-    .summit-list-page .level-right {
-        justify-content: flex-start;
-        margin-top: 1rem;
+    .summit-list-page__back {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .summit-list-table-wrap {
+        display: none;
+    }
+
+    .summit-card-grid {
+        display: block;
     }
 }
 
 @media screen and (max-width: 480px) {
-    .summit-list-page .box {
+    .summit-list-page__title {
+        font-size: 1.85rem;
+    }
+
+    .summit-list-page__subtitle,
+    .summit-list-results__count,
+    .summit-list-pagination__info,
+    .summit-card__meta-value,
+    .summit-card__status,
+    .summit-card__province {
+        font-size: 0.875rem;
+    }
+
+    .summit-list-filters {
         padding: 1rem;
     }
 
-    .summit-list-page .subtitle.is-6,
-    .summit-list-page .is-size-7 {
-        font-size: 0.875rem !important;
+    .summit-list-filters__clear-column {
+        display: block;
     }
 
-    .summit-list-page .level-right {
-        margin-top: 1rem;
+    .summit-card {
+        padding: 0.9rem;
     }
 
-    .summit-list-page .level-right .button,
-    .summit-list-page .has-text-right .button {
-        justify-content: center;
-        width: 100%;
+    .summit-card__header {
+        flex-direction: column;
     }
 
-    .summit-list-page .has-text-right {
-        text-align: left !important;
+    .summit-card__meta-grid {
+        grid-template-columns: 1fr;
     }
 
-    .summit-list-page__table-wrap {
-        margin-left: -0.25rem;
-        margin-right: -0.25rem;
+    .summit-list-pagination {
+        gap: 0.75rem;
     }
 
-    .summit-list-page__table-wrap .table {
-        font-size: 0.875rem;
-        min-width: 34rem;
+    .summit-list-pagination .button {
+        flex: 1 1 0;
     }
 }

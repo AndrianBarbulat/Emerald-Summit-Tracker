@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Summit List{% endblock %}
+{% block title %}All Irish Peaks{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/summit_list.css') }}">
@@ -9,58 +9,153 @@
 {% block content %}
     <section class="section summit-list-page">
         <div class="container">
-            <div class="box">
-                <div class="level summit-list-page__header">
-                    <div class="level-left">
-                        <div>
-                            <h1 class="title is-3"><i class="fas fa-mountain"></i> Summit List</h1>
-                            <p class="subtitle is-6">Peaks to climb or track progress for your next adventure.</p>
+            <div class="summit-list-page__hero">
+                <div>
+                    <h1 class="title is-2 summit-list-page__title">
+                        <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
+                        <span>All Irish Peaks</span>
+                    </h1>
+                    <p class="subtitle is-6 summit-list-page__subtitle">
+                        Browse every mapped summit, refine the list with filters, and explore peak details across Ireland.
+                    </p>
+                </div>
+                {% if profile %}
+                <a href="{{ url_for('home') }}" class="button is-light summit-list-page__back">
+                    <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                    <span>Back to Dashboard</span>
+                </a>
+                {% endif %}
+            </div>
+
+            <div class="box summit-list-filters">
+                <div class="columns is-multiline">
+                    <div class="column is-12-tablet is-4-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-search">Search Peaks</label>
+                            <div class="control has-icons-left">
+                                <input
+                                    id="summit-search"
+                                    class="input"
+                                    type="text"
+                                    placeholder="Search by peak, county, or province"
+                                >
+                                <span class="icon is-small is-left"><i class="fas fa-search"></i></span>
+                            </div>
                         </div>
                     </div>
-                    <div class="level-right">
-                        <a href="{{ url_for('home') }}" class="button is-link is-light"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+                    <div class="column is-6-tablet is-2-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-province">Province</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="summit-province">
+                                        <option value="">All Provinces</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-6-tablet is-2-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-county">County</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="summit-county">
+                                        <option value="">All Counties</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-6-tablet is-2-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-height-min">Min Height</label>
+                            <div class="control">
+                                <input id="summit-height-min" class="input" type="number" inputmode="numeric" min="0" placeholder="0m">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-6-tablet is-2-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-height-max">Max Height</label>
+                            <div class="control">
+                                <input id="summit-height-max" class="input" type="number" inputmode="numeric" min="0" placeholder="1200m">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-8-tablet is-4-desktop">
+                        <div class="field">
+                            <label class="label" for="summit-sort">Sort By</label>
+                            <div class="control">
+                                <div class="select is-fullwidth">
+                                    <select id="summit-sort">
+                                        <option value="rank-asc">Rank</option>
+                                        <option value="height-desc">Height: Highest First</option>
+                                        <option value="height-asc">Height: Lowest First</option>
+                                        <option value="prominence-desc">Prominence: Highest First</option>
+                                        <option value="name-asc">Name: A to Z</option>
+                                        <option value="county-asc">County: A to Z</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="column is-4-tablet is-2-desktop summit-list-filters__clear-column">
+                        <button id="summit-clear-filters" type="button" class="button is-light summit-list-filters__clear">
+                            Clear Filters
+                        </button>
                     </div>
                 </div>
-                <div class="table-container summit-list-page__table-wrap">
-                    <table class="table is-fullwidth is-striped">
+            </div>
+
+            <div class="summit-list-results">
+                <p id="summit-results-count" class="summit-list-results__count">Showing 0 of 0 peaks</p>
+
+                <div class="table-container summit-list-table-wrap">
+                    <table class="table is-fullwidth summit-list-table">
                         <thead>
                             <tr>
-                                <th>Peak</th>
+                                <th>Rank</th>
+                                <th>Name</th>
                                 <th>Height</th>
+                                <th>Prominence</th>
                                 <th>County</th>
+                                <th>Province</th>
+                                {% if status_column_visible %}
                                 <th>Status</th>
+                                {% endif %}
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for peak in peaks %}
-                            <tr>
-                                <td>
-                                    {% if peak.id %}
-                                    <a href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a>
-                                    {% else %}
-                                    {{ peak.name }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if peak.height_m %}
-                                    {{ peak.height_m }}m
-                                    {% elif peak.height %}
-                                    {{ peak.height }}
-                                    {% else %}
-                                    -
-                                    {% endif %}
-                                </td>
-                                <td>{{ peak.county or '-' }}</td>
-                                <td><span class="tag is-light">Not started</span></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
+                        <tbody id="summit-table-body"></tbody>
                     </table>
                 </div>
-                <div class="has-text-right">
-                    <a class="button is-success" href="#"><span class="icon"><i class="fas fa-plus"></i></span><span>Add Summit</span></a>
+
+                <div id="summit-card-grid" class="summit-card-grid"></div>
+
+                <div id="summit-empty-state" class="box summit-list-empty is-hidden">
+                    <p class="title is-5">No peaks match those filters</p>
+                    <p class="has-text-grey">Try clearing one or two filters and we'll repopulate the list.</p>
+                </div>
+
+                <div class="summit-list-pagination">
+                    <button id="summit-pagination-prev" type="button" class="button is-light">Prev</button>
+                    <p id="summit-pagination-info" class="summit-list-pagination__info">Page 1</p>
+                    <button id="summit-pagination-next" type="button" class="button is-light">Next</button>
                 </div>
             </div>
         </div>
     </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const peaksData = {{ peaks | tojson }};
+    const summitListConfig = {
+        statusColumnVisible: {{ 'true' if status_column_visible else 'false' }},
+        pageSize: 25
+    };
+    window.peaksData = peaksData;
+    window.summitListConfig = summitListConfig;
+</script>
+<script src="{{ url_for('static', filename='js/summit_list.js') }}"></script>
 {% endblock %}

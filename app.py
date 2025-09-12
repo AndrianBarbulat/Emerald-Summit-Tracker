@@ -8,6 +8,8 @@ from supabase_utils import (
     get_all_peaks,
     get_community_recent_climbs,
     get_peak_by_id,
+    get_user_bucket_list,
+    get_user_climbs,
     supabase,
 )
 
@@ -208,6 +210,26 @@ def _build_landing_stats(peaks: list[dict]) -> dict:
     }
 
 
+def _build_user_peak_statuses(user_id: str | None) -> dict[str, str]:
+    if not user_id:
+        return {}
+
+    climbed_ids = {
+        str(climb.get("peak_id"))
+        for climb in get_user_climbs(user_id)
+        if climb.get("peak_id") is not None
+    }
+    bucket_ids = {
+        str(bucket_item.get("peak_id"))
+        for bucket_item in get_user_bucket_list(user_id)
+        if bucket_item.get("peak_id") is not None
+    }
+
+    status_map = {peak_id: "bucket" for peak_id in bucket_ids}
+    status_map.update({peak_id: "climbed" for peak_id in climbed_ids})
+    return status_map
+
+
 def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[dict]:
     enriched = []
     for climb in recent_climbs:
@@ -350,19 +372,31 @@ def logout():
 @app.route("/summit-list")
 def summit_list():
     context = get_session_context()
-    if not context["profile"]:
-        return redirect("/")
-
     peaks = get_all_peaks()
-    return render_template("summit_list.html", peaks=peaks, active_page="summits", **context)
+    status_map = _build_user_peak_statuses(context["profile"].get("id")) if context["profile"] else {}
+
+    summit_peaks = []
+    for peak in peaks:
+        peak_id = peak.get("id")
+        summit_peaks.append(
+            {
+                **peak,
+                "user_status": status_map.get(str(peak_id), "none"),
+            }
+        )
+
+    return render_template(
+        "summit_list.html",
+        peaks=summit_peaks,
+        status_column_visible=bool(context["profile"]),
+        active_page="summits",
+        **context,
+    )
 
 
 @app.route("/peak/<int:peak_id>")
 def peak_detail(peak_id: int):
     context = get_session_context()
-    if not context["profile"]:
-        return redirect("/")
-
     peak = get_peak_by_id(peak_id)
     if peak is None:
         abort(404)
