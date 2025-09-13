@@ -36,6 +36,8 @@ document.addEventListener('DOMContentLoaded', function() {
         sort: 'rank-asc',
         page: 1
     };
+    let currentFilteredPeaks = [];
+    let searchDebounceTimer = null;
 
     const peaks = window.peaksData.map(function(peak) {
         return {
@@ -57,44 +59,53 @@ document.addEventListener('DOMContentLoaded', function() {
     populateCountyOptions(peaks, state.province);
 
     elements.search.addEventListener('input', function() {
-        state.search = normalizeValue(elements.search.value);
-        state.page = 1;
-        render();
+        window.clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = window.setTimeout(function() {
+            state.search = normalizeValue(elements.search.value);
+            state.page = 1;
+            applyFilters();
+        }, 300);
     });
 
     elements.province.addEventListener('change', function() {
+        syncSearchState();
         state.province = elements.province.value;
         populateCountyOptions(peaks, state.province);
         state.county = elements.county.value;
         state.page = 1;
-        render();
+        applyFilters();
     });
 
     elements.county.addEventListener('change', function() {
+        syncSearchState();
         state.county = elements.county.value;
         state.page = 1;
-        render();
+        applyFilters();
     });
 
     elements.heightMin.addEventListener('input', function() {
+        syncSearchState();
         state.minHeight = elements.heightMin.value.trim();
         state.page = 1;
-        render();
+        applyFilters();
     });
 
     elements.heightMax.addEventListener('input', function() {
+        syncSearchState();
         state.maxHeight = elements.heightMax.value.trim();
         state.page = 1;
-        render();
+        applyFilters();
     });
 
     elements.sort.addEventListener('change', function() {
+        syncSearchState();
         state.sort = elements.sort.value;
         state.page = 1;
-        render();
+        applyFilters();
     });
 
     elements.clear.addEventListener('click', function() {
+        window.clearTimeout(searchDebounceTimer);
         state.search = '';
         state.province = '';
         state.county = '';
@@ -110,28 +121,46 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.heightMin.value = '';
         elements.heightMax.value = '';
         elements.sort.value = 'rank-asc';
-        render();
+        applyFilters();
     });
 
     elements.prev.addEventListener('click', function() {
         if (state.page > 1) {
             state.page -= 1;
-            render();
+            render(currentFilteredPeaks);
         }
     });
 
     elements.next.addEventListener('click', function() {
-        const totalPages = getTotalPages(getFilteredPeaks().length, pageSize);
+        const totalPages = getTotalPages(currentFilteredPeaks.length, pageSize);
         if (state.page < totalPages) {
             state.page += 1;
-            render();
+            render(currentFilteredPeaks);
         }
     });
 
-    render();
+    applyFilters();
 
-    function render() {
-        const filteredPeaks = getFilteredPeaks();
+    function applyFilters() {
+        const minHeight = toNumber(state.minHeight);
+        const maxHeight = toNumber(state.maxHeight);
+
+        currentFilteredPeaks = peaks
+            .filter(function(peak) {
+                const matchesSearch = !state.search || peak.nameKey.includes(state.search);
+                const matchesProvince = !state.province || peak.province === state.province;
+                const matchesCounty = !state.county || peak.county === state.county;
+                const matchesMinHeight = minHeight === null || (peak.heightM !== null && peak.heightM >= minHeight);
+                const matchesMaxHeight = maxHeight === null || (peak.heightM !== null && peak.heightM <= maxHeight);
+
+                return matchesSearch && matchesProvince && matchesCounty && matchesMinHeight && matchesMaxHeight;
+            })
+            .sort(compareBy(state.sort));
+
+        render(currentFilteredPeaks);
+    }
+
+    function render(filteredPeaks) {
         const totalPages = getTotalPages(filteredPeaks.length, pageSize);
         state.page = Math.min(state.page, totalPages);
 
@@ -149,28 +178,6 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.emptyState.classList.toggle('is-hidden', filteredPeaks.length > 0);
         elements.tableBody.innerHTML = visiblePeaks.map(renderTableRow).join('');
         elements.cardGrid.innerHTML = visiblePeaks.map(renderCard).join('');
-    }
-
-    function getFilteredPeaks() {
-        const minHeight = toNumber(state.minHeight);
-        const maxHeight = toNumber(state.maxHeight);
-
-        return peaks
-            .filter(function(peak) {
-                const matchesSearch = !state.search || [
-                    peak.nameKey,
-                    peak.countyKey,
-                    peak.provinceKey
-                ].join(' ').includes(state.search);
-
-                const matchesProvince = !state.province || peak.province === state.province;
-                const matchesCounty = !state.county || peak.county === state.county;
-                const matchesMinHeight = minHeight === null || (peak.heightM !== null && peak.heightM >= minHeight);
-                const matchesMaxHeight = maxHeight === null || (peak.heightM !== null && peak.heightM <= maxHeight);
-
-                return matchesSearch && matchesProvince && matchesCounty && matchesMinHeight && matchesMaxHeight;
-            })
-            .sort(compareBy(state.sort));
     }
 
     function renderTableRow(peak) {
@@ -348,6 +355,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function normalizeValue(value) {
         return String(value || '').trim().toLowerCase();
+    }
+
+    function syncSearchState() {
+        window.clearTimeout(searchDebounceTimer);
+        state.search = normalizeValue(elements.search.value);
     }
 
     function toNumber(value) {
