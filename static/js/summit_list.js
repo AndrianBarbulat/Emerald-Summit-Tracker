@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const pageSize = Number(window.summitListConfig && window.summitListConfig.pageSize) || 25;
     const statusColumnVisible = Boolean(window.summitListConfig && window.summitListConfig.statusColumnVisible);
+    const provinces = ['Munster', 'Leinster', 'Ulster', 'Connacht'];
 
     const elements = {
         search: document.getElementById('summit-search'),
@@ -55,7 +56,6 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     });
 
-    populateProvinceOptions(peaks);
     populateCountyOptions(peaks, state.province);
 
     elements.search.addEventListener('input', function() {
@@ -253,15 +253,6 @@ document.addEventListener('DOMContentLoaded', function() {
         ].join('');
     }
 
-    function populateProvinceOptions(allPeaks) {
-        const provinces = uniqueValues(allPeaks, 'province');
-        elements.province.innerHTML = ['<option value="">All Provinces</option>']
-            .concat(provinces.map(function(province) {
-                return '<option value="' + escapeHtml(province) + '">' + escapeHtml(province) + '</option>';
-            }))
-            .join('');
-    }
-
     function populateCountyOptions(allPeaks, selectedProvince) {
         const counties = uniqueValues(
             allPeaks.filter(function(peak) {
@@ -271,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         const previousValue = elements.county.value;
 
-        elements.county.innerHTML = ['<option value="">All Counties</option>']
+        elements.county.innerHTML = ['<option value="">All</option>']
             .concat(counties.map(function(county) {
                 return '<option value="' + escapeHtml(county) + '">' + escapeHtml(county) + '</option>';
             }))
@@ -288,6 +279,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const values = new Set();
 
         allPeaks.forEach(function(peak) {
+            if (field === 'province' && !provinces.includes(peak[field])) {
+                return;
+            }
+
             if (peak[field]) {
                 values.add(peak[field]);
             }
