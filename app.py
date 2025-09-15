@@ -17,6 +17,8 @@ app = Flask(__name__)
 app.secret_key = "dev-secret-key"
 app.register_blueprint(api_bp)
 
+FEET_PER_METER = 3.28084
+
 
 def get_session_context() -> dict:
     return {
@@ -230,6 +232,75 @@ def _build_user_peak_statuses(user_id: str | None) -> dict[str, str]:
     return status_map
 
 
+def _prefers_imperial_units(profile: dict | None) -> bool:
+    if not isinstance(profile, dict):
+        return False
+
+    candidate_values = [
+        profile.get("unit_preference"),
+        profile.get("units"),
+        profile.get("measurement_system"),
+        profile.get("measurement_preference"),
+        profile.get("height_unit"),
+        profile.get("height_units"),
+        profile.get("distance_unit"),
+        profile.get("distance_units"),
+        profile.get("use_imperial_units"),
+    ]
+
+    preferences = profile.get("preferences")
+    if isinstance(preferences, dict):
+        candidate_values.extend(
+            [
+                preferences.get("unit_preference"),
+                preferences.get("units"),
+                preferences.get("measurement_system"),
+                preferences.get("height_unit"),
+                preferences.get("distance_unit"),
+                preferences.get("use_imperial_units"),
+            ]
+        )
+
+    for value in candidate_values:
+        if isinstance(value, bool):
+            return value
+
+        normalized = str(value or "").strip().lower()
+        if not normalized:
+            continue
+
+        if normalized in {"imperial", "feet", "foot", "ft", "us", "true", "1", "yes", "on"}:
+            return True
+
+        if normalized in {"metric", "meters", "metres", "m", "false", "0", "no", "off"}:
+            return False
+
+    return False
+
+
+def _build_height_filter_range(peaks: list[dict], unit: str) -> dict[str, int | None]:
+    heights_m = [
+        _to_float(peak.get("height_m") or peak.get("height"))
+        for peak in peaks
+    ]
+    heights_m = [height for height in heights_m if height is not None]
+    if not heights_m:
+        return {"min": None, "max": None}
+
+    minimum_height = min(heights_m)
+    maximum_height = max(heights_m)
+    if unit == "ft":
+        return {
+            "min": int(round(minimum_height * FEET_PER_METER)),
+            "max": int(round(maximum_height * FEET_PER_METER)),
+        }
+
+    return {
+        "min": int(round(minimum_height)),
+        "max": int(round(maximum_height)),
+    }
+
+
 def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[dict]:
     enriched = []
     for climb in recent_climbs:
@@ -374,6 +445,7 @@ def summit_list():
     context = get_session_context()
     peaks = get_all_peaks()
     status_map = _build_user_peak_statuses(context["profile"].get("id")) if context["profile"] else {}
+    height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
 
     summit_peaks = []
     for peak in peaks:
@@ -388,6 +460,8 @@ def summit_list():
     return render_template(
         "summit_list.html",
         peaks=summit_peaks,
+        height_filter_range=_build_height_filter_range(summit_peaks, height_unit),
+        height_unit=height_unit,
         status_column_visible=bool(context["profile"]),
         active_page="summits",
         **context,

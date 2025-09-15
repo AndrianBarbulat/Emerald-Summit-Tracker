@@ -73,17 +73,17 @@
                     </div>
                     <div class="column is-6-tablet is-2-desktop">
                         <div class="field">
-                            <label class="label" for="summit-height-min">Min Height</label>
+                            <label class="label" for="summit-height-min">Min height ({{ height_unit }})</label>
                             <div class="control">
-                                <input id="summit-height-min" class="input" type="number" inputmode="numeric" min="0" placeholder="0m">
+                                <input id="summit-height-min" class="input" type="number" inputmode="numeric" min="0" placeholder="{{ height_filter_range.min or 0 }} {{ height_unit }}">
                             </div>
                         </div>
                     </div>
                     <div class="column is-6-tablet is-2-desktop">
                         <div class="field">
-                            <label class="label" for="summit-height-max">Max Height</label>
+                            <label class="label" for="summit-height-max">Max height ({{ height_unit }})</label>
                             <div class="control">
-                                <input id="summit-height-max" class="input" type="number" inputmode="numeric" min="0" placeholder="1200m">
+                                <input id="summit-height-max" class="input" type="number" inputmode="numeric" min="0" placeholder="{{ height_filter_range.max or 0 }} {{ height_unit }}">
                             </div>
                         </div>
                     </div>
@@ -93,12 +93,12 @@
                             <div class="control">
                                 <div class="select is-fullwidth">
                                     <select id="summit-sort">
-                                        <option value="rank-asc">Rank</option>
-                                        <option value="height-desc">Height: Highest First</option>
-                                        <option value="height-asc">Height: Lowest First</option>
-                                        <option value="prominence-desc">Prominence: Highest First</option>
-                                        <option value="name-asc">Name: A to Z</option>
-                                        <option value="county-asc">County: A to Z</option>
+                                        <option value="height-desc" selected>Height (high to low)</option>
+                                        <option value="height-asc">Height (low to high)</option>
+                                        <option value="name-asc">Name A-Z</option>
+                                        <option value="name-desc">Name Z-A</option>
+                                        <option value="prominence-desc">Prominence (high to low)</option>
+                                        <option value="rank-asc">Height Rank</option>
                                     </select>
                                 </div>
                             </div>
@@ -155,6 +155,7 @@
 <script>
     const peaksData = {{ peaks | tojson }};
     const summitListConfig = {
+        heightUnit: {{ height_unit | tojson }},
         statusColumnVisible: {{ 'true' if status_column_visible else 'false' }},
         pageSize: 25
     };
