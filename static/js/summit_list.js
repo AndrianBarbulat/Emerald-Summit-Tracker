@@ -175,16 +175,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderTableRow(peak) {
         const cells = [
-            '<td>' + renderRank(peak.heightRank) + '</td>',
+            '<td class="summit-list-table__rank-cell">' + renderRank(peak.heightRank) + '</td>',
             '<td><a class="summit-list-table__link" href="/peak/' + encodeURIComponent(peak.id) + '">' + escapeHtml(peak.name) + '</a></td>',
-            '<td>' + formatMeters(peak.heightM) + '</td>',
-            '<td>' + formatMeters(peak.prominenceM) + '</td>',
+            '<td class="summit-list-table__metric-cell">' + formatElevation(peak.heightM) + '</td>',
+            '<td class="summit-list-table__metric-cell">' + formatElevation(peak.prominenceM) + '</td>',
             '<td>' + escapeHtml(peak.county || '-') + '</td>',
-            '<td>' + escapeHtml(peak.province || '-') + '</td>'
+            '<td>' + renderProvincePill(peak.province, 'summit-list-table__province-pill') + '</td>'
         ];
 
         if (statusColumnVisible) {
-            cells.push('<td>' + renderStatus(peak.userStatus) + '</td>');
+            cells.push('<td class="summit-list-table__status-cell">' + renderStatus(peak.userStatus) + '</td>');
         }
 
         return '<tr>' + cells.join('') + '</tr>';
@@ -198,11 +198,11 @@ document.addEventListener('DOMContentLoaded', function() {
             '<p class="summit-card__rank">Rank ' + renderRank(peak.heightRank) + '</p>',
             '<h3 class="summit-card__title"><a href="/peak/' + encodeURIComponent(peak.id) + '">' + escapeHtml(peak.name) + '</a></h3>',
             '</div>',
-            peak.province ? '<span class="summit-card__province">' + escapeHtml(peak.province) + '</span>' : '',
+            renderProvincePill(peak.province, 'summit-card__province'),
             '</div>',
             '<div class="summit-card__meta-grid">',
-            renderCardMeta('Height', formatMeters(peak.heightM)),
-            renderCardMeta('Prominence', formatMeters(peak.prominenceM)),
+            renderCardMeta('Height', formatElevation(peak.heightM)),
+            renderCardMeta('Prominence', formatElevation(peak.prominenceM)),
             renderCardMeta('County', escapeHtml(peak.county || '-')),
             renderCardMeta('Province', escapeHtml(peak.province || '-')),
             '</div>'
@@ -234,14 +234,30 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         const labelMap = {
             climbed: 'Climbed',
-            bucket: 'Bucket List',
-            none: 'Neither'
+            bucket: 'Bucket-listed',
+            none: 'Not attempted'
         };
 
         return [
             '<span class="summit-status summit-status--', normalizedStatus, '" aria-label="', labelMap[normalizedStatus], '" title="', labelMap[normalizedStatus], '">',
             '<span class="icon" aria-hidden="true"><i class="fas ', iconMap[normalizedStatus], '"></i></span>',
             showLabel ? '<span>' + labelMap[normalizedStatus] + '</span>' : '',
+            '</span>'
+        ].join('');
+    }
+
+    function renderProvincePill(province, extraClassName) {
+        if (!province) {
+            return '<span class="summit-province-pill summit-province-pill--default' + buildExtraClass(extraClassName) + '">-</span>';
+        }
+
+        const provinceClassName = normalizeValue(province).replace(/[^a-z]+/g, '-');
+        return [
+            '<span class="summit-province-pill summit-province-pill--',
+            provinceClassName,
+            buildExtraClass(extraClassName),
+            '">',
+            escapeHtml(province),
             '</span>'
         ].join('');
     }
@@ -347,8 +363,15 @@ document.addEventListener('DOMContentLoaded', function() {
         return comparison || leftName.localeCompare(rightName);
     }
 
-    function formatMeters(value) {
-        return Number.isFinite(value) ? value + 'm' : '-';
+    function formatElevation(value) {
+        if (!Number.isFinite(value)) {
+            return '-';
+        }
+
+        const displayValue = heightUnit === 'ft'
+            ? Math.round(value * feetPerMeter)
+            : Math.round(value);
+        return displayValue + heightUnit;
     }
 
     function renderRank(value) {
@@ -419,5 +442,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    function buildExtraClass(className) {
+        return className ? ' ' + className : '';
     }
 });
