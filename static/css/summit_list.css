@@ -209,77 +209,77 @@
     border: 1px solid rgba(27, 67, 50, 0.08);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
-    padding: 1rem;
+    color: inherit;
+    display: block;
+    min-height: 80px;
+    padding: 0.85rem 1rem;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .summit-card + .summit-card {
-    margin-top: 0.9rem;
+    margin-top: 0;
 }
 
-.summit-card__header {
+.summit-card:hover,
+.summit-card:focus-visible {
+    border-color: rgba(82, 121, 111, 0.28);
+    box-shadow: var(--shadow-md);
+    outline: none;
+    transform: translateY(-2px);
+}
+
+.summit-card__topline {
     align-items: flex-start;
     display: flex;
     gap: 0.75rem;
     justify-content: space-between;
-    margin-bottom: 0.9rem;
-}
-
-.summit-card__rank {
-    color: var(--color-grey);
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.35rem;
-    text-transform: uppercase;
+    margin-bottom: 0.3rem;
 }
 
 .summit-card__title {
-    margin: 0;
-}
-
-.summit-card__title a {
     color: var(--color-forest);
-    font-size: 1.2rem;
+    flex: 1 1 auto;
+    font-size: 1rem;
     font-weight: 800;
+    line-height: 1.2;
+    margin: 0;
+    padding-right: 0.5rem;
 }
 
-.summit-card__province {
-    font-size: 0.8rem;
-    padding: 0.35rem 0.7rem;
-}
-
-.summit-card__meta-grid {
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.summit-card__meta {
-    background: rgba(245, 241, 235, 0.65);
-    border-radius: var(--radius-sm);
-    padding: 0.75rem;
-}
-
-.summit-card__meta-label {
+.summit-card__metrics {
     color: var(--color-grey);
-    display: block;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.2rem;
-    text-transform: uppercase;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    margin: 0 0 0.55rem;
 }
 
-.summit-card__meta-value {
-    color: var(--color-forest);
-    display: block;
+.summit-card__footer {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.summit-card__county {
+    color: var(--color-grey);
+    font-size: 0.84rem;
     font-weight: 600;
 }
 
-.summit-card__status {
-    border-top: 1px solid rgba(27, 67, 50, 0.08);
-    margin-top: 0.85rem;
-    padding-top: 0.85rem;
+.summit-card__province {
+    font-size: 0.74rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.summit-card .summit-status {
+    flex: 0 0 auto;
+    margin-top: 0.1rem;
+    min-width: 1.25rem;
+}
+
+.summit-card .summit-status .icon {
+    font-size: 1rem;
 }
 
 .summit-list-empty {
@@ -325,7 +325,9 @@
     }
 
     .summit-card-grid {
-        display: block;
+        display: grid;
+        gap: var(--space-md);
+        grid-template-columns: 1fr;
     }
 }
 
@@ -337,8 +339,8 @@
     .summit-list-page__subtitle,
     .summit-list-results__count,
     .summit-list-pagination__info,
-    .summit-card__meta-value,
-    .summit-card__status,
+    .summit-card__metrics,
+    .summit-card__county,
     .summit-card__province {
         font-size: 0.875rem;
     }
@@ -352,15 +354,7 @@
     }
 
     .summit-card {
-        padding: 0.9rem;
-    }
-
-    .summit-card__header {
-        flex-direction: column;
-    }
-
-    .summit-card__meta-grid {
-        grid-template-columns: 1fr;
+        padding: 0.8rem 0.9rem;
     }
 
     .summit-list-pagination {

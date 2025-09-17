@@ -192,37 +192,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderCard(peak) {
         const cardParts = [
-            '<article class="summit-card">',
-            '<div class="summit-card__header">',
-            '<div>',
-            '<p class="summit-card__rank">Rank ' + renderRank(peak.heightRank) + '</p>',
-            '<h3 class="summit-card__title"><a href="/peak/' + encodeURIComponent(peak.id) + '">' + escapeHtml(peak.name) + '</a></h3>',
+            '<a class="summit-card summit-card--link" href="/peak/' + encodeURIComponent(peak.id) + '">',
+            '<div class="summit-card__topline">',
+            '<h3 class="summit-card__title">' + escapeHtml(peak.name) + '</h3>',
+            statusColumnVisible ? renderStatus(peak.userStatus) : '',
             '</div>',
+            '<p class="summit-card__metrics">' + formatInlineMetrics(peak) + '</p>',
+            '<div class="summit-card__footer">',
+            '<span class="summit-card__county">' + escapeHtml(peak.county || '-') + '</span>',
             renderProvincePill(peak.province, 'summit-card__province'),
             '</div>',
-            '<div class="summit-card__meta-grid">',
-            renderCardMeta('Height', formatElevation(peak.heightM)),
-            renderCardMeta('Prominence', formatElevation(peak.prominenceM)),
-            renderCardMeta('County', escapeHtml(peak.county || '-')),
-            renderCardMeta('Province', escapeHtml(peak.province || '-')),
-            '</div>'
+            '</a>'
         ];
-
-        if (statusColumnVisible) {
-            cardParts.push('<div class="summit-card__status">' + renderStatus(peak.userStatus, true) + '</div>');
-        }
-
-        cardParts.push('</article>');
         return cardParts.join('');
-    }
-
-    function renderCardMeta(label, value) {
-        return [
-            '<div class="summit-card__meta">',
-            '<span class="summit-card__meta-label">', label, '</span>',
-            '<span class="summit-card__meta-value">', value, '</span>',
-            '</div>'
-        ].join('');
     }
 
     function renderStatus(status, showLabel) {
@@ -372,6 +354,15 @@ document.addEventListener('DOMContentLoaded', function() {
             ? Math.round(value * feetPerMeter)
             : Math.round(value);
         return displayValue + heightUnit;
+    }
+
+    function formatInlineMetrics(peak) {
+        return [
+            'Height ',
+            formatElevation(peak.heightM),
+            ' \u00b7 Prom. ',
+            formatElevation(peak.prominenceM)
+        ].join('');
     }
 
     function renderRank(value) {
