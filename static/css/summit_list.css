@@ -90,7 +90,7 @@
 .summit-list-table {
     background: transparent;
     margin-bottom: 0;
-    min-width: 760px;
+    min-width: 1040px;
 }
 
 .summit-list-table thead th {
@@ -119,8 +119,13 @@
 .summit-list-table__rank-cell,
 .summit-list-table__metric-cell,
 .summit-list-table__status-cell,
-.summit-list-table__status-heading {
+.summit-list-table__status-heading,
+.summit-list-table__actions-heading {
     text-align: center;
+}
+
+.summit-list-table__actions-cell {
+    width: 19rem;
 }
 
 .summit-list-table__link {
@@ -157,6 +162,141 @@
 
 .summit-status .icon {
     font-size: 1rem;
+}
+
+.summit-list-row-actions {
+    min-width: 17rem;
+}
+
+.summit-list-row-actions__buttons {
+    display: flex;
+    gap: 0.55rem;
+    justify-content: flex-end;
+}
+
+.summit-list-action-button {
+    border-radius: 999px;
+    font-weight: 700;
+    gap: 0.45rem;
+    min-height: 2.5rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.summit-list-action-button:hover,
+.summit-list-action-button:focus-visible {
+    transform: translateY(-1px);
+}
+
+.summit-list-action-button--log {
+    background: #2e8b57;
+    border-color: #2e8b57;
+    color: var(--color-white);
+}
+
+.summit-list-action-button--log:hover,
+.summit-list-action-button--log:focus-visible,
+.summit-list-action-button--log.is-active {
+    background: #256f45;
+    border-color: #256f45;
+    color: var(--color-white);
+}
+
+.summit-list-action-button--complete {
+    background: rgba(46, 139, 87, 0.14);
+    border-color: rgba(46, 139, 87, 0.28);
+    color: #2e8b57;
+}
+
+.summit-list-action-button--complete[disabled] {
+    opacity: 1;
+}
+
+.summit-list-action-button--bucket {
+    background: rgba(212, 168, 83, 0.12);
+    border-color: rgba(212, 168, 83, 0.28);
+    color: #9a741f;
+}
+
+.summit-list-action-button--bucket:hover,
+.summit-list-action-button--bucket:focus-visible,
+.summit-list-action-button--bucket.is-active {
+    background: rgba(212, 168, 83, 0.92);
+    border-color: rgba(212, 168, 83, 0.92);
+    color: var(--color-white);
+}
+
+.summit-list-log-popover {
+    background: var(--color-white);
+    border: 1px solid var(--color-light-grey);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    margin-top: 0.75rem;
+    padding: 0.9rem;
+    text-align: left;
+}
+
+.summit-list-log-popover .label {
+    color: var(--color-forest);
+    font-size: 0.76rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+.summit-list-log-popover .field:not(:last-child) {
+    margin-bottom: 0.7rem;
+}
+
+.summit-list-log-popover .input,
+.summit-list-log-popover .select select,
+.summit-list-log-popover .textarea {
+    border-color: var(--color-light-grey);
+    border-radius: var(--radius-sm);
+}
+
+.summit-list-log-popover .input:focus,
+.summit-list-log-popover .select select:focus,
+.summit-list-log-popover .textarea:focus {
+    border-color: var(--color-mint);
+    box-shadow: 0 0 0 0.125rem rgba(116, 198, 157, 0.18);
+    outline: none;
+}
+
+.summit-list-log-popover .textarea {
+    min-height: 4.5rem;
+    resize: vertical;
+}
+
+.summit-list-log-popover__title {
+    color: var(--color-forest);
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin: 0 0 0.8rem;
+}
+
+.summit-list-log-popover__buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.summit-list-log-popover__submit {
+    background: var(--color-forest);
+    border-color: var(--color-forest);
+    color: var(--color-white);
+}
+
+.summit-list-log-popover__submit:hover,
+.summit-list-log-popover__submit:focus-visible {
+    background: #163727;
+    border-color: #163727;
+    color: var(--color-white);
+}
+
+.summit-list-row-actions__error {
+    color: var(--color-danger);
+    font-size: 0.78rem;
+    margin: 0.55rem 0 0;
+    text-align: right;
 }
 
 .summit-province-pill {

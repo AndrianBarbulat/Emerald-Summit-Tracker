@@ -213,8 +213,15 @@ def _build_landing_stats(peaks: list[dict]) -> dict:
 
 
 def _build_user_peak_statuses(user_id: str | None) -> dict[str, str]:
+    climbed_ids, bucket_ids = _build_user_peak_memberships(user_id)
+    status_map = {peak_id: "bucket" for peak_id in bucket_ids}
+    status_map.update({peak_id: "climbed" for peak_id in climbed_ids})
+    return status_map
+
+
+def _build_user_peak_memberships(user_id: str | None) -> tuple[set[str], set[str]]:
     if not user_id:
-        return {}
+        return set(), set()
 
     climbed_ids = {
         str(climb.get("peak_id"))
@@ -226,10 +233,7 @@ def _build_user_peak_statuses(user_id: str | None) -> dict[str, str]:
         for bucket_item in get_user_bucket_list(user_id)
         if bucket_item.get("peak_id") is not None
     }
-
-    status_map = {peak_id: "bucket" for peak_id in bucket_ids}
-    status_map.update({peak_id: "climbed" for peak_id in climbed_ids})
-    return status_map
+    return climbed_ids, bucket_ids
 
 
 def _prefers_imperial_units(profile: dict | None) -> bool:
@@ -444,22 +448,28 @@ def logout():
 def summit_list():
     context = get_session_context()
     peaks = get_all_peaks()
-    status_map = _build_user_peak_statuses(context["profile"].get("id")) if context["profile"] else {}
+    climbed_ids, bucket_ids = _build_user_peak_memberships(context["profile"].get("id")) if context["profile"] else (set(), set())
     height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
 
     summit_peaks = []
     for peak in peaks:
         peak_id = peak.get("id")
+        peak_key = str(peak_id) if peak_id is not None else ""
+        is_climbed = peak_key in climbed_ids
+        is_bucket_listed = peak_key in bucket_ids
         summit_peaks.append(
             {
                 **peak,
-                "user_status": status_map.get(str(peak_id), "none"),
+                "is_climbed": is_climbed,
+                "is_bucket_listed": is_bucket_listed,
+                "user_status": "climbed" if is_climbed else ("bucket" if is_bucket_listed else "none"),
             }
         )
 
     return render_template(
         "summit_list.html",
         peaks=summit_peaks,
+        action_buttons_visible=bool(context["profile"]),
         height_filter_range=_build_height_filter_range(summit_peaks, height_unit),
         height_unit=height_unit,
         status_column_visible=bool(context["profile"]),

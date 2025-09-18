@@ -128,6 +128,9 @@
                                 {% if status_column_visible %}
                                 <th class="summit-list-table__status-heading">Status</th>
                                 {% endif %}
+                                {% if action_buttons_visible %}
+                                <th class="summit-list-table__actions-heading">Actions</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody id="summit-table-body"></tbody>
@@ -155,6 +158,7 @@
 <script>
     const peaksData = {{ peaks | tojson }};
     const summitListConfig = {
+        actionButtonsVisible: {{ 'true' if action_buttons_visible else 'false' }},
         heightUnit: {{ height_unit | tojson }},
         statusColumnVisible: {{ 'true' if status_column_visible else 'false' }},
         pageSize: 25

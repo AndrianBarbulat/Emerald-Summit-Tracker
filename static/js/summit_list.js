@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const pageSize = Number(window.summitListConfig && window.summitListConfig.pageSize) || 25;
+    const actionButtonsVisible = Boolean(window.summitListConfig && window.summitListConfig.actionButtonsVisible);
     const heightUnit = window.summitListConfig && window.summitListConfig.heightUnit === 'ft' ? 'ft' : 'm';
     const statusColumnVisible = Boolean(window.summitListConfig && window.summitListConfig.statusColumnVisible);
     const provinces = ['Munster', 'Leinster', 'Ulster', 'Connacht'];
@@ -42,14 +43,24 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     let currentFilteredPeaks = [];
     let filterDebounceTimer = null;
+    const rowActionState = {
+        bucketPendingPeakIds: {},
+        errorsByPeakId: {},
+        logForm: createDefaultLogForm(),
+        logSubmittingPeakId: null,
+        openLogPeakId: null
+    };
 
     const peaks = window.peaksData.map(function(peak) {
         return {
             id: peak.id,
+            peakKey: String(peak.id),
             name: (peak.name || 'Unnamed Peak').trim(),
             nameKey: normalizeValue(peak.name),
             heightRank: toNumber(peak.height_rank),
             heightM: toNumber(peak.height_m || peak.height),
+            isBucketListed: Boolean(peak.is_bucket_listed || String(peak.user_status || '').trim().toLowerCase() === 'bucket'),
+            isClimbed: Boolean(peak.is_climbed || String(peak.user_status || '').trim().toLowerCase() === 'climbed'),
             prominenceM: toNumber(peak.prominence_m),
             county: (peak.county || '').trim(),
             countyKey: normalizeValue(peak.county),
@@ -132,6 +143,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    if (actionButtonsVisible) {
+        elements.tableBody.addEventListener('click', handleRowActionClick);
+        elements.tableBody.addEventListener('submit', handleLogClimbSubmit);
+        document.addEventListener('click', handleOutsideActionClick);
+        document.addEventListener('keydown', handleActionKeydown);
+    }
+
     applyFilters();
 
     function applyFilters() {
@@ -174,6 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderTableRow(peak) {
+        const peakStatus = getPeakStatus(peak);
         const cells = [
             '<td class="summit-list-table__rank-cell">' + renderRank(peak.heightRank) + '</td>',
             '<td><a class="summit-list-table__link" href="/peak/' + encodeURIComponent(peak.id) + '">' + escapeHtml(peak.name) + '</a></td>',
@@ -184,7 +203,11 @@ document.addEventListener('DOMContentLoaded', function() {
         ];
 
         if (statusColumnVisible) {
-            cells.push('<td class="summit-list-table__status-cell">' + renderStatus(peak.userStatus) + '</td>');
+            cells.push('<td class="summit-list-table__status-cell">' + renderStatus(peakStatus) + '</td>');
+        }
+
+        if (actionButtonsVisible) {
+            cells.push('<td class="summit-list-table__actions-cell">' + renderRowActions(peak) + '</td>');
         }
 
         return '<tr>' + cells.join('') + '</tr>';
@@ -195,7 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
             '<a class="summit-card summit-card--link" href="/peak/' + encodeURIComponent(peak.id) + '">',
             '<div class="summit-card__topline">',
             '<h3 class="summit-card__title">' + escapeHtml(peak.name) + '</h3>',
-            statusColumnVisible ? renderStatus(peak.userStatus) : '',
+            statusColumnVisible ? renderStatus(getPeakStatus(peak)) : '',
             '</div>',
             '<p class="summit-card__metrics">' + formatInlineMetrics(peak) + '</p>',
             '<div class="summit-card__footer">',
@@ -226,6 +249,126 @@ document.addEventListener('DOMContentLoaded', function() {
             showLabel ? '<span>' + labelMap[normalizedStatus] + '</span>' : '',
             '</span>'
         ].join('');
+    }
+
+    function renderRowActions(peak) {
+        const peakKey = peak.peakKey;
+        const errorMessage = rowActionState.errorsByPeakId[peakKey];
+        const isBucketPending = Boolean(rowActionState.bucketPendingPeakIds[peakKey]);
+        const isLogSubmitting = rowActionState.logSubmittingPeakId === peakKey;
+        const isModalOpen = rowActionState.openLogPeakId === peakKey;
+
+        const actionParts = [
+            '<div class="summit-list-row-actions">',
+            '<div class="summit-list-row-actions__buttons">',
+            renderLogActionButton(peak, isLogSubmitting),
+            renderBucketActionButton(peak, isBucketPending),
+            '</div>'
+        ];
+
+        if (isModalOpen) {
+            actionParts.push(renderLogClimbForm(peak, isLogSubmitting));
+        }
+
+        if (errorMessage) {
+            actionParts.push('<p class="summit-list-row-actions__error">' + escapeHtml(errorMessage) + '</p>');
+        }
+
+        actionParts.push('</div>');
+        return actionParts.join('');
+    }
+
+    function renderLogActionButton(peak, isSubmitting) {
+        const buttonClasses = ['button', 'is-small', 'summit-list-action-button'];
+        const peakStatus = getPeakStatus(peak);
+
+        if (peak.isClimbed) {
+            buttonClasses.push('summit-list-action-button--complete');
+            return [
+                '<button type="button" class="', buttonClasses.join(' '), '" disabled title="Climb logged">',
+                '<span class="icon" aria-hidden="true"><i class="fas fa-circle-check"></i></span>',
+                '<span>Climbed</span>',
+                '</button>'
+            ].join('');
+        }
+
+        buttonClasses.push('summit-list-action-button--log');
+        if (rowActionState.openLogPeakId === peak.peakKey) {
+            buttonClasses.push('is-active');
+        }
+
+        return [
+            '<button type="button" class="', buttonClasses.join(' '), '" data-action="open-log-climb" data-peak-id="', peak.peakKey, '"',
+            isSubmitting ? ' disabled' : '',
+            ' title="Log Climb">',
+            '<span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>',
+            '<span>', peakStatus === 'climbed' ? 'Climbed' : 'Log Climb', '</span>',
+            '</button>'
+        ].join('');
+    }
+
+    function renderBucketActionButton(peak, isPending) {
+        const buttonClasses = ['button', 'is-small', 'summit-list-action-button', 'summit-list-action-button--bucket'];
+        const actionLabel = peak.isBucketListed ? 'Bucket Listed' : 'Add to Bucket List';
+        if (peak.isBucketListed) {
+            buttonClasses.push('is-active');
+        }
+        if (isPending) {
+            buttonClasses.push('is-loading');
+        }
+
+        return [
+            '<button type="button" class="', buttonClasses.join(' '), '" data-action="toggle-bucket" data-peak-id="', peak.peakKey, '"',
+            isPending ? ' disabled' : '',
+            ' title="', escapeHtml(actionLabel), '">',
+            '<span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>',
+            '<span>', escapeHtml(actionLabel), '</span>',
+            '</button>'
+        ].join('');
+    }
+
+    function renderLogClimbForm(peak, isSubmitting) {
+        const formState = rowActionState.logForm;
+        return [
+            '<form class="summit-list-log-popover" data-log-climb-form data-peak-id="', peak.peakKey, '">',
+            '<p class="summit-list-log-popover__title">Log climb for ', escapeHtml(peak.name), '</p>',
+            '<div class="field">',
+            '<label class="label" for="summit-log-date-', peak.peakKey, '">Date</label>',
+            '<div class="control">',
+            '<input id="summit-log-date-', peak.peakKey, '" class="input" type="date" name="climbed_at" value="', escapeHtml(formState.climbedAt), '"', isSubmitting ? ' disabled' : '', '>',
+            '</div>',
+            '</div>',
+            '<div class="field">',
+            '<label class="label" for="summit-log-difficulty-', peak.peakKey, '">Difficulty</label>',
+            '<div class="control">',
+            '<div class="select is-fullwidth">',
+            '<select id="summit-log-difficulty-', peak.peakKey, '" name="difficulty"', isSubmitting ? ' disabled' : '', '>',
+            renderDifficultyOptions(formState.difficulty),
+            '</select>',
+            '</div>',
+            '</div>',
+            '</div>',
+            '<div class="field">',
+            '<label class="label" for="summit-log-notes-', peak.peakKey, '">Notes</label>',
+            '<div class="control">',
+            '<textarea id="summit-log-notes-', peak.peakKey, '" class="textarea" name="notes" rows="2" placeholder="Trail conditions, weather, or a quick note..."', isSubmitting ? ' disabled' : '', '>', escapeHtml(formState.notes), '</textarea>',
+            '</div>',
+            '</div>',
+            '<div class="summit-list-log-popover__buttons">',
+            '<button type="button" class="button is-light is-small" data-action="close-log-climb" data-peak-id="', peak.peakKey, '"', isSubmitting ? ' disabled' : '', '>Cancel</button>',
+            '<button type="submit" class="button is-small summit-list-log-popover__submit', isSubmitting ? ' is-loading' : '', '"', isSubmitting ? ' disabled' : '', '>Save Climb</button>',
+            '</div>',
+            '</form>'
+        ].join('');
+    }
+
+    function renderDifficultyOptions(selectedDifficulty) {
+        const difficulties = ['easy', 'moderate', 'hard'];
+        return difficulties.map(function(difficulty) {
+            const label = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+            const isSelected = selectedDifficulty === difficulty ? ' selected' : '';
+            return '<option value="' + difficulty + '"' + isSelected + '>' + label + '</option>';
+        }).join('');
     }
 
     function renderProvincePill(province, extraClassName) {
@@ -363,6 +506,247 @@ document.addEventListener('DOMContentLoaded', function() {
             ' \u00b7 Prom. ',
             formatElevation(peak.prominenceM)
         ].join('');
+    }
+
+    function createDefaultLogForm() {
+        return {
+            climbedAt: getTodayDateValue(),
+            difficulty: 'moderate',
+            notes: ''
+        };
+    }
+
+    function getPeakStatus(peak) {
+        if (peak.isClimbed) {
+            return 'climbed';
+        }
+        if (peak.isBucketListed) {
+            return 'bucket';
+        }
+        return 'none';
+    }
+
+    function handleRowActionClick(event) {
+        const actionButton = event.target.closest('[data-action]');
+        if (!actionButton) {
+            return;
+        }
+
+        const actionName = actionButton.getAttribute('data-action');
+        const peakKey = String(actionButton.getAttribute('data-peak-id') || '');
+        if (!peakKey) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (actionName === 'open-log-climb') {
+            toggleLogClimbPopover(peakKey);
+            return;
+        }
+
+        if (actionName === 'close-log-climb') {
+            closeLogClimbPopover();
+            return;
+        }
+
+        if (actionName === 'toggle-bucket') {
+            void toggleBucketListState(peakKey);
+        }
+    }
+
+    function handleOutsideActionClick(event) {
+        if (!rowActionState.openLogPeakId) {
+            return;
+        }
+
+        if (event.target.closest('.summit-list-row-actions')) {
+            return;
+        }
+
+        closeLogClimbPopover();
+    }
+
+    function handleActionKeydown(event) {
+        if (event.key === 'Escape' && rowActionState.openLogPeakId) {
+            closeLogClimbPopover();
+        }
+    }
+
+    async function handleLogClimbSubmit(event) {
+        const form = event.target.closest('[data-log-climb-form]');
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+        const peakKey = String(form.getAttribute('data-peak-id') || '');
+        if (!peakKey) {
+            return;
+        }
+
+        const peak = findPeakByKey(peakKey);
+        if (!peak) {
+            return;
+        }
+
+        const formData = new FormData(form);
+        rowActionState.logForm = {
+            climbedAt: String(formData.get('climbed_at') || '').trim(),
+            difficulty: String(formData.get('difficulty') || 'moderate').trim().toLowerCase(),
+            notes: String(formData.get('notes') || '').trim()
+        };
+
+        if (!rowActionState.logForm.climbedAt) {
+            setActionError(peakKey, 'Please choose a climb date.');
+            render(currentFilteredPeaks);
+            return;
+        }
+
+        clearActionError(peakKey);
+        rowActionState.logSubmittingPeakId = peakKey;
+        render(currentFilteredPeaks);
+
+        try {
+            const result = await postJson('/api/log-climb', {
+                climbed_at: rowActionState.logForm.climbedAt,
+                difficulty: rowActionState.logForm.difficulty,
+                notes: rowActionState.logForm.notes,
+                peak_id: peak.id
+            });
+
+            applyMembershipResponse(peakKey, result);
+            rowActionState.logSubmittingPeakId = null;
+            rowActionState.logForm = createDefaultLogForm();
+            rowActionState.openLogPeakId = null;
+            clearActionError(peakKey);
+            render(currentFilteredPeaks);
+        } catch (error) {
+            rowActionState.logSubmittingPeakId = null;
+            setActionError(peakKey, error.message || 'We could not save that climb.');
+            render(currentFilteredPeaks);
+        }
+    }
+
+    function toggleLogClimbPopover(peakKey) {
+        const peak = findPeakByKey(peakKey);
+        if (!peak || peak.isClimbed) {
+            return;
+        }
+
+        if (rowActionState.openLogPeakId === peakKey) {
+            closeLogClimbPopover();
+            return;
+        }
+
+        rowActionState.openLogPeakId = peakKey;
+        rowActionState.logSubmittingPeakId = null;
+        rowActionState.logForm = createDefaultLogForm();
+        clearActionError(peakKey);
+        render(currentFilteredPeaks);
+
+        window.requestAnimationFrame(function() {
+            const dateInput = document.getElementById('summit-log-date-' + peakKey);
+            if (dateInput) {
+                dateInput.focus();
+            }
+        });
+    }
+
+    function closeLogClimbPopover() {
+        if (!rowActionState.openLogPeakId) {
+            return;
+        }
+
+        const peakKey = rowActionState.openLogPeakId;
+        rowActionState.openLogPeakId = null;
+        rowActionState.logSubmittingPeakId = null;
+        rowActionState.logForm = createDefaultLogForm();
+        clearActionError(peakKey);
+        render(currentFilteredPeaks);
+    }
+
+    async function toggleBucketListState(peakKey) {
+        const peak = findPeakByKey(peakKey);
+        if (!peak) {
+            return;
+        }
+
+        clearActionError(peakKey);
+        rowActionState.bucketPendingPeakIds[peakKey] = true;
+        render(currentFilteredPeaks);
+
+        try {
+            const endpoint = peak.isBucketListed ? '/api/bucket-list/remove' : '/api/bucket-list/add';
+            const result = await postJson(endpoint, { peak_id: peak.id });
+            applyMembershipResponse(peakKey, result);
+            clearActionError(peakKey);
+        } catch (error) {
+            setActionError(peakKey, error.message || 'We could not update your bucket list.');
+        } finally {
+            delete rowActionState.bucketPendingPeakIds[peakKey];
+            render(currentFilteredPeaks);
+        }
+    }
+
+    function applyMembershipResponse(peakKey, responsePayload) {
+        const peak = findPeakByKey(peakKey);
+        if (!peak) {
+            return;
+        }
+
+        peak.isBucketListed = Boolean(responsePayload && responsePayload.is_bucket_listed);
+        peak.isClimbed = Boolean(responsePayload && responsePayload.is_climbed);
+        peak.userStatus = getPeakStatus(peak);
+    }
+
+    function findPeakByKey(peakKey) {
+        return peaks.find(function(peak) {
+            return peak.peakKey === peakKey;
+        }) || null;
+    }
+
+    function setActionError(peakKey, message) {
+        if (!peakKey) {
+            return;
+        }
+        rowActionState.errorsByPeakId[peakKey] = String(message || '').trim();
+    }
+
+    function clearActionError(peakKey) {
+        if (!peakKey) {
+            return;
+        }
+        delete rowActionState.errorsByPeakId[peakKey];
+    }
+
+    async function postJson(url, payload) {
+        const response = await fetch(url, {
+            body: JSON.stringify(payload),
+            credentials: 'same-origin',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            method: 'POST'
+        });
+
+        const result = await response.json().catch(function() {
+            return {};
+        });
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Something went wrong.');
+        }
+
+        return result;
+    }
+
+    function getTodayDateValue() {
+        const now = new Date();
+        const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+        return localTime.toISOString().slice(0, 10);
     }
 
     function renderRank(value) {
