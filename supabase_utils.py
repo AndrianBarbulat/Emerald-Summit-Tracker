@@ -11,7 +11,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 TABLE_PEAKS = "IrelandPeacks"
 TABLE_PROFILES = "profiles"
-TABLE_CLIMBS = "climbs"
+TABLE_CLIMBS = os.getenv("SUPABASE_CLIMBS_TABLE") or os.getenv("SUPABASE_USER_CLIMBED_PEAKS_TABLE") or "climbs"
 TABLE_BUCKET_LIST = "bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
@@ -177,6 +177,17 @@ def update_climb(climb_id: Any, user_id: str, data: Dict[str, Any]) -> Optional[
         return None
 
 
+def get_climb_by_id(climb_id: Any) -> Optional[Dict[str, Any]]:
+    try:
+        query = _table(TABLE_CLIMBS)
+        if query is None:
+            return None
+        response = query.select("*").eq("id", climb_id).limit(1).execute()
+        return response.data[0] if response.data else None
+    except Exception:
+        return None
+
+
 def delete_climb(climb_id: Any, user_id: str) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_CLIMBS)
@@ -306,6 +317,17 @@ def get_peak_comments(peak_id: Any) -> List[Dict[str, Any]]:
         return []
 
 
+def get_comment_by_id(comment_id: Any) -> Optional[Dict[str, Any]]:
+    try:
+        query = _table(TABLE_COMMENTS)
+        if query is None:
+            return None
+        response = query.select("*").eq("id", comment_id).limit(1).execute()
+        return response.data[0] if response.data else None
+    except Exception:
+        return None
+
+
 def add_comment(user_id: str, peak_id: Any, text: str) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_COMMENTS)
@@ -324,6 +346,17 @@ def delete_comment(comment_id: Any, user_id: str) -> Optional[Dict[str, Any]]:
         if query is None:
             return None
         response = query.delete().eq("id", comment_id).eq("user_id", user_id).execute()
+        return response.data[0] if response.data else None
+    except Exception:
+        return None
+
+
+def delete_profile(user_id: str) -> Optional[Dict[str, Any]]:
+    try:
+        query = _table(TABLE_PROFILES)
+        if query is None:
+            return None
+        response = query.delete().eq("id", user_id).execute()
         return response.data[0] if response.data else None
     except Exception:
         return None

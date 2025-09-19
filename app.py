@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session
 
-from api_routes import api_bp
+from api_routes import api
 from supabase_utils import (
     get_all_peaks,
     get_community_recent_climbs,
@@ -15,7 +15,7 @@ from supabase_utils import (
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
-app.register_blueprint(api_bp)
+app.register_blueprint(api)
 
 FEET_PER_METER = 3.28084
 
