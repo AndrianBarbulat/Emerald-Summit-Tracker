@@ -8,8 +8,8 @@ from supabase_utils import (
     get_all_peaks,
     get_community_recent_climbs,
     get_peak_by_id,
-    get_user_bucket_list,
     get_user_climbs,
+    get_peak_statuses,
     supabase,
 )
 
@@ -167,8 +167,40 @@ def _to_float(value):
         return None
 
 
-def _build_map_peaks(peaks: list[dict]) -> list[dict]:
+def _normalize_peak_status(status: str | None) -> str:
+    normalized = str(status or "").strip().lower()
+    if normalized == "bucket":
+        return "bucket_listed"
+    if normalized == "none":
+        return "not_attempted"
+    if normalized in {"climbed", "bucket_listed", "not_attempted"}:
+        return normalized
+    return "not_attempted"
+
+
+def _peak_key(peak_id) -> str:
+    return str(peak_id) if peak_id is not None else ""
+
+
+def _decorate_peaks_with_statuses(peaks: list[dict], peak_statuses: dict[str, str]) -> list[dict]:
+    decorated_peaks = []
+    for peak in peaks:
+        peak_status = _normalize_peak_status(peak_statuses.get(_peak_key(peak.get("id"))))
+        decorated_peaks.append(
+            {
+                **peak,
+                "is_bucket_listed": peak_status == "bucket_listed",
+                "is_climbed": peak_status == "climbed",
+                "user_status": peak_status,
+            }
+        )
+
+    return decorated_peaks
+
+
+def _build_map_peaks(peaks: list[dict], peak_statuses: dict[str, str] | None = None) -> list[dict]:
     map_peaks = []
+    peak_statuses = peak_statuses or {}
     for peak in peaks:
         lat = _to_float(peak.get("latitude") or peak.get("lat"))
         lon = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
@@ -184,6 +216,7 @@ def _build_map_peaks(peaks: list[dict]) -> list[dict]:
                 "height_m": peak.get("height_m"),
                 "latitude": lat,
                 "longitude": lon,
+                "user_status": _normalize_peak_status(peak_statuses.get(_peak_key(peak.get("id")))),
             }
         )
     return map_peaks
@@ -210,30 +243,6 @@ def _build_landing_stats(peaks: list[dict]) -> dict:
         "counties": _count_distinct_values(peaks, "county"),
         "provinces": province_count,
     }
-
-
-def _build_user_peak_statuses(user_id: str | None) -> dict[str, str]:
-    climbed_ids, bucket_ids = _build_user_peak_memberships(user_id)
-    status_map = {peak_id: "bucket" for peak_id in bucket_ids}
-    status_map.update({peak_id: "climbed" for peak_id in climbed_ids})
-    return status_map
-
-
-def _build_user_peak_memberships(user_id: str | None) -> tuple[set[str], set[str]]:
-    if not user_id:
-        return set(), set()
-
-    climbed_ids = {
-        str(climb.get("peak_id"))
-        for climb in get_user_climbs(user_id)
-        if climb.get("peak_id") is not None
-    }
-    bucket_ids = {
-        str(bucket_item.get("peak_id"))
-        for bucket_item in get_user_bucket_list(user_id)
-        if bucket_item.get("peak_id") is not None
-    }
-    return climbed_ids, bucket_ids
 
 
 def _prefers_imperial_units(profile: dict | None) -> bool:
@@ -335,9 +344,15 @@ def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[
 
 @app.route("/")
 def index():
+    context = get_session_context()
     all_peaks = get_all_peaks()
     peaks_by_id = {peak.get("id"): peak for peak in all_peaks if peak.get("id") is not None}
-    map_peaks = _build_map_peaks(all_peaks)
+    user_id = context["profile"].get("id") if context["profile"] else None
+    peak_statuses = get_peak_statuses(
+        user_id,
+        [peak.get("id") for peak in all_peaks if peak.get("id") is not None],
+    )
+    map_peaks = _build_map_peaks(all_peaks, peak_statuses)
     landing_stats = _build_landing_stats(all_peaks)
     recent_climbs = _enrich_recent_climbs(
         get_community_recent_climbs(limit=4),
@@ -348,9 +363,11 @@ def index():
         "index.html",
         peaks=map_peaks,
         landing_stats=landing_stats,
+        peak_statuses=peak_statuses,
         recent_climbs=recent_climbs,
+        status_tracking_enabled=bool(context["profile"]),
         active_page="index",
-        **get_session_context(),
+        **context,
     )
 
 
@@ -414,7 +431,65 @@ def home():
     context = get_session_context()
     if not context["profile"]:
         return redirect("/")
-    return render_template("home.html", active_page="dashboard", **context)
+
+    user_id = context["profile"].get("id")
+    all_peaks = get_all_peaks()
+    peaks_by_id = {peak.get("id"): peak for peak in all_peaks if peak.get("id") is not None}
+    peak_statuses = get_peak_statuses(
+        user_id,
+        [peak.get("id") for peak in all_peaks if peak.get("id") is not None],
+    )
+    decorated_peaks = _decorate_peaks_with_statuses(all_peaks, peak_statuses)
+    climbs = get_user_climbs(user_id)
+
+    suggested_peaks = sorted(
+        [
+            peak for peak in decorated_peaks
+            if peak.get("user_status") != "climbed"
+        ],
+        key=lambda peak: (
+            0 if peak.get("user_status") == "bucket_listed" else 1,
+            _to_float(peak.get("height_rank")) if _to_float(peak.get("height_rank")) is not None else float("inf"),
+            -(_to_float(peak.get("height_m") or peak.get("height")) or 0),
+            str(peak.get("name") or ""),
+        ),
+    )[:3]
+    bucket_list_peaks = [
+        peak for peak in decorated_peaks
+        if peak.get("user_status") == "bucket_listed"
+    ][:4]
+
+    climbed_peaks = [
+        peak for peak in decorated_peaks
+        if peak.get("user_status") == "climbed"
+    ]
+    highest_climbed_peak = max(
+        climbed_peaks,
+        key=lambda peak: _to_float(peak.get("height_m") or peak.get("height")) or 0,
+        default=None,
+    )
+    latest_climb_peak = peaks_by_id.get(climbs[0].get("peak_id")) if climbs else None
+    total_peaks = len(all_peaks)
+    completed_count = len(climbed_peaks)
+    completion_percent = int(round((completed_count / total_peaks) * 100)) if total_peaks else 0
+
+    dashboard_progress = {
+        "completed_count": completed_count,
+        "completion_percent": completion_percent,
+        "highest_peak": highest_climbed_peak,
+        "latest_peak": latest_climb_peak,
+        "total_peaks": total_peaks,
+    }
+
+    return render_template(
+        "home.html",
+        active_page="dashboard",
+        bucket_list_peaks=bucket_list_peaks,
+        dashboard_progress=dashboard_progress,
+        peak_statuses=peak_statuses,
+        suggested_peaks=suggested_peaks,
+        **context,
+    )
 
 
 # get current user
@@ -448,23 +523,13 @@ def logout():
 def summit_list():
     context = get_session_context()
     peaks = get_all_peaks()
-    climbed_ids, bucket_ids = _build_user_peak_memberships(context["profile"].get("id")) if context["profile"] else (set(), set())
+    user_id = context["profile"].get("id") if context["profile"] else None
+    peak_statuses = get_peak_statuses(
+        user_id,
+        [peak.get("id") for peak in peaks if peak.get("id") is not None],
+    )
     height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
-
-    summit_peaks = []
-    for peak in peaks:
-        peak_id = peak.get("id")
-        peak_key = str(peak_id) if peak_id is not None else ""
-        is_climbed = peak_key in climbed_ids
-        is_bucket_listed = peak_key in bucket_ids
-        summit_peaks.append(
-            {
-                **peak,
-                "is_climbed": is_climbed,
-                "is_bucket_listed": is_bucket_listed,
-                "user_status": "climbed" if is_climbed else ("bucket" if is_bucket_listed else "none"),
-            }
-        )
+    summit_peaks = _decorate_peaks_with_statuses(peaks, peak_statuses)
 
     return render_template(
         "summit_list.html",
@@ -472,6 +537,7 @@ def summit_list():
         action_buttons_visible=bool(context["profile"]),
         height_filter_range=_build_height_filter_range(summit_peaks, height_unit),
         height_unit=height_unit,
+        peak_statuses=peak_statuses,
         status_column_visible=bool(context["profile"]),
         active_page="summits",
         **context,
@@ -484,7 +550,24 @@ def peak_detail(peak_id: int):
     peak = get_peak_by_id(peak_id)
     if peak is None:
         abort(404)
-    return render_template("peak_detail.html", peak=peak, active_page="summits", **context)
+
+    peak_statuses = get_peak_statuses(
+        context["profile"].get("id") if context["profile"] else None,
+        [peak_id],
+    )
+    peak_status = _normalize_peak_status(peak_statuses.get(str(peak_id)))
+
+    return render_template(
+        "peak_detail.html",
+        peak={
+            **peak,
+            "user_status": peak_status,
+        },
+        peak_status=peak_status,
+        peak_statuses=peak_statuses,
+        active_page="summits",
+        **context,
+    )
 
 
 @app.route("/account")

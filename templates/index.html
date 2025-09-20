@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/peak_status.html' import peak_status %}
 
 {% block title %}Emerald Peak Explorer{% endblock %}
 
@@ -138,6 +139,19 @@
                                 </div>
                             </div>
 
+                            {% if not profile %}
+                            <div class="landing-map-status-prompt">
+                                <p class="landing-map-status-prompt__title">Sign up to track peaks</p>
+                                <p class="landing-map-status-prompt__copy">
+                                    Save bucket-list mountains and see climbed peaks reflected directly on the map.
+                                </p>
+                                <div class="buttons landing-map-status-prompt__actions">
+                                    <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                                    <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                                </div>
+                            </div>
+                            {% endif %}
+
                             <h4 class="title is-6 mt-5 mb-3">Latest submissions</h4>
 
                             <div class="box is-shadowless p-2 landing-recent-submissions">
@@ -236,5 +250,13 @@
 <script>
     const peaks = {{ peaks | tojson }};
     window.peaksData = peaks;
+    window.statusTrackingEnabled = {{ 'true' if status_tracking_enabled else 'false' }};
+    {% if profile %}
+    window.peakStatusMarkup = Object.assign(window.peakStatusMarkup || {}, {
+        climbed: {{ peak_status('climbed') | tojson }},
+        bucket_listed: {{ peak_status('bucket_listed') | tojson }},
+        not_attempted: {{ peak_status('not_attempted') | tojson }}
+    });
+    {% endif %}
 </script>
 {% endblock %}

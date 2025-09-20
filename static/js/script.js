@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
             ulster: '#E67E22',
             connacht: '#8E6BB5'
         };
+        const statusTrackingEnabled = Boolean(window.statusTrackingEnabled);
 
         L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
@@ -118,18 +119,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const popupHeight = peak.height_m ? `<br>${peak.height_m}m` : '';
             const provinceKey = String(peak.province || '').trim().toLowerCase();
             const markerColor = provinceColors[provinceKey] || '#74C69D';
+            const peakStatus = normalizePeakStatusValue(peak.user_status);
+            const popupStatus = statusTrackingEnabled
+                ? `<div class="landing-map-popup-status">${getPeakStatusMarkupFragment(peakStatus)}</div>`
+                : '';
 
-            L.circleMarker([lat, lon], {
-                color: '#FFFFFF',
-                fillColor: markerColor,
-                fillOpacity: 0.95,
-                radius: 6,
-                weight: 2
-            })
-                .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupProvince}${popupHeight}`)
+            L.circleMarker([lat, lon], buildMapMarkerOptions(markerColor, peakStatus, statusTrackingEnabled))
+                .bindPopup(`<b>${peak.name || 'Unnamed Peak'}</b>${popupCounty}${popupProvince}${popupHeight}${popupStatus}`)
                 .addTo(map);
         });
     }
+
+    document.querySelectorAll('[data-peak-tracking]').forEach(function(panel) {
+        initPeakTrackingPanel(panel);
+    });
 });
 
 const AUTH_MODAL_COPY = {
@@ -240,6 +243,205 @@ function validateAuthForm(form) {
     }
 
     return isValid;
+}
+
+function normalizePeakStatusValue(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'bucket') {
+        return 'bucket_listed';
+    }
+    if (normalized === 'none') {
+        return 'not_attempted';
+    }
+    if (normalized === 'climbed' || normalized === 'bucket_listed' || normalized === 'not_attempted') {
+        return normalized;
+    }
+    return 'not_attempted';
+}
+
+function getPeakStatusMarkupFragment(status) {
+    const normalizedStatus = normalizePeakStatusValue(status);
+    if (window.peakStatusMarkup && window.peakStatusMarkup[normalizedStatus]) {
+        return window.peakStatusMarkup[normalizedStatus];
+    }
+    return '';
+}
+
+function buildMapMarkerOptions(markerColor, status, trackingEnabled) {
+    const baseOptions = {
+        color: '#FFFFFF',
+        fillColor: markerColor,
+        fillOpacity: 0.95,
+        radius: 6,
+        weight: 2
+    };
+
+    if (!trackingEnabled) {
+        return baseOptions;
+    }
+
+    if (status === 'climbed') {
+        return Object.assign({}, baseOptions, {
+            color: '#1B4332',
+            radius: 8,
+            weight: 3
+        });
+    }
+
+    if (status === 'bucket_listed') {
+        return Object.assign({}, baseOptions, {
+            color: '#D4A853',
+            dashArray: '3 2',
+            radius: 7,
+            weight: 3
+        });
+    }
+
+    return baseOptions;
+}
+
+function getTodayDateValueLocal() {
+    const now = new Date();
+    const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+    return localTime.toISOString().slice(0, 10);
+}
+
+async function postJsonRequest(url, payload) {
+    const response = await fetch(url, {
+        body: JSON.stringify(payload),
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        method: 'POST'
+    });
+
+    const result = await response.json().catch(function() {
+        return {};
+    });
+
+    if (!response.ok) {
+        throw new Error(result.error || 'Something went wrong.');
+    }
+
+    return result;
+}
+
+function setPeakTrackingMessage(panel, message, isError) {
+    const messageElement = panel ? panel.querySelector('[data-peak-tracking-message]') : null;
+    if (!messageElement) {
+        return;
+    }
+
+    messageElement.textContent = String(message || '').trim();
+    messageElement.classList.toggle('is-error', Boolean(isError));
+}
+
+function updatePeakTrackingPanel(panel, status) {
+    if (!panel) {
+        return;
+    }
+
+    const normalizedStatus = normalizePeakStatusValue(status);
+    const statusChip = panel.querySelector('[data-peak-status-chip]');
+    const logButton = panel.querySelector('[data-peak-track-action="log-climb"]');
+    const bucketButton = panel.querySelector('[data-peak-track-action="toggle-bucket"]');
+    const copyElement = panel.querySelector('.peak-detail-actions__copy');
+
+    panel.dataset.currentStatus = normalizedStatus;
+
+    if (statusChip && getPeakStatusMarkupFragment(normalizedStatus)) {
+        statusChip.innerHTML = getPeakStatusMarkupFragment(normalizedStatus);
+    }
+
+    if (logButton) {
+        const logLabel = logButton.querySelector('span:last-child');
+        logButton.disabled = normalizedStatus === 'climbed';
+        if (logLabel) {
+            logLabel.textContent = normalizedStatus === 'climbed' ? 'Climb Logged' : 'Log Climb';
+        }
+    }
+
+    if (bucketButton) {
+        const isBucketListed = normalizedStatus === 'bucket_listed';
+        const bucketLabel = bucketButton.querySelector('span:last-child');
+        bucketButton.dataset.bucketActive = isBucketListed ? 'true' : 'false';
+        bucketButton.classList.toggle('is-active', isBucketListed);
+        bucketButton.disabled = normalizedStatus === 'climbed';
+        if (bucketLabel) {
+            bucketLabel.textContent = normalizedStatus === 'climbed'
+                ? 'Already Climbed'
+                : (isBucketListed ? 'Remove from Bucket List' : 'Add to Bucket List');
+        }
+    }
+
+    if (copyElement) {
+        if (normalizedStatus === 'climbed') {
+            copyElement.textContent = 'You have already logged this peak.';
+        } else if (normalizedStatus === 'bucket_listed') {
+            copyElement.textContent = 'This peak is saved to your bucket list.';
+        } else {
+            copyElement.textContent = 'Keep this peak on your radar or log a climb in one click.';
+        }
+    }
+}
+
+function initPeakTrackingPanel(panel) {
+    if (!panel) {
+        return;
+    }
+
+    updatePeakTrackingPanel(panel, panel.dataset.initialStatus);
+
+    panel.addEventListener('click', async function(event) {
+        const button = event.target.closest('[data-peak-track-action]');
+        if (!button) {
+            return;
+        }
+
+        event.preventDefault();
+        const peakId = Number(panel.dataset.peakId || 0);
+        const actionName = button.getAttribute('data-peak-track-action');
+        const currentStatus = normalizePeakStatusValue(panel.dataset.currentStatus);
+        if (!peakId || !actionName) {
+            return;
+        }
+
+        setPeakTrackingMessage(panel, '', false);
+        button.classList.add('is-loading');
+
+        try {
+            let result = null;
+            if (actionName === 'log-climb') {
+                result = await postJsonRequest('/api/log-climb', {
+                    date_climbed: getTodayDateValueLocal(),
+                    peak_id: peakId
+                });
+                updatePeakTrackingPanel(panel, result.user_status);
+                setPeakTrackingMessage(panel, 'Climb logged successfully.', false);
+            }
+
+            if (actionName === 'toggle-bucket' && currentStatus !== 'climbed') {
+                const endpoint = currentStatus === 'bucket_listed'
+                    ? '/api/bucket-list/remove'
+                    : '/api/bucket-list/add';
+                result = await postJsonRequest(endpoint, { peak_id: peakId });
+                updatePeakTrackingPanel(panel, result.user_status);
+                setPeakTrackingMessage(
+                    panel,
+                    currentStatus === 'bucket_listed'
+                        ? 'Removed from your bucket list.'
+                        : 'Added to your bucket list.',
+                    false
+                );
+            }
+        } catch (error) {
+            setPeakTrackingMessage(panel, error.message || 'We could not update this peak right now.', true);
+        } finally {
+            button.classList.remove('is-loading');
+        }
+    });
 }
 
 function setAuthMode(type) {

@@ -280,6 +280,31 @@
     font-weight: 800;
 }
 
+.landing-map-status-prompt {
+    background: rgba(255, 255, 255, 0.62);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: 16px;
+    margin-top: 1.25rem;
+    padding: 1rem;
+}
+
+.landing-map-status-prompt__title {
+    color: var(--color-forest);
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+}
+
+.landing-map-status-prompt__copy {
+    color: var(--color-grey);
+    line-height: 1.6;
+    margin-bottom: 0.85rem;
+}
+
+.landing-map-status-prompt__actions {
+    margin-bottom: 0;
+}
+
 .landing-recent-submissions {
     background: rgba(255, 255, 255, 0.5);
     border-radius: 16px;
@@ -672,6 +697,10 @@
         align-items: flex-start;
         flex-direction: column;
         gap: 0.3rem;
+    }
+
+    .landing-map-status-prompt__actions {
+        flex-direction: column;
     }
 
     .landing-map-legend {

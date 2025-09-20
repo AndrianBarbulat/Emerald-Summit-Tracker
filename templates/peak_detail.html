@@ -1,23 +1,120 @@
 {% extends 'base.html' %}
+{% from 'macros/peak_status.html' import peak_status as render_peak_status %}
 
 {% block title %}{{ peak.name or 'Peak Detail' }}{% endblock %}
 
 {% block content %}
-<section class="section">
+<section class="section peak-detail-page">
     <div class="container">
         <a href="{{ url_for('summit_list') }}" class="button is-light mb-4">Back to summit list</a>
-        <div class="box">
-            <h1 class="title is-3">{{ peak.name or 'Unnamed Peak' }}</h1>
-            <div class="content">
-                <p><strong>Height Rank:</strong> {{ peak.height_rank or '-' }}</p>
-                <p><strong>Height:</strong> {{ peak.height_m or '-' }}{% if peak.height_m %}m{% endif %}</p>
-                <p><strong>Prominence:</strong> {{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</p>
-                <p><strong>County:</strong> {{ peak.county or '-' }}</p>
-                <p><strong>Province:</strong> {{ peak.province or '-' }}</p>
-                <p><strong>Range/Area:</strong> {{ peak.range_area or '-' }}</p>
-                <p><strong>OSI/OSNI Grid:</strong> {{ peak.osi_osni_grid or '-' }}</p>
+        <div class="columns is-variable is-6 is-multiline">
+            <div class="column is-12-tablet is-8-desktop">
+                <div class="box peak-detail-card">
+                    <div class="peak-detail-card__header">
+                        <div>
+                            <p class="peak-detail-card__eyebrow">Peak Detail</p>
+                            <h1 class="title is-3 peak-detail-card__title">{{ peak.name or 'Unnamed Peak' }}</h1>
+                        </div>
+                        <span class="tag is-light peak-detail-card__province">{{ peak.province or 'Unknown Province' }}</span>
+                    </div>
+
+                    <div class="peak-detail-card__stats">
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Height Rank</span>
+                            <span class="peak-detail-stat__value">{{ peak.height_rank or '-' }}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Height</span>
+                            <span class="peak-detail-stat__value">{{ peak.height_m or '-' }}{% if peak.height_m %}m{% endif %}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Prominence</span>
+                            <span class="peak-detail-stat__value">{{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">County</span>
+                            <span class="peak-detail-stat__value">{{ peak.county or '-' }}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Province</span>
+                            <span class="peak-detail-stat__value">{{ peak.province or '-' }}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Range/Area</span>
+                            <span class="peak-detail-stat__value">{{ peak.range_area or '-' }}</span>
+                        </div>
+                        <div class="peak-detail-stat peak-detail-stat--wide">
+                            <span class="peak-detail-stat__label">OSI/OSNI Grid</span>
+                            <span class="peak-detail-stat__value">{{ peak.osi_osni_grid or '-' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column is-12-tablet is-4-desktop">
+                {% if profile %}
+                <div class="box peak-detail-actions" data-peak-tracking data-peak-id="{{ peak.id }}" data-initial-status="{{ peak_status }}">
+                    <p class="peak-detail-actions__eyebrow">Tracking</p>
+                    <div class="peak-detail-actions__status" data-peak-status-chip>
+                        {{ render_peak_status(peak_status) }}
+                    </div>
+                    <p class="peak-detail-actions__copy">
+                        {% if peak_status == 'climbed' %}
+                        You have already logged this peak.
+                        {% elif peak_status == 'bucket_listed' %}
+                        This peak is saved to your bucket list.
+                        {% else %}
+                        Keep this peak on your radar or log a climb in one click.
+                        {% endif %}
+                    </p>
+                    <div class="buttons peak-detail-actions__buttons">
+                        <button
+                            type="button"
+                            class="button peak-detail-action-button peak-detail-action-button--log"
+                            data-peak-track-action="log-climb"
+                            {% if peak_status == 'climbed' %}disabled{% endif %}
+                        >
+                            <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
+                            <span>{% if peak_status == 'climbed' %}Climb Logged{% else %}Log Climb{% endif %}</span>
+                        </button>
+                        <button
+                            type="button"
+                            class="button peak-detail-action-button peak-detail-action-button--bucket{% if peak_status == 'bucket_listed' %} is-active{% endif %}"
+                            data-peak-track-action="toggle-bucket"
+                            data-bucket-active="{{ 'true' if peak_status == 'bucket_listed' else 'false' }}"
+                        >
+                            <span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>
+                            <span>{% if peak_status == 'bucket_listed' %}Remove from Bucket List{% else %}Add to Bucket List{% endif %}</span>
+                        </button>
+                    </div>
+                    <p class="peak-detail-actions__message" data-peak-tracking-message aria-live="polite"></p>
+                </div>
+                {% else %}
+                <div class="box status-prompt">
+                    <p class="status-prompt__title">Sign up to track peaks</p>
+                    <p class="status-prompt__copy">
+                        Create an account to save bucket-list peaks, log climbs, and see your progress across the map and summit list.
+                    </p>
+                    <div class="buttons status-prompt__actions">
+                        <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                        <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{% if profile %}
+<script>
+    window.peakStatusMarkup = Object.assign(window.peakStatusMarkup || {}, {
+        climbed: {{ render_peak_status('climbed') | tojson }},
+        bucket_listed: {{ render_peak_status('bucket_listed') | tojson }},
+        not_attempted: {{ render_peak_status('not_attempted') | tojson }}
+    });
+</script>
+{% endif %}
 {% endblock %}

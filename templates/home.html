@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/peak_status.html' import peak_status %}
 
 {% block title %}Emerald Summit Explorer - Dashboard{% endblock %}
 
@@ -61,13 +62,13 @@
                             <div class="columns is-multiline dashboard-progress-card__content">
                                 <div class="column is-6">
                                     <div class="mb-3 dashboard-progress-card__summary">
-                                        <span class="is-size-5">12 <span class="has-text-grey-light">/ 275</span></span>
-                                        <span class="tag is-success ml-2 dashboard-progress-card__status">4%</span>
+                                        <span class="is-size-5">{{ dashboard_progress.completed_count }} <span class="has-text-grey-light">/ {{ dashboard_progress.total_peaks }}</span></span>
+                                        <span class="tag is-success ml-2 dashboard-progress-card__status">{{ dashboard_progress.completion_percent }}%</span>
                                         <p class="has-text-grey dashboard-progress-card__caption">Peaks Completed</p>
                                     </div>
                                     
                                     <!-- Progress Bar -->
-                                    <progress class="progress is-success dashboard-progress-card__bar" value="12" max="275">4%</progress>
+                                    <progress class="progress is-success dashboard-progress-card__bar" value="{{ dashboard_progress.completed_count }}" max="{{ dashboard_progress.total_peaks or 1 }}">{{ dashboard_progress.completion_percent }}%</progress>
                                 </div>
                                 
                                 <div class="column is-6">
@@ -75,13 +76,25 @@
                                         <div class="column is-6 mb-3">
                                             <div class="dashboard-progress-card__stat">
                                                 <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">HIGHEST PEAK</p>
-                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">Carrauntoohil <span class="has-text-grey">(1038m)</span></p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">
+                                                    {% if dashboard_progress.highest_peak %}
+                                                    {{ dashboard_progress.highest_peak.name }} <span class="has-text-grey">({{ dashboard_progress.highest_peak.height_m or dashboard_progress.highest_peak.height }}m)</span>
+                                                    {% else %}
+                                                    No climbs yet
+                                                    {% endif %}
+                                                </p>
                                             </div>
                                         </div>
                                         <div class="column is-6 mb-3">
                                             <div class="dashboard-progress-card__stat">
                                                 <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">LAST PEAK</p>
-                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">Lugnaquilla <span class="has-text-grey">(925m)</span></p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">
+                                                    {% if dashboard_progress.latest_peak %}
+                                                    {{ dashboard_progress.latest_peak.name }} <span class="has-text-grey">({{ dashboard_progress.latest_peak.height_m or dashboard_progress.latest_peak.height }}m)</span>
+                                                    {% else %}
+                                                    No climbs yet
+                                                    {% endif %}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -271,62 +284,27 @@
                                 Suggested for You
                             </h2>
                             
-                            <!-- Peak 1 -->
-                            <div class="columns is-mobile mb-3 dashboard-peak-list__item">
+                            {% for peak in suggested_peaks %}
+                            <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-peak-list__item">
                                 <div class="column dashboard-peak-list__details">
-                                    <p class="has-text-weight-bold dashboard-peak-list__name">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Donegal</p>
+                                    <p class="has-text-weight-bold dashboard-peak-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ peak.height_m or peak.height }}m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">{{ peak.county or 'Unknown county' }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-peak-list__status">
-                                    <span class="tag is-warning is-light">Bucket List</span>
+                                    {{ peak_status(peak.user_status) }}
                                 </div>
                                 <div class="column is-narrow dashboard-peak-list__actions">
                                     <div class="buttons are-small">
-                                        <button class="button is-small is-success">View</button>
-                                        <button class="button is-small is-warning is-light">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
+                                        <a class="button is-small is-success" href="{{ url_for('peak_detail', peak_id=peak.id) }}">View</a>
+                                        <a class="button is-small is-light" href="{{ url_for('summit_list') }}">Track</a>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Peak 2 -->
-                            <div class="columns is-mobile mb-3 dashboard-peak-list__item">
-                                <div class="column dashboard-peak-list__details">
-                                    <p class="has-text-weight-bold dashboard-peak-list__name">Galtymore <span class="has-text-grey is-size-7">(918m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Tipperary</p>
-                                </div>
-                                <div class="column is-narrow dashboard-peak-list__status">
-                                    <span class="tag is-light">Not Attempted</span>
-                                </div>
-                                <div class="column is-narrow dashboard-peak-list__actions">
-                                    <div class="buttons are-small">
-                                        <button class="button is-small is-success">View</button>
-                                        <button class="button is-small is-warning is-light">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
+                            {% else %}
+                            <div class="dashboard-empty-state">
+                                You've already climbed everything in this suggestion set. Head to the summit list to find your next target.
                             </div>
-                            
-                            <!-- Peak 3 -->
-                            <div class="columns is-mobile dashboard-peak-list__item">
-                                <div class="column dashboard-peak-list__details">
-                                    <p class="has-text-weight-bold dashboard-peak-list__name">Mweelrea <span class="has-text-grey is-size-7">(814m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-peak-list__meta">Mayo</p>
-                                </div>
-                                <div class="column is-narrow dashboard-peak-list__status">
-                                    <span class="tag is-light">Not Attempted</span>
-                                </div>
-                                <div class="column is-narrow dashboard-peak-list__actions">
-                                    <div class="buttons are-small">
-                                        <button class="button is-small is-success">View</button>
-                                        <button class="button is-small is-warning is-light">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                            {% endfor %}
                         </div>
 
                         <!-- Bucket List Preview Card -->
@@ -336,49 +314,21 @@
                                 Your Bucket List
                             </h2>
                             
-                            <!-- Bucket Item 1 -->
-                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
+                            {% for peak in bucket_list_peaks %}
+                            <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-bucket-list__item">
                                 <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Errigal <span class="has-text-grey is-size-7">(751m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Donegal</p>
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ peak.height_m or peak.height }}m)</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">{{ peak.county or 'Unknown county' }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-bucket-list__status">
-                                    <span class="tag is-warning">Bucket List</span>
+                                    {{ peak_status(peak.user_status) }}
                                 </div>
                             </div>
-                            
-                            <!-- Bucket Item 2 -->
-                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
-                                <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Slieve Donard <span class="has-text-grey is-size-7">(850m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Down</p>
-                                </div>
-                                <div class="column is-narrow dashboard-bucket-list__status">
-                                    <span class="tag is-warning">Bucket List</span>
-                                </div>
+                            {% else %}
+                            <div class="dashboard-empty-state">
+                                No peaks saved yet. Add a few from the summit list and they'll show up here.
                             </div>
-                            
-                            <!-- Bucket Item 3 -->
-                            <div class="columns is-mobile mb-3 dashboard-bucket-list__item">
-                                <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Mount Leinster <span class="has-text-grey is-size-7">(794m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Carlow</p>
-                                </div>
-                                <div class="column is-narrow dashboard-bucket-list__status">
-                                    <span class="tag is-warning">Bucket List</span>
-                                </div>
-                            </div>
-                            
-                            <!-- Bucket Item 4 -->
-                            <div class="columns is-mobile dashboard-bucket-list__item">
-                                <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">Purple Mountain <span class="has-text-grey is-size-7">(832m)</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">Kerry</p>
-                                </div>
-                                <div class="column is-narrow dashboard-bucket-list__status">
-                                    <span class="tag is-warning">Bucket List</span>
-                                </div>
-                            </div>
+                            {% endfor %}
                             
                             <div class="has-text-centered mt-4 dashboard-card__footer-link">
                                 <a href="#" class="has-text-success">View Full Bucket List <i class="fas fa-arrow-right ml-1"></i></a>

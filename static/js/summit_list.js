@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const pageSize = Number(window.summitListConfig && window.summitListConfig.pageSize) || 25;
     const actionButtonsVisible = Boolean(window.summitListConfig && window.summitListConfig.actionButtonsVisible);
     const heightUnit = window.summitListConfig && window.summitListConfig.heightUnit === 'ft' ? 'ft' : 'm';
+    const statusMarkup = window.peakStatusMarkup || {};
     const statusColumnVisible = Boolean(window.summitListConfig && window.summitListConfig.statusColumnVisible);
     const provinces = ['Munster', 'Leinster', 'Ulster', 'Connacht'];
     const feetPerMeter = 3.28084;
@@ -52,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     const peaks = window.peaksData.map(function(peak) {
+        const initialStatus = normalizeStatusValue(peak.user_status);
         return {
             id: peak.id,
             peakKey: String(peak.id),
@@ -59,14 +61,14 @@ document.addEventListener('DOMContentLoaded', function() {
             nameKey: normalizeValue(peak.name),
             heightRank: toNumber(peak.height_rank),
             heightM: toNumber(peak.height_m || peak.height),
-            isBucketListed: Boolean(peak.is_bucket_listed || String(peak.user_status || '').trim().toLowerCase() === 'bucket'),
-            isClimbed: Boolean(peak.is_climbed || String(peak.user_status || '').trim().toLowerCase() === 'climbed'),
+            isBucketListed: Boolean(peak.is_bucket_listed || initialStatus === 'bucket_listed'),
+            isClimbed: Boolean(peak.is_climbed || initialStatus === 'climbed'),
             prominenceM: toNumber(peak.prominence_m),
             county: (peak.county || '').trim(),
             countyKey: normalizeValue(peak.county),
             province: (peak.province || '').trim(),
             provinceKey: normalizeValue(peak.province),
-            userStatus: String(peak.user_status || 'none').trim().toLowerCase()
+            userStatus: initialStatus
         };
     });
 
@@ -230,23 +232,27 @@ document.addEventListener('DOMContentLoaded', function() {
         return cardParts.join('');
     }
 
-    function renderStatus(status, showLabel) {
-        const normalizedStatus = status === 'climbed' || status === 'bucket' ? status : 'none';
-        const iconMap = {
-            climbed: 'fa-circle-check',
-            bucket: 'fa-bookmark',
-            none: 'fa-minus'
-        };
+    function renderStatus(status) {
+        const normalizedStatus = normalizeStatusValue(status);
+        if (statusMarkup[normalizedStatus]) {
+            return statusMarkup[normalizedStatus];
+        }
+
         const labelMap = {
             climbed: 'Climbed',
-            bucket: 'Bucket-listed',
-            none: 'Not attempted'
+            bucket_listed: 'Bucket Listed',
+            not_attempted: 'Not Attempted'
+        };
+        const iconMap = {
+            climbed: 'fa-circle-check',
+            bucket_listed: 'fa-bookmark',
+            not_attempted: 'fa-minus'
         };
 
         return [
-            '<span class="summit-status summit-status--', normalizedStatus, '" aria-label="', labelMap[normalizedStatus], '" title="', labelMap[normalizedStatus], '">',
-            '<span class="icon" aria-hidden="true"><i class="fas ', iconMap[normalizedStatus], '"></i></span>',
-            showLabel ? '<span>' + labelMap[normalizedStatus] + '</span>' : '',
+            '<span class="peak-status peak-status--', normalizedStatus.replace(/_/g, '-'), '" aria-label="', labelMap[normalizedStatus], '" title="', labelMap[normalizedStatus], '">',
+            '<span class="icon peak-status__icon" aria-hidden="true"><i class="fas ', iconMap[normalizedStatus], '"></i></span>',
+            '<span class="peak-status__label">', labelMap[normalizedStatus], '</span>',
             '</span>'
         ].join('');
     }
@@ -309,7 +315,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderBucketActionButton(peak, isPending) {
         const buttonClasses = ['button', 'is-small', 'summit-list-action-button', 'summit-list-action-button--bucket'];
-        const actionLabel = peak.isBucketListed ? 'Bucket Listed' : 'Add to Bucket List';
+        const actionLabel = peak.isClimbed
+            ? 'Already Climbed'
+            : (peak.isBucketListed ? 'Bucket Listed' : 'Add to Bucket List');
         if (peak.isBucketListed) {
             buttonClasses.push('is-active');
         }
@@ -319,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         return [
             '<button type="button" class="', buttonClasses.join(' '), '" data-action="toggle-bucket" data-peak-id="', peak.peakKey, '"',
-            isPending ? ' disabled' : '',
+            (isPending || peak.isClimbed) ? ' disabled' : '',
             ' title="', escapeHtml(actionLabel), '">',
             '<span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>',
             '<span>', escapeHtml(actionLabel), '</span>',
@@ -521,9 +529,9 @@ document.addEventListener('DOMContentLoaded', function() {
             return 'climbed';
         }
         if (peak.isBucketListed) {
-            return 'bucket';
+            return 'bucket_listed';
         }
-        return 'none';
+        return 'not_attempted';
     }
 
     function handleRowActionClick(event) {
@@ -698,7 +706,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         peak.isBucketListed = Boolean(responsePayload && responsePayload.is_bucket_listed);
         peak.isClimbed = Boolean(responsePayload && responsePayload.is_climbed);
-        peak.userStatus = getPeakStatus(peak);
+        peak.userStatus = normalizeStatusValue(responsePayload && responsePayload.user_status);
+        if (peak.userStatus === 'not_attempted') {
+            peak.userStatus = getPeakStatus(peak);
+        }
     }
 
     function findPeakByKey(peakKey) {
@@ -759,6 +770,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function normalizeValue(value) {
         return String(value || '').trim().toLowerCase();
+    }
+
+    function normalizeStatusValue(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+        if (normalized === 'bucket') {
+            return 'bucket_listed';
+        }
+        if (normalized === 'none') {
+            return 'not_attempted';
+        }
+        if (normalized === 'climbed' || normalized === 'bucket_listed' || normalized === 'not_attempted') {
+            return normalized;
+        }
+        return 'not_attempted';
     }
 
     function scheduleDebouncedFilters() {

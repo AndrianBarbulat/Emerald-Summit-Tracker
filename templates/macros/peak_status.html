@@ -1,0 +1,31 @@
+{% macro peak_status(status) -%}
+    {% set normalized = (status or 'not_attempted') | string | trim | lower %}
+    {% if normalized == 'bucket' %}
+        {% set normalized = 'bucket_listed' %}
+    {% elif normalized == 'none' %}
+        {% set normalized = 'not_attempted' %}
+    {% endif %}
+    {% if normalized not in ['climbed', 'bucket_listed', 'not_attempted'] %}
+        {% set normalized = 'not_attempted' %}
+    {% endif %}
+    {% set icon_map = {
+        'climbed': 'fa-circle-check',
+        'bucket_listed': 'fa-bookmark',
+        'not_attempted': 'fa-minus'
+    } %}
+    {% set label_map = {
+        'climbed': 'Climbed',
+        'bucket_listed': 'Bucket Listed',
+        'not_attempted': 'Not Attempted'
+    } %}
+    <span
+        class="peak-status peak-status--{{ normalized | replace('_', '-') }}"
+        aria-label="{{ label_map[normalized] }}"
+        title="{{ label_map[normalized] }}"
+    >
+        <span class="icon peak-status__icon" aria-hidden="true">
+            <i class="fas {{ icon_map[normalized] }}"></i>
+        </span>
+        <span class="peak-status__label">{{ label_map[normalized] }}</span>
+    </span>
+{%- endmacro %}

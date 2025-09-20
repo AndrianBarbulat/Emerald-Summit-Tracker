@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/peak_status.html' import peak_status %}
 
 {% block title %}All Irish Peaks{% endblock %}
 
@@ -114,6 +115,20 @@
 
             <div class="summit-list-results">
                 <p id="summit-results-count" class="summit-list-results__count">Showing 0 of 0 peaks</p>
+                {% if not profile %}
+                <div class="box summit-list-status-prompt">
+                    <div>
+                        <p class="summit-list-status-prompt__title">Sign up to track peaks</p>
+                        <p class="summit-list-status-prompt__copy">
+                            Create an account to see climbed and bucket-list status across the summit list, peak pages, and map.
+                        </p>
+                    </div>
+                    <div class="buttons summit-list-status-prompt__actions">
+                        <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                        <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                    </div>
+                </div>
+                {% endif %}
 
                 <div class="table-container summit-list-table-wrap">
                     <table class="table is-fullwidth summit-list-table">
@@ -157,6 +172,12 @@
 {% block extra_js %}
 <script>
     const peaksData = {{ peaks | tojson }};
+    const summitPeakStatuses = {{ peak_statuses | tojson }};
+    window.peakStatusMarkup = Object.assign(window.peakStatusMarkup || {}, {
+        climbed: {{ peak_status('climbed') | tojson }},
+        bucket_listed: {{ peak_status('bucket_listed') | tojson }},
+        not_attempted: {{ peak_status('not_attempted') | tojson }}
+    });
     const summitListConfig = {
         actionButtonsVisible: {{ 'true' if action_buttons_visible else 'false' }},
         heightUnit: {{ height_unit | tojson }},
@@ -164,6 +185,7 @@
         pageSize: 25
     };
     window.peaksData = peaksData;
+    window.summitPeakStatuses = summitPeakStatuses;
     window.summitListConfig = summitListConfig;
 </script>
 <script src="{{ url_for('static', filename='js/summit_list.js') }}"></script>

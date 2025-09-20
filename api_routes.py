@@ -18,6 +18,7 @@ from supabase_utils import (
     get_climb_by_id,
     get_comment_by_id,
     get_peak_by_id,
+    get_peak_statuses,
     get_profile_by_display_name,
     get_user_badges,
     get_user_bucket_list,
@@ -265,12 +266,11 @@ def _try_update_climb(climb_id: int, user_id: str, fields: dict):
 
 
 def _current_user_status(user_id: str, peak_id: int) -> dict:
-    climbed = get_user_has_climbed(user_id, peak_id) is not None
-    bucket_listed = is_bucket_listed(user_id, peak_id) is not None
+    peak_status = get_peak_statuses(user_id, [peak_id]).get(str(peak_id), "not_attempted")
     return {
-        "is_climbed": climbed,
-        "is_bucket_listed": bucket_listed,
-        "user_status": "climbed" if climbed else ("bucket" if bucket_listed else "none"),
+        "is_climbed": peak_status == "climbed",
+        "is_bucket_listed": peak_status == "bucket_listed",
+        "user_status": peak_status,
     }
 
 
@@ -310,28 +310,23 @@ def _augment_peaks_for_user(peaks: list[dict], user_id: str | None) -> list[dict
     if not user_id:
         return peaks
 
-    climbed_ids = {
-        str(climb.get("peak_id"))
-        for climb in get_user_climbs(user_id)
-        if climb.get("peak_id") is not None
-    }
-    bucket_ids = {
-        str(item.get("peak_id"))
-        for item in get_user_bucket_list(user_id)
-        if item.get("peak_id") is not None
-    }
+    peak_statuses = get_peak_statuses(
+        user_id,
+        [peak.get("id") for peak in peaks if peak.get("id") is not None],
+    )
 
     augmented = []
     for peak in peaks:
         peak_key = str(peak.get("id") or "")
-        is_climbed = peak_key in climbed_ids
-        is_bucket_listed = peak_key in bucket_ids
+        user_status = peak_statuses.get(peak_key, "not_attempted")
+        is_climbed = user_status == "climbed"
+        is_bucket_listed = user_status == "bucket_listed"
         augmented.append(
             {
                 **peak,
                 "is_climbed": is_climbed,
                 "is_bucket_listed": is_bucket_listed,
-                "user_status": "climbed" if is_climbed else ("bucket" if is_bucket_listed else "none"),
+                "user_status": user_status,
             }
         )
 

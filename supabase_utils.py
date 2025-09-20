@@ -238,6 +238,81 @@ def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
         return []
 
 
+def get_peak_statuses(user_id: str, peak_ids: List[Any]) -> Dict[str, str]:
+    normalized_ids: List[tuple[str, Any]] = []
+    seen_ids = set()
+    for peak_id in peak_ids or []:
+        if peak_id is None:
+            continue
+        peak_key = str(peak_id)
+        if not peak_key or peak_key in seen_ids:
+            continue
+        seen_ids.add(peak_key)
+        normalized_ids.append((peak_key, peak_id))
+
+    if not user_id or not normalized_ids:
+        return {}
+
+    raw_peak_ids = [raw_peak_id for _, raw_peak_id in normalized_ids]
+    status_map: Dict[str, str] = {
+        peak_key: "not_attempted"
+        for peak_key, _ in normalized_ids
+    }
+
+    climbed_peak_ids = set()
+    bucket_peak_ids = set()
+
+    try:
+        climbs_query = _table(TABLE_CLIMBS)
+        if climbs_query is not None:
+            climbs_response = (
+                climbs_query.select("peak_id")
+                .eq("user_id", user_id)
+                .in_("peak_id", raw_peak_ids)
+                .execute()
+            )
+            climbed_peak_ids = {
+                str(item.get("peak_id"))
+                for item in (climbs_response.data or [])
+                if item.get("peak_id") is not None
+            }
+    except Exception:
+        climbed_peak_ids = {
+            str(item.get("peak_id"))
+            for item in get_user_climbs(user_id)
+            if item.get("peak_id") is not None and str(item.get("peak_id")) in status_map
+        }
+
+    try:
+        bucket_query = _table(TABLE_BUCKET_LIST)
+        if bucket_query is not None:
+            bucket_response = (
+                bucket_query.select("peak_id")
+                .eq("user_id", user_id)
+                .in_("peak_id", raw_peak_ids)
+                .execute()
+            )
+            bucket_peak_ids = {
+                str(item.get("peak_id"))
+                for item in (bucket_response.data or [])
+                if item.get("peak_id") is not None
+            }
+    except Exception:
+        bucket_peak_ids = {
+            str(item.get("peak_id"))
+            for item in get_user_bucket_list(user_id)
+            if item.get("peak_id") is not None and str(item.get("peak_id")) in status_map
+        }
+
+    for peak_key in bucket_peak_ids:
+        status_map[peak_key] = "bucket_listed"
+
+    for peak_key in climbed_peak_ids:
+        status_map[peak_key] = "climbed"
+
+    return status_map
+
+
 def get_user_bucket_list(user_id: str) -> List[Dict[str, Any]]:
     try:
         query = _table(TABLE_BUCKET_LIST)

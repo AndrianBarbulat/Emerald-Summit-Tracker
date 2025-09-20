@@ -252,8 +252,8 @@
 }
 
 .dashboard-achievement-grid__status,
-.dashboard-peak-list__status .tag,
-.dashboard-bucket-list__status .tag {
+.dashboard-peak-list__status .peak-status,
+.dashboard-bucket-list__status .peak-status {
     border-radius: 999px;
     font-weight: 700;
 }
@@ -272,6 +272,15 @@
 .dashboard-peak-list__actions .buttons {
     justify-content: flex-end;
     margin-bottom: 0;
+}
+
+.dashboard-empty-state {
+    background: rgba(245, 241, 235, 0.68);
+    border: 1px dashed rgba(27, 67, 50, 0.18);
+    border-radius: var(--radius-md);
+    color: var(--color-grey);
+    line-height: 1.6;
+    padding: 1rem;
 }
 
 @media screen and (min-width: 769px) and (max-width: 1023px) {
@@ -357,6 +366,12 @@
     .dashboard-peak-list__actions,
     .dashboard-peak-list__status,
     .dashboard-bucket-list__status {
+        width: 100%;
+    }
+
+    .dashboard-peak-list__status .peak-status,
+    .dashboard-bucket-list__status .peak-status {
+        justify-content: center;
         width: 100%;
     }
 
