@@ -47,6 +47,16 @@
                             <span class="peak-detail-stat__label">OSI/OSNI Grid</span>
                             <span class="peak-detail-stat__value">{{ peak.osi_osni_grid or '-' }}</span>
                         </div>
+                        <div class="peak-detail-stat peak-detail-stat--wide">
+                            <span class="peak-detail-stat__label">Average Difficulty Rating</span>
+                            <span class="peak-detail-stat__value">
+                                {% if avg_difficulty is not none %}
+                                {{ '%.1f'|format(avg_difficulty) }}
+                                {% else %}
+                                Not rated yet
+                                {% endif %}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -59,9 +69,9 @@
                         {{ render_peak_status(peak_status) }}
                     </div>
                     <p class="peak-detail-actions__copy">
-                        {% if peak_status == 'climbed' %}
+                        {% if has_climbed %}
                         You have already logged this peak.
-                        {% elif peak_status == 'bucket_listed' %}
+                        {% elif is_bucket_listed %}
                         This peak is saved to your bucket list.
                         {% else %}
                         Keep this peak on your radar or log a climb in one click.
@@ -72,19 +82,19 @@
                             type="button"
                             class="button peak-detail-action-button peak-detail-action-button--log"
                             data-peak-track-action="log-climb"
-                            {% if peak_status == 'climbed' %}disabled{% endif %}
+                            {% if has_climbed %}disabled{% endif %}
                         >
                             <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
-                            <span>{% if peak_status == 'climbed' %}Climb Logged{% else %}Log Climb{% endif %}</span>
+                            <span>{% if has_climbed %}Climb Logged{% else %}Log Climb{% endif %}</span>
                         </button>
                         <button
                             type="button"
-                            class="button peak-detail-action-button peak-detail-action-button--bucket{% if peak_status == 'bucket_listed' %} is-active{% endif %}"
+                            class="button peak-detail-action-button peak-detail-action-button--bucket{% if is_bucket_listed %} is-active{% endif %}"
                             data-peak-track-action="toggle-bucket"
-                            data-bucket-active="{{ 'true' if peak_status == 'bucket_listed' else 'false' }}"
+                            data-bucket-active="{{ 'true' if is_bucket_listed else 'false' }}"
                         >
                             <span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>
-                            <span>{% if peak_status == 'bucket_listed' %}Remove from Bucket List{% else %}Add to Bucket List{% endif %}</span>
+                            <span>{% if is_bucket_listed %}Remove from Bucket List{% else %}Add to Bucket List{% endif %}</span>
                         </button>
                     </div>
                     <p class="peak-detail-actions__message" data-peak-tracking-message aria-live="polite"></p>
@@ -101,6 +111,108 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <div class="columns is-variable is-6 is-multiline">
+            {% if profile %}
+            <div class="column is-12">
+                <div class="box peak-detail-section">
+                    <div class="peak-detail-section__header">
+                        <div>
+                            <p class="peak-detail-section__eyebrow">Your Data</p>
+                            <h2 class="title is-5 peak-detail-section__title">Your Climb Logs</h2>
+                        </div>
+                        {% if has_climbed %}
+                        {{ render_peak_status('climbed') }}
+                        {% endif %}
+                    </div>
+
+                    {% if user_climbs %}
+                    <div class="peak-detail-list">
+                        {% for climb in user_climbs %}
+                        <article class="peak-detail-list-item">
+                            <div class="peak-detail-list-item__body">
+                                <div class="peak-detail-list-item__header">
+                                    <p class="peak-detail-list-item__title">
+                                        {{ climb.date_climbed[:10] if climb.date_climbed else 'Climb log' }}
+                                    </p>
+                                    {% if climb.difficulty_rating %}
+                                    <span class="tag is-light peak-detail-list-item__tag">{{ climb.difficulty_rating }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if climb.weather %}
+                                <p class="peak-detail-list-item__meta">Weather: {{ climb.weather }}</p>
+                                {% endif %}
+                                {% if climb.notes %}
+                                <p class="peak-detail-list-item__copy">{{ climb.notes }}</p>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="has-text-grey">You have not logged a climb for this peak yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="box peak-detail-section">
+                    <div class="peak-detail-section__header">
+                        <div>
+                            <p class="peak-detail-section__eyebrow">Community</p>
+                            <h2 class="title is-5 peak-detail-section__title">Recent Climbers</h2>
+                        </div>
+                    </div>
+
+                    {% if climbers %}
+                    <div class="peak-detail-list">
+                        {% for climber in climbers %}
+                        <article class="peak-detail-list-item">
+                            <div class="peak-detail-list-item__body">
+                                <div class="peak-detail-list-item__header">
+                                    <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
+                                    <p class="peak-detail-list-item__meta">{{ climber.date_climbed[:10] if climber.date_climbed else 'Recent climb' }}</p>
+                                </div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="has-text-grey">No climbers have logged this peak yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="box peak-detail-section">
+                    <div class="peak-detail-section__header">
+                        <div>
+                            <p class="peak-detail-section__eyebrow">Community</p>
+                            <h2 class="title is-5 peak-detail-section__title">Comments</h2>
+                        </div>
+                    </div>
+
+                    {% if comments %}
+                    <div class="peak-detail-list">
+                        {% for comment in comments %}
+                        <article class="peak-detail-list-item">
+                            <div class="peak-detail-list-item__body">
+                                <div class="peak-detail-list-item__header">
+                                    <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
+                                    <p class="peak-detail-list-item__meta">{{ comment.created_at[:10] if comment.created_at else 'Recent comment' }}</p>
+                                </div>
+                                <p class="peak-detail-list-item__copy">{{ comment.comment_text }}</p>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="has-text-grey">No comments yet for this peak.</p>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

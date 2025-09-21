@@ -6,10 +6,16 @@ from flask import Flask, abort, jsonify, render_template, request, redirect, ses
 from api_routes import api
 from supabase_utils import (
     get_all_peaks,
+    get_peak_average_difficulty,
     get_community_recent_climbs,
     get_peak_by_id,
+    get_peak_climbers_with_profiles,
+    get_peak_comments_with_profiles,
     get_user_climbs,
+    get_user_has_climbed,
+    get_user_peak_climbs,
     get_peak_statuses,
+    is_bucket_listed as get_bucket_list_entry,
     supabase,
 )
 
@@ -551,11 +557,20 @@ def peak_detail(peak_id: int):
     if peak is None:
         abort(404)
 
-    peak_statuses = get_peak_statuses(
-        context["profile"].get("id") if context["profile"] else None,
-        [peak_id],
-    )
-    peak_status = _normalize_peak_status(peak_statuses.get(str(peak_id)))
+    user_id = context["profile"].get("id") if context["profile"] else None
+    has_climbed = False
+    is_bucket_listed = False
+    user_climbs = []
+
+    if user_id:
+        has_climbed = get_user_has_climbed(user_id, peak_id) is not None
+        is_bucket_listed = get_bucket_list_entry(user_id, peak_id) is not None
+        user_climbs = get_user_peak_climbs(user_id, peak_id)
+
+    peak_status = "climbed" if has_climbed else ("bucket_listed" if is_bucket_listed else "not_attempted")
+    climbers = get_peak_climbers_with_profiles(peak_id, limit=5)
+    comments = get_peak_comments_with_profiles(peak_id)
+    avg_difficulty = get_peak_average_difficulty(peak_id)
 
     return render_template(
         "peak_detail.html",
@@ -563,9 +578,14 @@ def peak_detail(peak_id: int):
             **peak,
             "user_status": peak_status,
         },
+        avg_difficulty=avg_difficulty,
+        climbers=climbers,
+        comments=comments,
+        has_climbed=has_climbed,
+        is_bucket_listed=is_bucket_listed,
         peak_status=peak_status,
-        peak_statuses=peak_statuses,
-        active_page="summits",
+        user_climbs=user_climbs,
+        active_page="summit_list",
         **context,
     )
 

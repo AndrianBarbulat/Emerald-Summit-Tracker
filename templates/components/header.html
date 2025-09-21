@@ -35,7 +35,7 @@
                 </a>
                 <a
                     href="{{ url_for('summit_list') }}"
-                    class="navbar-item {% if active_page == 'summits' %}is-active{% endif %}"
+                    class="navbar-item {% if active_page in ['summits', 'summit_list'] %}is-active{% endif %}"
                 >
                     Summit List
                 </a>

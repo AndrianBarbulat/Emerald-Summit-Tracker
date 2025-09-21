@@ -216,6 +216,203 @@ def get_peak_climbers(peak_id: Any, limit: int = 5) -> List[Dict[str, Any]]:
         return []
 
 
+def _normalize_related_profile(profile_value: Any) -> Dict[str, Any]:
+    if isinstance(profile_value, dict):
+        return profile_value
+    if isinstance(profile_value, list) and profile_value:
+        first_profile = profile_value[0]
+        if isinstance(first_profile, dict):
+            return first_profile
+    return {}
+
+
+def _query_peak_climb_rows(
+    peak_id: Any,
+    user_id: Optional[str] = None,
+    limit: Optional[int] = None,
+    select_clause: str = "*",
+) -> List[Dict[str, Any]]:
+    select_variants = [select_clause]
+    if select_clause != "*":
+        select_variants.append("*")
+
+    for current_select in select_variants:
+        for order_field in ("date_climbed", "climbed_at", "created_at"):
+            try:
+                query = _table(TABLE_CLIMBS)
+                if query is None:
+                    return []
+                query = query.select(current_select).eq("peak_id", peak_id)
+                if user_id:
+                    query = query.eq("user_id", user_id)
+                query = query.order(order_field, desc=True)
+                if limit is not None:
+                    query = query.limit(limit)
+                response = query.execute()
+                return response.data or []
+            except Exception:
+                continue
+
+    try:
+        query = _table(TABLE_CLIMBS)
+        if query is None:
+            return []
+        query = query.select("*").eq("peak_id", peak_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        if limit is not None:
+            query = query.limit(limit)
+        response = query.execute()
+        return response.data or []
+    except Exception:
+        return []
+
+
+def _query_peak_comment_rows(peak_id: Any, select_clause: str = "*") -> List[Dict[str, Any]]:
+    select_variants = [select_clause]
+    if select_clause != "*":
+        select_variants.append("*")
+
+    for current_select in select_variants:
+        try:
+            query = _table(TABLE_COMMENTS)
+            if query is None:
+                return []
+            response = (
+                query.select(current_select)
+                .eq("peak_id", peak_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return response.data or []
+        except Exception:
+            continue
+
+    return []
+
+
+def _enrich_user_records(records: List[Dict[str, Any]], user_id_key: str = "user_id") -> List[Dict[str, Any]]:
+    if not records:
+        return []
+
+    profile_cache: Dict[str, Dict[str, Any]] = {}
+    enriched_records = []
+
+    for record in records:
+        current_record = dict(record or {})
+        user_id = str(current_record.get(user_id_key) or "").strip()
+        profile = _normalize_related_profile(current_record.get("profiles"))
+
+        if not profile and user_id:
+            if user_id not in profile_cache:
+                profile_cache[user_id] = get_user_profile(user_id) or {}
+            profile = profile_cache[user_id]
+
+        display_name = (
+            current_record.get("display_name")
+            or current_record.get("user_display_name")
+            or current_record.get("user_name")
+            or profile.get("display_name")
+            or (user_id[:8] if user_id else "Unknown")
+        )
+        avatar_url = current_record.get("avatar_url") or profile.get("avatar_url")
+
+        current_record["profile"] = profile
+        current_record["display_name"] = display_name
+        current_record["avatar_url"] = avatar_url
+        enriched_records.append(current_record)
+
+    return enriched_records
+
+
+def get_peak_climb_logs(peak_id: Any, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    climbs = _query_peak_climb_rows(peak_id, limit=limit)
+    normalized_climbs = []
+    for climb in climbs:
+        current_climb = dict(climb or {})
+        current_climb["date_climbed"] = (
+            current_climb.get("date_climbed")
+            or current_climb.get("climbed_at")
+            or current_climb.get("created_at")
+        )
+        current_climb["difficulty_rating"] = (
+            current_climb.get("difficulty_rating")
+            or current_climb.get("difficulty")
+        )
+        normalized_climbs.append(current_climb)
+    return normalized_climbs
+
+
+def get_user_peak_climbs(user_id: str, peak_id: Any) -> List[Dict[str, Any]]:
+    climbs = _query_peak_climb_rows(peak_id, user_id=user_id)
+    normalized_climbs = []
+    for climb in climbs:
+        current_climb = dict(climb or {})
+        current_climb["date_climbed"] = (
+            current_climb.get("date_climbed")
+            or current_climb.get("climbed_at")
+            or current_climb.get("created_at")
+        )
+        current_climb["difficulty_rating"] = (
+            current_climb.get("difficulty_rating")
+            or current_climb.get("difficulty")
+        )
+        normalized_climbs.append(current_climb)
+    return normalized_climbs
+
+
+def get_peak_climbers_with_profiles(peak_id: Any, limit: int = 5) -> List[Dict[str, Any]]:
+    climbs = _query_peak_climb_rows(
+        peak_id,
+        limit=limit,
+        select_clause="*, profiles(id, display_name, avatar_url)",
+    )
+    enriched_climbs = _enrich_user_records(climbs)
+    normalized_climbs = []
+    for climb in enriched_climbs:
+        current_climb = dict(climb or {})
+        current_climb["date_climbed"] = (
+            current_climb.get("date_climbed")
+            or current_climb.get("climbed_at")
+            or current_climb.get("created_at")
+        )
+        normalized_climbs.append(current_climb)
+    return normalized_climbs
+
+
+def get_peak_average_difficulty(peak_id: Any) -> Optional[float]:
+    difficulty_scores = {
+        "easy": 1.0,
+        "moderate": 2.0,
+        "medium": 2.0,
+        "hard": 3.0,
+        "challenging": 3.0,
+        "very hard": 4.0,
+        "strenuous": 4.0,
+        "expert": 5.0,
+        "extreme": 5.0,
+    }
+
+    difficulty_values = []
+    for climb in get_peak_climb_logs(peak_id):
+        raw_difficulty = climb.get("difficulty_rating") or climb.get("difficulty")
+        if raw_difficulty is None or str(raw_difficulty).strip() == "":
+            continue
+
+        try:
+            difficulty_values.append(float(raw_difficulty))
+            continue
+        except (TypeError, ValueError):
+            normalized_difficulty = str(raw_difficulty).strip().lower()
+            if normalized_difficulty in difficulty_scores:
+                difficulty_values.append(difficulty_scores[normalized_difficulty])
+
+    if not difficulty_values:
+        return None
+
+    return round(sum(difficulty_values) / len(difficulty_values), 1)
+
+
 def get_user_has_climbed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_CLIMBS)
@@ -390,6 +587,24 @@ def get_peak_comments(peak_id: Any) -> List[Dict[str, Any]]:
         return response.data or []
     except Exception:
         return []
+
+
+def get_peak_comments_with_profiles(peak_id: Any) -> List[Dict[str, Any]]:
+    comments = _query_peak_comment_rows(
+        peak_id,
+        select_clause="*, profiles(id, display_name, avatar_url)",
+    )
+    enriched_comments = _enrich_user_records(comments)
+    normalized_comments = []
+    for comment in enriched_comments:
+        current_comment = dict(comment or {})
+        current_comment["comment_text"] = (
+            current_comment.get("comment_text")
+            or current_comment.get("text")
+            or ""
+        )
+        normalized_comments.append(current_comment)
+    return normalized_comments
 
 
 def get_comment_by_id(comment_id: Any) -> Optional[Dict[str, Any]]:
