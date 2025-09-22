@@ -3,11 +3,20 @@
 
 {% block title %}{{ peak.name or 'Peak Detail' }}{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
 {% block content %}
 {% set peak_height_m = peak.height_m or peak.height %}
 {% set peak_height_ft = ((peak_height_m | float) * 3.28084) | round | int if peak_height_m else none %}
+{% set peak_prominence_ft = ((peak.prominence_m | float) * 3.28084) | round | int if peak.prominence_m else none %}
 {% set peak_rank = peak.height_rank | int if peak.height_rank else none %}
 {% set province_key = (peak.province or '') | lower | replace(' ', '-') %}
+{% set peak_lat_display = '%.6f'|format(peak.latitude) if peak.latitude is not none else '-' %}
+{% set peak_lng_display = '%.6f'|format(peak.longitude) if peak.longitude is not none else '-' %}
+{% set peak_isolation = peak.isolation_km or peak.isolation or peak.isolation_m %}
+{% set peak_topo_map = peak.topo_map or peak.topographic_map or peak.topo_map_sheet or peak.map_sheet or 'OpenTopoMap' %}
 
 <section class="peak-detail-hero">
     <div class="container">
@@ -90,35 +99,108 @@
         {% endif %}
 
         <div class="columns is-variable is-6 is-multiline">
-            <div class="column is-12">
-                <div class="box peak-detail-card">
+            <div class="column is-12-tablet is-7-desktop">
+                <div class="box peak-detail-card peak-detail-info-box">
                     <div class="peak-detail-section__header">
                         <div>
                             <p class="peak-detail-section__eyebrow">Overview</p>
-                            <h2 class="title is-5 peak-detail-section__title">Peak Stats</h2>
+                            <h2 class="title is-5 peak-detail-section__title">Peak Information</h2>
                         </div>
                     </div>
 
-                    <div class="peak-detail-card__stats">
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Range/Area</span>
-                            <span class="peak-detail-stat__value">{{ peak.range_area or '-' }}</span>
+                    <div class="peak-detail-info-grid">
+                        <div class="peak-detail-info-grid__column">
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Range/Area</span>
+                                <span class="peak-detail-info-row__value">{{ peak.range_area or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">County</span>
+                                <span class="peak-detail-info-row__value">{{ peak.county or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Province</span>
+                                <span class="peak-detail-info-row__value">{{ peak.province or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Height</span>
+                                <span class="peak-detail-info-row__value">{{ peak_height_m or '-' }}{% if peak_height_m %}m{% endif %} / {{ peak_height_ft or '-' }}{% if peak_height_ft %}ft{% endif %}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Prominence</span>
+                                <span class="peak-detail-info-row__value">{{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %} / {{ peak_prominence_ft or '-' }}{% if peak_prominence_ft %}ft{% endif %}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Isolation</span>
+                                <span class="peak-detail-info-row__value">
+                                    {% if peak.isolation_km %}
+                                    {{ peak.isolation_km }} km
+                                    {% else %}
+                                    {{ peak_isolation or '-' }}
+                                    {% endif %}
+                                </span>
+                            </div>
                         </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">OSI/OSNI Grid</span>
-                            <span class="peak-detail-stat__value">{{ peak.osi_osni_grid or '-' }}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Average Difficulty Rating</span>
-                            <span class="peak-detail-stat__value">
-                                {% if avg_difficulty is not none %}
-                                {{ '%.1f'|format(avg_difficulty) }}
-                                {% else %}
-                                Not rated yet
-                                {% endif %}
-                            </span>
+
+                        <div class="peak-detail-info-grid__column">
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Height Rank</span>
+                                <span class="peak-detail-info-row__value">{{ peak.height_rank or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Prominence Rank</span>
+                                <span class="peak-detail-info-row__value">{{ peak.prominence_rank or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">OSI Grid Ref</span>
+                                <span class="peak-detail-info-row__value">{{ peak.osi_osni_grid or '-' }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Latitude</span>
+                                <span class="peak-detail-info-row__value">{{ peak_lat_display }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Longitude</span>
+                                <span class="peak-detail-info-row__value">{{ peak_lng_display }}</span>
+                            </div>
+                            <div class="peak-detail-info-row">
+                                <span class="peak-detail-info-row__label">Topo Map</span>
+                                <span class="peak-detail-info-row__value">{{ peak_topo_map }}</span>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="column is-12-tablet is-5-desktop">
+                <div class="box peak-detail-map-box">
+                    <div class="peak-detail-section__header peak-detail-map-box__header">
+                        <div>
+                            <p class="peak-detail-section__eyebrow">Location</p>
+                            <h2 class="title is-5 peak-detail-section__title">Topo Map</h2>
+                        </div>
+                        {% if avg_difficulty is not none %}
+                        <span class="peak-detail-map-box__badge">Avg. difficulty {{ '%.1f'|format(avg_difficulty) }}</span>
+                        {% endif %}
+                    </div>
+
+                    {% if peak.latitude is not none and peak.longitude is not none %}
+                    <div class="peak-detail-map-frame">
+                        <div id="peak-detail-map" class="peak-detail-map-canvas"></div>
+                    </div>
+                    <a
+                        class="peak-detail-map-link"
+                        href="https://www.openstreetmap.org/?mlat={{ peak_lat_display }}&mlon={{ peak_lng_display }}#map=13/{{ peak_lat_display }}/{{ peak_lng_display }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        View on OpenStreetMap
+                    </a>
+                    {% else %}
+                    <div class="peak-detail-map-empty">
+                        Coordinates are not available for this peak yet.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -229,6 +311,13 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const peakLat = {{ peak.latitude | tojson }};
+    const peakLng = {{ peak.longitude | tojson }};
+    window.peakLat = peakLat;
+    window.peakLng = peakLng;
+</script>
 {% if profile %}
 <script>
     window.peakStatusMarkup = Object.assign(window.peakStatusMarkup || {}, {

@@ -130,6 +130,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const peakDetailMapElement = document.getElementById('peak-detail-map');
+    const rawPeakLat = window.peakLat;
+    const rawPeakLng = window.peakLng;
+    const peakLat = rawPeakLat === null || rawPeakLat === undefined ? NaN : Number(rawPeakLat);
+    const peakLng = rawPeakLng === null || rawPeakLng === undefined ? NaN : Number(rawPeakLng);
+    if (peakDetailMapElement && window.L && Number.isFinite(peakLat) && Number.isFinite(peakLng)) {
+        const peakDetailMap = L.map('peak-detail-map').setView([peakLat, peakLng], 13);
+
+        L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
+        }).addTo(peakDetailMap);
+
+        L.circleMarker([peakLat, peakLng], {
+            color: '#FFFFFF',
+            fillColor: '#D4A853',
+            fillOpacity: 1,
+            radius: 9,
+            weight: 3
+        }).addTo(peakDetailMap);
+    }
+
     document.querySelectorAll('[data-peak-tracking]').forEach(function(panel) {
         initPeakTrackingPanel(panel);
     });

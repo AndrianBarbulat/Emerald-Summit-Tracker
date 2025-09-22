@@ -302,6 +302,106 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.peak-detail-info-box {
+    height: 100%;
+}
+
+.peak-detail-info-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.peak-detail-info-grid__column {
+    display: grid;
+    gap: 0.95rem;
+}
+
+.peak-detail-info-row {
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem;
+}
+
+.peak-detail-info-row__label {
+    color: var(--color-grey);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.peak-detail-info-row__value {
+    color: var(--color-slate);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.peak-detail-map-box {
+    height: 100%;
+}
+
+.peak-detail-map-box__header {
+    align-items: center;
+}
+
+.peak-detail-map-box__badge {
+    background: rgba(212, 168, 83, 0.16);
+    border: 1px solid rgba(212, 168, 83, 0.28);
+    border-radius: 999px;
+    color: #9a741f;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.45rem 0.75rem;
+    white-space: nowrap;
+}
+
+.peak-detail-map-frame {
+    border: 1px solid rgba(27, 67, 50, 0.12);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.peak-detail-map-canvas {
+    height: 350px;
+}
+
+.peak-detail-map-canvas.leaflet-container {
+    background: #dbe7d8;
+}
+
+.peak-detail-map-link {
+    color: var(--color-sage);
+    display: inline-flex;
+    font-weight: 700;
+    margin-top: 0.95rem;
+}
+
+.peak-detail-map-link:hover,
+.peak-detail-map-link:focus-visible {
+    color: var(--color-forest);
+    text-decoration: underline;
+}
+
+.peak-detail-map-empty {
+    align-items: center;
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px dashed rgba(27, 67, 50, 0.16);
+    border-radius: var(--radius-md);
+    color: var(--color-grey);
+    display: flex;
+    justify-content: center;
+    min-height: 350px;
+    padding: 1.25rem;
+    text-align: center;
+}
+
 .peak-detail-stat {
     background: rgba(245, 241, 235, 0.72);
     border: 1px solid rgba(27, 67, 50, 0.08);
@@ -1050,6 +1150,10 @@ body {
     }
 
     .peak-detail-card__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-info-grid {
         grid-template-columns: 1fr;
     }
 

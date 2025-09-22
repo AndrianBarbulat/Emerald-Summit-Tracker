@@ -571,11 +571,15 @@ def peak_detail(peak_id: int):
     climbers = get_peak_climbers_with_profiles(peak_id, limit=5)
     comments = get_peak_comments_with_profiles(peak_id)
     avg_difficulty = get_peak_average_difficulty(peak_id)
+    peak_latitude = _to_float(peak.get("latitude") or peak.get("lat"))
+    peak_longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
 
     return render_template(
         "peak_detail.html",
         peak={
             **peak,
+            "latitude": peak_latitude,
+            "longitude": peak_longitude,
             "user_status": peak_status,
         },
         avg_difficulty=avg_difficulty,
