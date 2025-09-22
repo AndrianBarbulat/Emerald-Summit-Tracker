@@ -359,7 +359,7 @@ function updatePeakTrackingPanel(panel, status) {
         const logLabel = logButton.querySelector('span:last-child');
         logButton.disabled = normalizedStatus === 'climbed';
         if (logLabel) {
-            logLabel.textContent = normalizedStatus === 'climbed' ? 'Climb Logged' : 'Log Climb';
+            logLabel.textContent = normalizedStatus === 'climbed' ? 'Climbed \u2713' : 'Mark as Climbed';
         }
     }
 
@@ -370,9 +370,7 @@ function updatePeakTrackingPanel(panel, status) {
         bucketButton.classList.toggle('is-active', isBucketListed);
         bucketButton.disabled = normalizedStatus === 'climbed';
         if (bucketLabel) {
-            bucketLabel.textContent = normalizedStatus === 'climbed'
-                ? 'Already Climbed'
-                : (isBucketListed ? 'Remove from Bucket List' : 'Add to Bucket List');
+            bucketLabel.textContent = isBucketListed ? 'In Bucket List \u2713' : 'Add to Bucket List';
         }
     }
 

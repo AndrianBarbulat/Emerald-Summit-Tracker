@@ -4,50 +4,111 @@
 {% block title %}{{ peak.name or 'Peak Detail' }}{% endblock %}
 
 {% block content %}
+{% set peak_height_m = peak.height_m or peak.height %}
+{% set peak_height_ft = ((peak_height_m | float) * 3.28084) | round | int if peak_height_m else none %}
+{% set peak_rank = peak.height_rank | int if peak.height_rank else none %}
+{% set province_key = (peak.province or '') | lower | replace(' ', '-') %}
+
+<section class="peak-detail-hero">
+    <div class="container">
+        <a href="{{ url_for('summit_list') }}" class="button peak-detail-hero__back">
+            <span class="icon" aria-hidden="true"><i class="fas fa-arrow-left"></i></span>
+            <span>Back to summit list</span>
+        </a>
+
+        <div class="peak-detail-hero__layout{% if profile %} peak-detail-hero__layout--with-actions{% endif %}">
+            <div class="peak-detail-hero__content">
+                <p class="peak-detail-hero__eyebrow">Peak Detail</p>
+                <h1 class="title peak-detail-hero__title">{{ peak.name or 'Unnamed Peak' }}</h1>
+
+                {% if profile %}
+                <div class="peak-detail-hero__status" data-peak-tracking data-peak-id="{{ peak.id }}" data-initial-status="{{ peak_status }}">
+                    <div class="peak-detail-hero__status-chip" data-peak-status-chip>
+                        {{ render_peak_status(peak_status) }}
+                    </div>
+                    <div class="buttons peak-detail-actions__buttons peak-detail-hero__buttons">
+                        <button
+                            type="button"
+                            class="button peak-detail-action-button peak-detail-action-button--log"
+                            data-peak-track-action="log-climb"
+                            {% if has_climbed %}disabled{% endif %}
+                        >
+                            <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
+                            <span>{% if has_climbed %}Climbed &#10003;{% else %}Mark as Climbed{% endif %}</span>
+                        </button>
+                        <button
+                            type="button"
+                            class="button peak-detail-action-button peak-detail-action-button--bucket{% if is_bucket_listed %} is-active{% endif %}"
+                            data-peak-track-action="toggle-bucket"
+                            data-bucket-active="{{ 'true' if is_bucket_listed else 'false' }}"
+                            {% if has_climbed %}disabled{% endif %}
+                        >
+                            <span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>
+                            <span>{% if is_bucket_listed %}In Bucket List &#10003;{% else %}Add to Bucket List{% endif %}</span>
+                        </button>
+                    </div>
+                    <p class="peak-detail-actions__message peak-detail-hero__message" data-peak-tracking-message aria-live="polite"></p>
+                </div>
+                {% endif %}
+
+                <div class="peak-detail-hero__pills">
+                    <span class="peak-detail-pill peak-detail-pill--rank{% if peak_rank == 1 %} peak-detail-pill--rank-highlight{% endif %}">
+                        {% if peak_rank == 1 %}
+                        #1 Highest
+                        {% elif peak_rank %}
+                        #{{ peak_rank }} Height Rank
+                        {% else %}
+                        Height Rank Unknown
+                        {% endif %}
+                    </span>
+                    <span class="peak-detail-pill">Height {{ peak_height_m or '-' }}{% if peak_height_m %}m{% endif %}</span>
+                    <span class="peak-detail-pill">Height {{ peak_height_ft or '-' }}{% if peak_height_ft %}ft{% endif %}</span>
+                    <span class="peak-detail-pill">Prominence {{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</span>
+                    <span class="peak-detail-pill">County {{ peak.county or '-' }}</span>
+                    <span class="peak-detail-pill peak-detail-pill--province peak-detail-pill--province-{{ province_key if province_key else 'default' }}">
+                        {{ peak.province or 'Unknown Province' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="section peak-detail-page">
     <div class="container">
-        <a href="{{ url_for('summit_list') }}" class="button is-light mb-4">Back to summit list</a>
+        {% if not profile %}
+        <div class="box status-prompt peak-detail-page__prompt">
+            <p class="status-prompt__title">Sign up to track peaks</p>
+            <p class="status-prompt__copy">
+                Create an account to save bucket-list peaks, log climbs, and see your progress across the map and summit list.
+            </p>
+            <div class="buttons status-prompt__actions">
+                <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="columns is-variable is-6 is-multiline">
-            <div class="column is-12-tablet is-8-desktop">
+            <div class="column is-12">
                 <div class="box peak-detail-card">
-                    <div class="peak-detail-card__header">
+                    <div class="peak-detail-section__header">
                         <div>
-                            <p class="peak-detail-card__eyebrow">Peak Detail</p>
-                            <h1 class="title is-3 peak-detail-card__title">{{ peak.name or 'Unnamed Peak' }}</h1>
+                            <p class="peak-detail-section__eyebrow">Overview</p>
+                            <h2 class="title is-5 peak-detail-section__title">Peak Stats</h2>
                         </div>
-                        <span class="tag is-light peak-detail-card__province">{{ peak.province or 'Unknown Province' }}</span>
                     </div>
 
                     <div class="peak-detail-card__stats">
                         <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Height Rank</span>
-                            <span class="peak-detail-stat__value">{{ peak.height_rank or '-' }}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Height</span>
-                            <span class="peak-detail-stat__value">{{ peak.height_m or '-' }}{% if peak.height_m %}m{% endif %}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Prominence</span>
-                            <span class="peak-detail-stat__value">{{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">County</span>
-                            <span class="peak-detail-stat__value">{{ peak.county or '-' }}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Province</span>
-                            <span class="peak-detail-stat__value">{{ peak.province or '-' }}</span>
-                        </div>
-                        <div class="peak-detail-stat">
                             <span class="peak-detail-stat__label">Range/Area</span>
                             <span class="peak-detail-stat__value">{{ peak.range_area or '-' }}</span>
                         </div>
-                        <div class="peak-detail-stat peak-detail-stat--wide">
+                        <div class="peak-detail-stat">
                             <span class="peak-detail-stat__label">OSI/OSNI Grid</span>
                             <span class="peak-detail-stat__value">{{ peak.osi_osni_grid or '-' }}</span>
                         </div>
-                        <div class="peak-detail-stat peak-detail-stat--wide">
+                        <div class="peak-detail-stat">
                             <span class="peak-detail-stat__label">Average Difficulty Rating</span>
                             <span class="peak-detail-stat__value">
                                 {% if avg_difficulty is not none %}
@@ -59,58 +120,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="column is-12-tablet is-4-desktop">
-                {% if profile %}
-                <div class="box peak-detail-actions" data-peak-tracking data-peak-id="{{ peak.id }}" data-initial-status="{{ peak_status }}">
-                    <p class="peak-detail-actions__eyebrow">Tracking</p>
-                    <div class="peak-detail-actions__status" data-peak-status-chip>
-                        {{ render_peak_status(peak_status) }}
-                    </div>
-                    <p class="peak-detail-actions__copy">
-                        {% if has_climbed %}
-                        You have already logged this peak.
-                        {% elif is_bucket_listed %}
-                        This peak is saved to your bucket list.
-                        {% else %}
-                        Keep this peak on your radar or log a climb in one click.
-                        {% endif %}
-                    </p>
-                    <div class="buttons peak-detail-actions__buttons">
-                        <button
-                            type="button"
-                            class="button peak-detail-action-button peak-detail-action-button--log"
-                            data-peak-track-action="log-climb"
-                            {% if has_climbed %}disabled{% endif %}
-                        >
-                            <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
-                            <span>{% if has_climbed %}Climb Logged{% else %}Log Climb{% endif %}</span>
-                        </button>
-                        <button
-                            type="button"
-                            class="button peak-detail-action-button peak-detail-action-button--bucket{% if is_bucket_listed %} is-active{% endif %}"
-                            data-peak-track-action="toggle-bucket"
-                            data-bucket-active="{{ 'true' if is_bucket_listed else 'false' }}"
-                        >
-                            <span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>
-                            <span>{% if is_bucket_listed %}Remove from Bucket List{% else %}Add to Bucket List{% endif %}</span>
-                        </button>
-                    </div>
-                    <p class="peak-detail-actions__message" data-peak-tracking-message aria-live="polite"></p>
-                </div>
-                {% else %}
-                <div class="box status-prompt">
-                    <p class="status-prompt__title">Sign up to track peaks</p>
-                    <p class="status-prompt__copy">
-                        Create an account to save bucket-list peaks, log climbs, and see your progress across the map and summit list.
-                    </p>
-                    <div class="buttons status-prompt__actions">
-                        <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
-                        <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
-                    </div>
-                </div>
-                {% endif %}
             </div>
         </div>
 

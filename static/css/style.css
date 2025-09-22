@@ -121,6 +121,163 @@ body {
     margin-bottom: 0;
 }
 
+.peak-detail-hero {
+    background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.12), transparent 24%),
+        linear-gradient(135deg, var(--color-forest) 0%, #24553f 52%, var(--color-sage) 100%);
+    overflow: hidden;
+    padding: 2rem 0 2.5rem;
+    position: relative;
+}
+
+.peak-detail-hero::before {
+    background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.08), transparent 38%),
+        radial-gradient(circle at 80% 22%, rgba(212, 168, 83, 0.16), transparent 22%);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+}
+
+.peak-detail-hero .container {
+    position: relative;
+    z-index: 1;
+}
+
+.peak-detail-hero__back {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: var(--color-white);
+    margin-bottom: 1.4rem;
+}
+
+.peak-detail-hero__back:hover,
+.peak-detail-hero__back:focus-visible {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--color-white);
+}
+
+.peak-detail-hero__layout {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.peak-detail-hero__layout--with-actions {
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+.peak-detail-hero__content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.peak-detail-hero__eyebrow {
+    color: rgba(216, 243, 220, 0.82);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    margin-bottom: 0.7rem;
+    text-transform: uppercase;
+}
+
+.peak-detail-hero__title {
+    color: var(--color-white);
+    font-size: clamp(2.35rem, 4vw, 3.65rem);
+    letter-spacing: -0.04em;
+    line-height: 0.98;
+    margin-bottom: 1.25rem;
+}
+
+.peak-detail-hero__status {
+    display: grid;
+    gap: 1rem;
+    justify-items: flex-end;
+    max-width: 28rem;
+}
+
+.peak-detail-hero__status-chip .peak-status {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+.peak-detail-hero__message {
+    color: var(--color-light-green);
+    margin-top: 0;
+    text-align: right;
+}
+
+.peak-detail-hero__buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    justify-content: flex-end;
+    margin-bottom: 0;
+}
+
+.peak-detail-hero__buttons .peak-detail-action-button {
+    min-width: 13rem;
+    width: auto;
+}
+
+.peak-detail-hero__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.peak-detail-pill {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    color: var(--color-white);
+    display: inline-flex;
+    font-size: 0.94rem;
+    font-weight: 700;
+    min-height: 2.6rem;
+    padding: 0.6rem 0.95rem;
+    white-space: nowrap;
+}
+
+.peak-detail-pill--rank-highlight {
+    background: rgba(212, 168, 83, 0.18);
+    border-color: rgba(212, 168, 83, 0.45);
+    color: #ffe7ae;
+}
+
+.peak-detail-pill--province {
+    border-width: 0;
+}
+
+.peak-detail-pill--province-munster {
+    background: #74C69D;
+    color: #17372c;
+}
+
+.peak-detail-pill--province-leinster {
+    background: #5B8FB9;
+    color: var(--color-white);
+}
+
+.peak-detail-pill--province-ulster {
+    background: #E67E22;
+    color: var(--color-white);
+}
+
+.peak-detail-pill--province-connacht {
+    background: #8E6BB5;
+    color: var(--color-white);
+}
+
+.peak-detail-pill--province-default {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--color-white);
+}
+
 .peak-detail-page {
     background:
         radial-gradient(circle at top right, rgba(116, 198, 157, 0.1), transparent 28%),
@@ -128,46 +285,21 @@ body {
     min-height: calc(100vh - 52px);
 }
 
+.peak-detail-page__prompt {
+    margin-bottom: 1.5rem;
+}
+
 .peak-detail-card,
-.peak-detail-actions {
+.peak-detail-section {
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid rgba(27, 67, 50, 0.1);
     box-shadow: var(--shadow-md);
 }
 
-.peak-detail-card__header {
-    align-items: flex-start;
-    display: flex;
-    gap: 1rem;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-}
-
-.peak-detail-card__eyebrow,
-.peak-detail-actions__eyebrow {
-    color: var(--color-sage);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    margin-bottom: 0.6rem;
-    text-transform: uppercase;
-}
-
-.peak-detail-card__title {
-    color: var(--color-forest);
-    margin-bottom: 0;
-}
-
-.peak-detail-card__province {
-    border-radius: 999px;
-    color: var(--color-forest);
-    font-weight: 700;
-}
-
 .peak-detail-card__stats {
     display: grid;
     gap: 0.9rem;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .peak-detail-stat {
@@ -199,20 +331,13 @@ body {
     line-height: 1.5;
 }
 
-.peak-detail-actions__status {
-    margin-bottom: 1rem;
-}
-
-.peak-detail-actions__copy {
-    color: var(--color-grey);
-    line-height: 1.6;
-    margin-bottom: 1rem;
-}
-
 .peak-detail-actions__buttons {
     display: flex;
-    flex-direction: column;
     gap: 0.75rem;
+    justify-content: flex-end;
+    margin-bottom: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
 }
 
 .peak-detail-action-button {
@@ -221,30 +346,47 @@ body {
 }
 
 .peak-detail-action-button--log {
-    background: var(--color-forest);
-    border-color: var(--color-forest);
+    background: #2e8b57;
+    border-color: #2e8b57;
     color: var(--color-white);
 }
 
 .peak-detail-action-button--log:hover,
 .peak-detail-action-button--log:focus-visible {
-    background: #163727;
-    border-color: #163727;
+    background: #256f45;
+    border-color: #256f45;
     color: var(--color-white);
 }
 
 .peak-detail-action-button--bucket {
-    background: rgba(212, 168, 83, 0.12);
-    border-color: rgba(212, 168, 83, 0.28);
-    color: #9a741f;
+    background: var(--color-gold);
+    border-color: var(--color-gold);
+    color: var(--color-forest);
 }
 
 .peak-detail-action-button--bucket:hover,
 .peak-detail-action-button--bucket:focus-visible,
 .peak-detail-action-button--bucket.is-active {
-    background: rgba(212, 168, 83, 0.92);
-    border-color: rgba(212, 168, 83, 0.92);
-    color: var(--color-white);
+    background: #bf9137;
+    border-color: #bf9137;
+    color: var(--color-forest);
+}
+
+.peak-detail-action-button[disabled] {
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+.peak-detail-action-button--log[disabled] {
+    background: rgba(46, 139, 87, 0.22);
+    border-color: rgba(46, 139, 87, 0.24);
+    color: #dff6e7;
+}
+
+.peak-detail-action-button--bucket[disabled] {
+    background: rgba(212, 168, 83, 0.2);
+    border-color: rgba(212, 168, 83, 0.22);
+    color: #f7edcf;
 }
 
 .peak-detail-actions__message {
@@ -263,8 +405,6 @@ body {
 }
 
 .peak-detail-section {
-    background: rgba(255, 255, 255, 0.98);
-    border: 1px solid rgba(27, 67, 50, 0.1);
     box-shadow: var(--shadow-sm);
     height: 100%;
 }
@@ -869,9 +1009,44 @@ body {
         padding: 0.4rem 0.65rem;
     }
 
-    .peak-detail-card__header {
-        align-items: flex-start;
+    .peak-detail-hero {
+        padding: 1.5rem 0 2rem;
+    }
+
+    .peak-detail-hero__layout,
+    .peak-detail-hero__layout--with-actions {
         flex-direction: column;
+    }
+
+    .peak-detail-hero__title {
+        font-size: 2rem;
+    }
+
+    .peak-detail-hero__status {
+        justify-items: stretch;
+        max-width: none;
+        width: 100%;
+    }
+
+    .peak-detail-hero__buttons {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .peak-detail-hero__buttons .peak-detail-action-button,
+    .peak-detail-hero__back {
+        width: 100%;
+    }
+
+    .peak-detail-hero__message {
+        text-align: left;
+    }
+
+    .peak-detail-pill {
+        font-size: 0.875rem;
+        min-height: 2.35rem;
+        padding: 0.55rem 0.8rem;
+        white-space: normal;
     }
 
     .peak-detail-card__stats {
