@@ -56,6 +56,107 @@
                             <span>{% if is_bucket_listed %}In Bucket List &#10003;{% else %}Add to Bucket List{% endif %}</span>
                         </button>
                     </div>
+                    <div class="peak-detail-log-form-wrap" data-peak-log-form-wrap>
+                        <form class="peak-detail-log-form" data-peak-log-form enctype="multipart/form-data" novalidate>
+                            <div class="columns is-multiline is-variable is-3">
+                                <div class="column is-12-mobile is-6-tablet">
+                                    <div class="field">
+                                        <label class="label" for="peak-log-date">Date</label>
+                                        <div class="control">
+                                            <input id="peak-log-date" class="input" type="date" name="date_climbed" data-peak-log-date>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="column is-12-mobile is-6-tablet">
+                                    <div class="field">
+                                        <label class="label" for="peak-log-weather">Weather</label>
+                                        <div class="control">
+                                            <div class="select is-fullwidth">
+                                                <select id="peak-log-weather" name="weather">
+                                                    <option value="">Select weather</option>
+                                                    <option value="sunny">Sunny</option>
+                                                    <option value="cloudy">Cloudy</option>
+                                                    <option value="overcast">Overcast</option>
+                                                    <option value="rainy">Rainy</option>
+                                                    <option value="windy">Windy</option>
+                                                    <option value="snowy">Snowy</option>
+                                                    <option value="foggy">Foggy</option>
+                                                    <option value="mixed">Mixed</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <div class="peak-detail-log-form__field-head">
+                                            <label class="label" for="peak-log-notes">Notes</label>
+                                            <span class="peak-detail-log-form__counter" data-peak-log-notes-counter>0 / 500</span>
+                                        </div>
+                                        <div class="control">
+                                            <textarea
+                                                id="peak-log-notes"
+                                                class="textarea"
+                                                name="notes"
+                                                rows="4"
+                                                maxlength="500"
+                                                placeholder="Trail conditions, standout moments, or anything worth remembering..."
+                                                data-peak-log-notes
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <div class="peak-detail-log-form__field-head">
+                                            <label class="label">Difficulty</label>
+                                            <span class="peak-detail-log-form__counter" data-peak-log-stars-label>Tap to rate</span>
+                                        </div>
+                                        <div class="peak-detail-stars" data-peak-star-rating>
+                                            <input type="hidden" name="difficulty_rating" value="" data-peak-star-rating-input>
+                                            {% for star in range(1, 6) %}
+                                            <button
+                                                type="button"
+                                                class="peak-detail-stars__button"
+                                                data-peak-star-value="{{ star }}"
+                                                aria-label="Rate {{ star }} star{% if star != 1 %}s{% endif %}"
+                                                aria-pressed="false"
+                                            >
+                                                <i class="fas fa-star" aria-hidden="true"></i>
+                                            </button>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="column is-12">
+                                    <div class="field">
+                                        <div class="peak-detail-log-form__field-head">
+                                            <label class="label" for="peak-log-photos">Photos</label>
+                                            <span class="peak-detail-log-form__counter">Up to 3 images</span>
+                                        </div>
+                                        <div class="control">
+                                            <input
+                                                id="peak-log-photos"
+                                                class="input"
+                                                type="file"
+                                                name="photos"
+                                                accept="image/*"
+                                                multiple
+                                                data-peak-log-photos
+                                            >
+                                        </div>
+                                        <p class="peak-detail-log-form__hint">Image files only, max 5MB each.</p>
+                                        <p class="peak-detail-log-form__hint" data-peak-log-photo-summary>No photos selected.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="peak-detail-log-form__error" data-peak-log-form-error aria-live="polite"></p>
+                            <div class="buttons peak-detail-log-form__actions">
+                                <button type="button" class="button peak-detail-log-form__cancel" data-peak-track-action="cancel-log-form">Cancel</button>
+                                <button type="submit" class="button peak-detail-log-form__submit" data-peak-log-submit>Log This Summit</button>
+                            </div>
+                        </form>
+                    </div>
                     <p class="peak-detail-actions__message peak-detail-hero__message" data-peak-tracking-message aria-live="polite"></p>
                 </div>
                 {% endif %}

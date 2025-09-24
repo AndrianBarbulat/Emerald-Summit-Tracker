@@ -349,6 +349,27 @@ async function postJsonRequest(url, payload) {
     return result;
 }
 
+async function postFormDataRequest(url, formData) {
+    const response = await fetch(url, {
+        body: formData,
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json'
+        },
+        method: 'POST'
+    });
+
+    const result = await response.json().catch(function() {
+        return {};
+    });
+
+    if (!response.ok) {
+        throw new Error(result.error || 'Something went wrong.');
+    }
+
+    return result;
+}
+
 function setPeakTrackingMessage(panel, message, isError) {
     const messageElement = panel ? panel.querySelector('[data-peak-tracking-message]') : null;
     if (!messageElement) {
@@ -366,6 +387,7 @@ function updatePeakTrackingPanel(panel, status) {
 
     const normalizedStatus = normalizePeakStatusValue(status);
     const statusChip = panel.querySelector('[data-peak-status-chip]');
+    const form = panel.querySelector('[data-peak-log-form]');
     const logButton = panel.querySelector('[data-peak-track-action="log-climb"]');
     const bucketButton = panel.querySelector('[data-peak-track-action="toggle-bucket"]');
     const copyElement = panel.querySelector('.peak-detail-actions__copy');
@@ -395,6 +417,10 @@ function updatePeakTrackingPanel(panel, status) {
         }
     }
 
+    if (normalizedStatus === 'climbed') {
+        closePeakLogForm(panel, form, true);
+    }
+
     if (copyElement) {
         if (normalizedStatus === 'climbed') {
             copyElement.textContent = 'You have already logged this peak.';
@@ -411,9 +437,23 @@ function initPeakTrackingPanel(panel) {
         return;
     }
 
+    const form = panel.querySelector('[data-peak-log-form]');
+    const notesInput = panel.querySelector('[data-peak-log-notes]');
+    const photoInput = panel.querySelector('[data-peak-log-photos]');
+
     updatePeakTrackingPanel(panel, panel.dataset.initialStatus);
+    if (form) {
+        resetPeakLogForm(form);
+    }
 
     panel.addEventListener('click', async function(event) {
+        const starButton = event.target.closest('[data-peak-star-value]');
+        if (starButton && form) {
+            event.preventDefault();
+            setPeakLogStarRating(form, Number(starButton.getAttribute('data-peak-star-value') || 0));
+            return;
+        }
+
         const button = event.target.closest('[data-peak-track-action]');
         if (!button) {
             return;
@@ -428,19 +468,23 @@ function initPeakTrackingPanel(panel) {
         }
 
         setPeakTrackingMessage(panel, '', false);
+        if (actionName === 'log-climb') {
+            if (currentStatus === 'climbed' || !form) {
+                return;
+            }
+            openPeakLogForm(panel, form);
+            return;
+        }
+
+        if (actionName === 'cancel-log-form') {
+            closePeakLogForm(panel, form, true);
+            return;
+        }
+
         button.classList.add('is-loading');
 
         try {
             let result = null;
-            if (actionName === 'log-climb') {
-                result = await postJsonRequest('/api/log-climb', {
-                    date_climbed: getTodayDateValueLocal(),
-                    peak_id: peakId
-                });
-                updatePeakTrackingPanel(panel, result.user_status);
-                setPeakTrackingMessage(panel, 'Climb logged successfully.', false);
-            }
-
             if (actionName === 'toggle-bucket' && currentStatus !== 'climbed') {
                 const endpoint = currentStatus === 'bucket_listed'
                     ? '/api/bucket-list/remove'
@@ -461,6 +505,263 @@ function initPeakTrackingPanel(panel) {
             button.classList.remove('is-loading');
         }
     });
+
+    if (notesInput) {
+        notesInput.addEventListener('input', function() {
+            syncPeakLogNotesCounter(form);
+        });
+        syncPeakLogNotesCounter(form);
+    }
+
+    if (photoInput) {
+        photoInput.addEventListener('change', function() {
+            const validationMessage = validatePeakLogPhotos(photoInput.files);
+            if (validationMessage) {
+                photoInput.value = '';
+                syncPeakLogPhotoSummary(form);
+                setPeakLogFormError(panel, validationMessage);
+                return;
+            }
+            setPeakLogFormError(panel, '');
+            syncPeakLogPhotoSummary(form);
+        });
+        syncPeakLogPhotoSummary(form);
+    }
+
+    if (form) {
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const peakId = Number(panel.dataset.peakId || 0);
+            if (!peakId) {
+                return;
+            }
+
+            const dateInput = form.querySelector('[data-peak-log-date]');
+            const submitButton = form.querySelector('[data-peak-log-submit]');
+            const formData = new FormData(form);
+            const photoFiles = photoInput ? photoInput.files : [];
+            const validationMessage = validatePeakLogPhotos(photoFiles);
+
+            if (!dateInput || !String(dateInput.value || '').trim()) {
+                setPeakLogFormError(panel, 'Please choose a climb date.');
+                if (dateInput) {
+                    dateInput.focus();
+                }
+                return;
+            }
+
+            if (validationMessage) {
+                setPeakLogFormError(panel, validationMessage);
+                return;
+            }
+
+            setPeakLogFormError(panel, '');
+            setPeakTrackingMessage(panel, '', false);
+            togglePeakLogFormBusy(form, true);
+            if (submitButton) {
+                submitButton.classList.add('is-loading');
+            }
+
+            try {
+                formData.set('peak_id', String(peakId));
+                const result = await postFormDataRequest('/api/log-climb', formData);
+                updatePeakTrackingPanel(panel, result.user_status);
+                closePeakLogForm(panel, form, true);
+                showSiteToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.');
+            } catch (error) {
+                setPeakLogFormError(panel, error.message || 'We could not save this summit right now.');
+            } finally {
+                togglePeakLogFormBusy(form, false);
+                if (submitButton) {
+                    submitButton.classList.remove('is-loading');
+                }
+            }
+        });
+    }
+}
+
+function openPeakLogForm(panel, form) {
+    if (!panel || !form) {
+        return;
+    }
+
+    panel.classList.add('is-log-form-open');
+    setPeakLogFormError(panel, '');
+
+    const dateInput = form.querySelector('[data-peak-log-date]');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = getTodayDateValueLocal();
+    }
+
+    window.requestAnimationFrame(function() {
+        if (dateInput) {
+            dateInput.focus();
+        }
+    });
+}
+
+function closePeakLogForm(panel, form, reset) {
+    if (!panel || !form) {
+        return;
+    }
+
+    panel.classList.remove('is-log-form-open');
+    setPeakLogFormError(panel, '');
+
+    if (reset) {
+        resetPeakLogForm(form);
+    }
+}
+
+function resetPeakLogForm(form) {
+    if (!form) {
+        return;
+    }
+
+    form.reset();
+    const dateInput = form.querySelector('[data-peak-log-date]');
+    if (dateInput) {
+        dateInput.value = getTodayDateValueLocal();
+    }
+
+    setPeakLogStarRating(form, 0);
+    syncPeakLogNotesCounter(form);
+    syncPeakLogPhotoSummary(form);
+    togglePeakLogFormBusy(form, false);
+}
+
+function togglePeakLogFormBusy(form, isBusy) {
+    if (!form) {
+        return;
+    }
+
+    form.querySelectorAll('input, select, textarea, button').forEach(function(control) {
+        control.disabled = Boolean(isBusy);
+    });
+}
+
+function setPeakLogFormError(panel, message) {
+    const errorElement = panel ? panel.querySelector('[data-peak-log-form-error]') : null;
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = String(message || '').trim();
+}
+
+function syncPeakLogNotesCounter(form) {
+    if (!form) {
+        return;
+    }
+
+    const notesInput = form.querySelector('[data-peak-log-notes]');
+    const counter = form.querySelector('[data-peak-log-notes-counter]');
+    if (!notesInput || !counter) {
+        return;
+    }
+
+    const currentLength = String(notesInput.value || '').length;
+    const maxLength = Number(notesInput.getAttribute('maxlength') || 500);
+    counter.textContent = currentLength + ' / ' + maxLength;
+}
+
+function syncPeakLogPhotoSummary(form) {
+    if (!form) {
+        return;
+    }
+
+    const photoInput = form.querySelector('[data-peak-log-photos]');
+    const summary = form.querySelector('[data-peak-log-photo-summary]');
+    if (!photoInput || !summary) {
+        return;
+    }
+
+    const photoCount = photoInput.files ? photoInput.files.length : 0;
+    summary.textContent = photoCount
+        ? photoCount + (photoCount === 1 ? ' photo selected.' : ' photos selected.')
+        : 'No photos selected.';
+}
+
+function validatePeakLogPhotos(fileList) {
+    const files = Array.from(fileList || []);
+    const maxFiles = 3;
+    const maxSizeBytes = 5 * 1024 * 1024;
+
+    if (files.length > maxFiles) {
+        return 'You can upload up to 3 photos.';
+    }
+
+    for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        if (!String(file.type || '').toLowerCase().startsWith('image/')) {
+            return 'Please upload image files only.';
+        }
+        if (Number(file.size || 0) > maxSizeBytes) {
+            return 'Each photo must be 5MB or smaller.';
+        }
+    }
+
+    return '';
+}
+
+function setPeakLogStarRating(form, value) {
+    if (!form) {
+        return;
+    }
+
+    const normalizedValue = Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : 0;
+    const ratingInput = form.querySelector('[data-peak-star-rating-input]');
+    const ratingLabel = form.querySelector('[data-peak-log-stars-label]');
+    const starButtons = form.querySelectorAll('[data-peak-star-value]');
+
+    if (ratingInput) {
+        ratingInput.value = normalizedValue ? String(normalizedValue) : '';
+    }
+
+    starButtons.forEach(function(starButton) {
+        const starValue = Number(starButton.getAttribute('data-peak-star-value') || 0);
+        const isActive = starValue <= normalizedValue && normalizedValue > 0;
+        starButton.classList.toggle('is-active', isActive);
+        starButton.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+
+    if (ratingLabel) {
+        ratingLabel.textContent = normalizedValue ? (normalizedValue + ' / 5') : 'Tap to rate';
+    }
+}
+
+function ensureSiteToastContainer() {
+    let container = document.querySelector('.site-toast-container');
+    if (container) {
+        return container;
+    }
+
+    container = document.createElement('div');
+    container.className = 'site-toast-container';
+    document.body.appendChild(container);
+    return container;
+}
+
+function showSiteToast(message) {
+    const container = ensureSiteToastContainer();
+    const toast = document.createElement('div');
+    toast.className = 'site-toast';
+    toast.textContent = String(message || '').trim();
+    container.appendChild(toast);
+
+    window.requestAnimationFrame(function() {
+        toast.classList.add('is-visible');
+    });
+
+    window.setTimeout(function() {
+        toast.classList.remove('is-visible');
+        window.setTimeout(function() {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 220);
+    }, 2800);
 }
 
 function setAuthMode(type) {

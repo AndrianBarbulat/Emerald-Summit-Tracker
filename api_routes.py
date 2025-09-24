@@ -37,6 +37,26 @@ api = Blueprint("api", __name__, url_prefix="/api")
 api_bp = api
 
 _UNSET = object()
+ALLOWED_CLIMB_WEATHER = {
+    "sunny",
+    "cloudy",
+    "overcast",
+    "rainy",
+    "windy",
+    "snowy",
+    "foggy",
+    "mixed",
+}
+ALLOWED_DIFFICULTY_VALUES = {
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "easy",
+    "moderate",
+    "hard",
+}
 BADGE_RULES = [
     {"key": "first_climb", "label": "First Climb", "threshold": 1},
     {"key": "five_climbs", "label": "Five Summits", "threshold": 5},
@@ -158,17 +178,30 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
     if date_error:
         return None, date_error
 
-    notes = _clean_text(_extract_field(payload, "notes"), 1000)
+    notes = _clean_text(_extract_field(payload, "notes"), 500)
     if notes is None:
-        return None, "Notes must be 1000 characters or fewer."
+        return None, "Notes must be 500 characters or fewer."
 
     weather = _clean_text(_extract_field(payload, "weather"), 120)
     if weather is None:
         return None, "Weather must be 120 characters or fewer."
+    if weather not in {_UNSET, ""}:
+        weather = str(weather).strip().lower()
+        if weather not in ALLOWED_CLIMB_WEATHER:
+            return None, "Please choose a valid weather option."
 
     difficulty = _clean_text(_extract_field(payload, "difficulty_rating", "difficulty"), 40)
     if difficulty is None:
         return None, "Difficulty rating must be 40 characters or fewer."
+    if difficulty not in {_UNSET, ""}:
+        difficulty = str(difficulty).strip().lower()
+        if difficulty.isdigit():
+            difficulty_value = int(difficulty)
+            if difficulty_value < 1 or difficulty_value > 5:
+                return None, "Difficulty rating must be between 1 and 5."
+            difficulty = str(difficulty_value)
+        elif difficulty not in ALLOWED_DIFFICULTY_VALUES:
+            return None, "Please choose a valid difficulty rating."
 
     return {
         "date_climbed": normalized_date,
@@ -176,6 +209,49 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
         "weather": weather,
         "difficulty_rating": difficulty,
     }, None
+
+
+def _validate_climb_photo_uploads():
+    max_photo_count = 3
+    max_photo_size_bytes = 5 * 1024 * 1024
+    uploaded_files = []
+
+    if not request.files:
+        return uploaded_files, None
+
+    for uploaded_file in request.files.getlist("photos"):
+        if not uploaded_file or not getattr(uploaded_file, "filename", ""):
+            continue
+        uploaded_files.append(uploaded_file)
+
+    if len(uploaded_files) > max_photo_count:
+        return None, "You can upload up to 3 photos."
+
+    for uploaded_file in uploaded_files:
+        if not str(uploaded_file.mimetype or "").lower().startswith("image/"):
+            return None, "Please upload image files only."
+
+        current_position = 0
+        try:
+            current_position = uploaded_file.stream.tell()
+        except Exception:
+            current_position = 0
+
+        try:
+            uploaded_file.stream.seek(0, 2)
+            file_size = uploaded_file.stream.tell()
+        except Exception:
+            file_size = uploaded_file.content_length or 0
+        finally:
+            try:
+                uploaded_file.stream.seek(current_position)
+            except Exception:
+                pass
+
+        if file_size > max_photo_size_bytes:
+            return None, "Each photo must be 5MB or smaller."
+
+    return uploaded_files, None
 
 
 def _build_climb_payload_variants(fields: dict) -> list[dict]:
@@ -362,6 +438,10 @@ def api_log_climb():
     if field_error:
         return _json_error(field_error, 400)
 
+    uploaded_photos, photo_error = _validate_climb_photo_uploads()
+    if photo_error:
+        return _json_error(photo_error, 400)
+
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
     existing_climb = get_user_has_climbed(user_id, peak_id)
     if existing_climb is not None:
@@ -371,6 +451,7 @@ def api_log_climb():
                 "climb": existing_climb,
                 "climb_id": existing_climb.get("id"),
                 "new_badges": [],
+                "photo_count_received": len(uploaded_photos or []),
                 "peak_id": peak_id,
                 "removed_from_bucket_list": removed_from_bucket_list,
                 **_current_user_status(user_id, peak_id),
@@ -386,6 +467,7 @@ def api_log_climb():
             "climb": created_climb,
             "climb_id": created_climb.get("id"),
             "new_badges": _award_new_badges_for_user(user_id),
+            "photo_count_received": len(uploaded_photos or []),
             "peak_id": peak_id,
             "removed_from_bucket_list": removed_from_bucket_list,
             "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
