@@ -759,6 +759,37 @@ body {
     font-weight: 700;
 }
 
+.peak-detail-photo-gallery {
+    display: grid;
+    gap: 0.7rem;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    margin-top: 0.15rem;
+}
+
+.peak-detail-photo-gallery__link {
+    aspect-ratio: 1 / 1;
+    background: var(--color-white);
+    border: 1px solid rgba(27, 67, 50, 0.12);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    display: block;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.peak-detail-photo-gallery__link:hover,
+.peak-detail-photo-gallery__link:focus-visible {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.peak-detail-photo-gallery__image {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
 .site-navbar {
     background: var(--color-forest);
     box-shadow: var(--shadow-md);

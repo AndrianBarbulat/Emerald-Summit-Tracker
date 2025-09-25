@@ -1,8 +1,11 @@
+import json
 import os
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
 from supabase import Client, create_client
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
@@ -15,6 +18,7 @@ TABLE_CLIMBS = os.getenv("SUPABASE_CLIMBS_TABLE") or os.getenv("SUPABASE_USER_CL
 TABLE_BUCKET_LIST = "bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
+STORAGE_BUCKET_SUMMIT_PHOTOS = os.getenv("SUPABASE_SUMMIT_PHOTOS_BUCKET") or "summit-photos"
 
 
 def _build_client() -> Optional[Client]:
@@ -36,6 +40,127 @@ def _table(name: str):
         return supabase.table(name)
     except Exception:
         return None
+
+
+def _storage_bucket(name: str):
+    if supabase is None:
+        return None
+    try:
+        return supabase.storage.from_(name)
+    except Exception:
+        return None
+
+
+def _normalize_photo_urls(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item or "").strip()]
+
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+
+        try:
+            parsed = json.loads(stripped)
+        except Exception:
+            parsed = None
+
+        if isinstance(parsed, list):
+            return [str(item).strip() for item in parsed if str(item or "").strip()]
+
+        if "," in stripped:
+            return [item.strip() for item in stripped.split(",") if item.strip()]
+
+        return [stripped]
+
+    return []
+
+
+def _normalize_climb_record(climb: Dict[str, Any]) -> Dict[str, Any]:
+    current_climb = dict(climb or {})
+    current_climb["date_climbed"] = (
+        current_climb.get("date_climbed")
+        or current_climb.get("climbed_at")
+        or current_climb.get("created_at")
+    )
+    current_climb["difficulty_rating"] = (
+        current_climb.get("difficulty_rating")
+        or current_climb.get("difficulty")
+    )
+    current_climb["photo_urls"] = _normalize_photo_urls(current_climb.get("photo_urls"))
+    return current_climb
+
+
+def _build_storage_photo_path(user_id: str, peak_id: Any, original_filename: str, index: int) -> str:
+    safe_name = secure_filename(original_filename or "") or f"photo-{index}.jpg"
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    return f"{user_id}/{peak_id}/{timestamp}_{index}_{safe_name}"
+
+
+def upload_climb_photos(user_id: str, peak_id: Any, uploaded_files: List[Any]) -> Dict[str, Any]:
+    if not uploaded_files:
+        return {"photo_urls": [], "storage_paths": [], "error": None}
+
+    bucket = _storage_bucket(STORAGE_BUCKET_SUMMIT_PHOTOS)
+    if bucket is None:
+        return {
+            "photo_urls": [],
+            "storage_paths": [],
+            "error": "Your climb was saved, but the photos could not be uploaded right now.",
+        }
+
+    uploaded_paths: List[str] = []
+    public_urls: List[str] = []
+
+    try:
+        for index, uploaded_file in enumerate(uploaded_files, start=1):
+            storage_path = _build_storage_photo_path(
+                user_id=user_id,
+                peak_id=peak_id,
+                original_filename=getattr(uploaded_file, "filename", ""),
+                index=index,
+            )
+
+            try:
+                uploaded_file.stream.seek(0)
+            except Exception:
+                pass
+
+            file_bytes = uploaded_file.read()
+            if not isinstance(file_bytes, (bytes, bytearray)):
+                file_bytes = bytes(file_bytes or b"")
+
+            bucket.upload(
+                storage_path,
+                bytes(file_bytes),
+                {"content-type": str(getattr(uploaded_file, "mimetype", "") or "application/octet-stream")},
+            )
+
+            uploaded_paths.append(storage_path)
+            public_urls.append(bucket.get_public_url(storage_path))
+        return {"photo_urls": public_urls, "storage_paths": uploaded_paths, "error": None}
+    except Exception:
+        delete_climb_photo_uploads(uploaded_paths)
+        return {
+            "photo_urls": [],
+            "storage_paths": [],
+            "error": "Your climb was saved, but one or more photos could not be uploaded.",
+        }
+
+
+def delete_climb_photo_uploads(storage_paths: List[str]) -> bool:
+    if not storage_paths:
+        return True
+
+    bucket = _storage_bucket(STORAGE_BUCKET_SUMMIT_PHOTOS)
+    if bucket is None:
+        return False
+
+    try:
+        bucket.remove(storage_paths)
+        return True
+    except Exception:
+        return False
 
 
 def get_all_peaks(
@@ -149,7 +274,7 @@ def get_user_climbs(user_id: str) -> List[Dict[str, Any]]:
         if query is None:
             return []
         response = query.select("*").eq("user_id", user_id).order("climbed_at", desc=True).execute()
-        return response.data or []
+        return [_normalize_climb_record(climb) for climb in (response.data or [])]
     except Exception:
         return []
 
@@ -161,7 +286,7 @@ def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict
             return None
         payload = {"user_id": user_id, "peak_id": peak_id, **(data or {})}
         response = query.insert(payload).execute()
-        return response.data[0] if response.data else None
+        return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
 
@@ -172,7 +297,7 @@ def update_climb(climb_id: Any, user_id: str, data: Dict[str, Any]) -> Optional[
         if query is None:
             return None
         response = query.update(data).eq("id", climb_id).eq("user_id", user_id).execute()
-        return response.data[0] if response.data else None
+        return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
 
@@ -183,7 +308,7 @@ def get_climb_by_id(climb_id: Any) -> Optional[Dict[str, Any]]:
         if query is None:
             return None
         response = query.select("*").eq("id", climb_id).limit(1).execute()
-        return response.data[0] if response.data else None
+        return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
 
@@ -327,38 +452,12 @@ def _enrich_user_records(records: List[Dict[str, Any]], user_id_key: str = "user
 
 def get_peak_climb_logs(peak_id: Any, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     climbs = _query_peak_climb_rows(peak_id, limit=limit)
-    normalized_climbs = []
-    for climb in climbs:
-        current_climb = dict(climb or {})
-        current_climb["date_climbed"] = (
-            current_climb.get("date_climbed")
-            or current_climb.get("climbed_at")
-            or current_climb.get("created_at")
-        )
-        current_climb["difficulty_rating"] = (
-            current_climb.get("difficulty_rating")
-            or current_climb.get("difficulty")
-        )
-        normalized_climbs.append(current_climb)
-    return normalized_climbs
+    return [_normalize_climb_record(climb) for climb in climbs]
 
 
 def get_user_peak_climbs(user_id: str, peak_id: Any) -> List[Dict[str, Any]]:
     climbs = _query_peak_climb_rows(peak_id, user_id=user_id)
-    normalized_climbs = []
-    for climb in climbs:
-        current_climb = dict(climb or {})
-        current_climb["date_climbed"] = (
-            current_climb.get("date_climbed")
-            or current_climb.get("climbed_at")
-            or current_climb.get("created_at")
-        )
-        current_climb["difficulty_rating"] = (
-            current_climb.get("difficulty_rating")
-            or current_climb.get("difficulty")
-        )
-        normalized_climbs.append(current_climb)
-    return normalized_climbs
+    return [_normalize_climb_record(climb) for climb in climbs]
 
 
 def get_peak_climbers_with_profiles(peak_id: Any, limit: int = 5) -> List[Dict[str, Any]]:
@@ -419,7 +518,7 @@ def get_user_has_climbed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]
         if query is None:
             return None
         response = query.select("*").eq("user_id", user_id).eq("peak_id", peak_id).limit(1).execute()
-        return response.data[0] if response.data else None
+        return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
 
@@ -430,7 +529,7 @@ def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
         if query is None:
             return []
         response = query.select("*").order("climbed_at", desc=True).limit(limit).execute()
-        return response.data or []
+        return [_normalize_climb_record(climb) for climb in (response.data or [])]
     except Exception:
         return []
 

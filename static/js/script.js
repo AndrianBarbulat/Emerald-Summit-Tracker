@@ -569,6 +569,11 @@ function initPeakTrackingPanel(panel) {
                 updatePeakTrackingPanel(panel, result.user_status);
                 closePeakLogForm(panel, form, true);
                 showSiteToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.');
+                if (result.warning) {
+                    window.setTimeout(function() {
+                        showSiteToast(result.warning);
+                    }, 320);
+                }
             } catch (error) {
                 setPeakLogFormError(panel, error.message || 'We could not save this summit right now.');
             } finally {

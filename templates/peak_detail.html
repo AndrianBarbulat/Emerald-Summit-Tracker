@@ -339,6 +339,25 @@
                                 {% if climb.notes %}
                                 <p class="peak-detail-list-item__copy">{{ climb.notes }}</p>
                                 {% endif %}
+                                {% if climb.photo_urls %}
+                                <div class="peak-detail-photo-gallery" aria-label="Climb photo gallery">
+                                    {% for photo_url in climb.photo_urls %}
+                                    <a
+                                        href="{{ photo_url }}"
+                                        class="peak-detail-photo-gallery__link"
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                    >
+                                        <img
+                                            src="{{ photo_url }}"
+                                            alt="{{ peak.name or 'Peak' }} climb photo {{ loop.index }}"
+                                            class="peak-detail-photo-gallery__image"
+                                            loading="lazy"
+                                        >
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                         </article>
                         {% endfor %}

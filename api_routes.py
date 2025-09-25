@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from flask import Blueprint, jsonify, request, session
@@ -29,8 +30,10 @@ from supabase_utils import (
     log_climb,
     remove_from_bucket_list,
     supabase,
+    upload_climb_photos,
     update_climb,
     update_user_profile,
+    delete_climb_photo_uploads,
 )
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -254,11 +257,18 @@ def _validate_climb_photo_uploads():
     return uploaded_files, None
 
 
+def _variant_value_key(value):
+    if isinstance(value, (list, dict)):
+        return json.dumps(value, sort_keys=True)
+    return value
+
+
 def _build_climb_payload_variants(fields: dict) -> list[dict]:
     date_climbed = fields.get("date_climbed", _UNSET)
     notes = fields.get("notes", _UNSET)
     weather = fields.get("weather", _UNSET)
     difficulty_rating = fields.get("difficulty_rating", _UNSET)
+    photo_urls = fields.get("photo_urls", _UNSET)
 
     variants = [
         {
@@ -266,37 +276,45 @@ def _build_climb_payload_variants(fields: dict) -> list[dict]:
             "notes": notes,
             "weather": weather,
             "difficulty_rating": difficulty_rating,
+            "photo_urls": photo_urls,
         },
         {
             "climbed_at": date_climbed,
             "notes": notes,
             "weather": weather,
             "difficulty_rating": difficulty_rating,
+            "photo_urls": photo_urls,
         },
         {
             "climbed_at": date_climbed,
             "notes": notes,
             "weather": weather,
             "difficulty": difficulty_rating,
+            "photo_urls": photo_urls,
         },
         {
             "climbed_at": date_climbed,
             "notes": notes,
             "difficulty": difficulty_rating,
+            "photo_urls": photo_urls,
         },
         {
             "climbed_at": date_climbed,
             "notes": notes,
+            "photo_urls": photo_urls,
         },
         {
             "date_climbed": date_climbed,
             "notes": notes,
+            "photo_urls": photo_urls,
         },
         {
             "climbed_at": date_climbed,
+            "photo_urls": photo_urls,
         },
         {
             "date_climbed": date_climbed,
+            "photo_urls": photo_urls,
         },
     ]
 
@@ -310,7 +328,10 @@ def _build_climb_payload_variants(fields: dict) -> list[dict]:
         }
         if not compact_variant:
             continue
-        variant_key = tuple(sorted(compact_variant.items()))
+        variant_key = tuple(
+            (key, _variant_value_key(value))
+            for key, value in sorted(compact_variant.items())
+        )
         if variant_key in seen_variants:
             continue
         seen_variants.add(variant_key)
@@ -438,10 +459,6 @@ def api_log_climb():
     if field_error:
         return _json_error(field_error, 400)
 
-    uploaded_photos, photo_error = _validate_climb_photo_uploads()
-    if photo_error:
-        return _json_error(photo_error, 400)
-
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
     existing_climb = get_user_has_climbed(user_id, peak_id)
     if existing_climb is not None:
@@ -451,29 +468,59 @@ def api_log_climb():
                 "climb": existing_climb,
                 "climb_id": existing_climb.get("id"),
                 "new_badges": [],
-                "photo_count_received": len(uploaded_photos or []),
+                "photo_count_received": 0,
                 "peak_id": peak_id,
                 "removed_from_bucket_list": removed_from_bucket_list,
                 **_current_user_status(user_id, peak_id),
             }
         )
 
+    uploaded_photos, photo_error = _validate_climb_photo_uploads()
+    if photo_error:
+        return _json_error(photo_error, 400)
+
+    warning_messages = []
+    uploaded_photo_urls = []
+    uploaded_storage_paths = []
+    if uploaded_photos:
+        upload_result = upload_climb_photos(user_id, peak_id, uploaded_photos)
+        uploaded_photo_urls = upload_result.get("photo_urls") or []
+        uploaded_storage_paths = upload_result.get("storage_paths") or []
+        if upload_result.get("error"):
+            warning_messages.append(str(upload_result["error"]))
+        elif uploaded_photo_urls:
+            fields["photo_urls"] = uploaded_photo_urls
+
     created_climb, saved_payload = _try_log_climb(user_id, peak_id, fields)
+    if created_climb is None and fields.get("photo_urls"):
+        fallback_fields = dict(fields)
+        fallback_fields.pop("photo_urls", None)
+        created_climb, saved_payload = _try_log_climb(user_id, peak_id, fallback_fields)
+        if created_climb is not None:
+            delete_climb_photo_uploads(uploaded_storage_paths)
+            warning_messages.append(
+                "Your climb was saved, but the photo gallery could not be attached to this log."
+            )
+
     if created_climb is None:
         return _json_error("We couldn't save that climb right now.", 500)
 
-    return _json_success(
-        {
-            "climb": created_climb,
-            "climb_id": created_climb.get("id"),
-            "new_badges": _award_new_badges_for_user(user_id),
-            "photo_count_received": len(uploaded_photos or []),
-            "peak_id": peak_id,
-            "removed_from_bucket_list": removed_from_bucket_list,
-            "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
-            **_current_user_status(user_id, peak_id),
-        }
-    )
+    success_payload = {
+        "climb": created_climb,
+        "climb_id": created_climb.get("id"),
+        "new_badges": _award_new_badges_for_user(user_id),
+        "photo_count_received": len(uploaded_photos or []),
+        "photo_upload_count": len(created_climb.get("photo_urls") or []),
+        "peak_id": peak_id,
+        "removed_from_bucket_list": removed_from_bucket_list,
+        "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
+        **_current_user_status(user_id, peak_id),
+    }
+    if warning_messages:
+        success_payload["warning"] = warning_messages[0]
+        success_payload["warnings"] = warning_messages
+
+    return _json_success(success_payload)
 
 
 @api.route("/bucket-list/add", methods=["POST"])
