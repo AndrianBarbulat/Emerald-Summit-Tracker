@@ -1,7 +1,7 @@
 import json
-from datetime import date
+from datetime import date, datetime, timezone
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request, session, url_for
 
 from supabase_utils import (
     TABLE_BUCKET_LIST,
@@ -212,6 +212,115 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
         "weather": weather,
         "difficulty_rating": difficulty,
     }, None
+
+
+def _parse_datetime_value(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("z", "+00:00").replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _relative_time_label(value) -> str:
+    dt = _parse_datetime_value(value)
+    if dt is None:
+        return "recently"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    delta = datetime.now(tz=timezone.utc) - dt
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 60:
+        return "just now"
+    if total_seconds < 3600:
+        return f"{total_seconds // 60}m ago"
+    if total_seconds < 86400:
+        return f"{total_seconds // 3600}h ago"
+    return f"{total_seconds // 86400}d ago"
+
+
+def _profile_visibility_value(profile: dict | None) -> str:
+    if not isinstance(profile, dict):
+        return ""
+
+    candidate_values = [
+        profile.get("profile_visibility"),
+        profile.get("public_profile"),
+        profile.get("is_public"),
+        profile.get("show_profile"),
+    ]
+
+    preferences = profile.get("preferences")
+    if isinstance(preferences, dict):
+        candidate_values.extend(
+            [
+                preferences.get("profile_visibility"),
+                preferences.get("public_profile"),
+                preferences.get("is_public"),
+                preferences.get("show_profile"),
+            ]
+        )
+
+    for value in candidate_values:
+        if isinstance(value, bool):
+            return "public" if value else "private"
+
+        normalized = str(value or "").strip().lower()
+        if normalized:
+            return normalized
+
+    return ""
+
+
+def _is_profile_public(profile: dict | None) -> bool:
+    visibility = _profile_visibility_value(profile)
+    if visibility in {"private", "only me", "me", "hidden", "off", "false", "0", "none", "friends", "only friends"}:
+        return False
+    if visibility in {"public", "everyone", "all", "true", "1", "on", "yes"}:
+        return True
+    return bool(str((profile or {}).get("display_name") or "").strip())
+
+
+def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+
+    display_name = str(profile.get("display_name") or "").strip()
+    if not display_name:
+        return None
+
+    profile_user_id = str(profile.get("id") or "").strip()
+    if _is_profile_public(profile) or (current_user_id and profile_user_id == current_user_id):
+        return url_for("public_profile", display_name=display_name)
+
+    return None
+
+
+def _serialize_comment(comment: dict | None, current_user_id: str | None) -> dict:
+    current_comment = dict(comment or {})
+    profile = get_user_profile(current_user_id) or {} if current_user_id and str(current_comment.get("user_id") or "") == current_user_id else {}
+    display_name = (
+        current_comment.get("display_name")
+        or profile.get("display_name")
+        or (str(current_comment.get("user_id") or "")[:8] if current_comment.get("user_id") else "Climber")
+    )
+    created_at = current_comment.get("created_at") or datetime.now(tz=timezone.utc).isoformat()
+    profile_record = {
+        **profile,
+        "id": profile.get("id") or current_comment.get("user_id"),
+        "display_name": profile.get("display_name") or display_name,
+    }
+    return {
+        **current_comment,
+        "comment_text": current_comment.get("comment_text") or current_comment.get("text") or "",
+        "created_at": created_at,
+        "display_name": display_name,
+        "relative_time": _relative_time_label(created_at),
+        "can_delete": bool(current_user_id and str(current_comment.get("user_id") or "") == current_user_id),
+        "profile_url": _profile_url_for(profile_record, current_user_id),
+    }
 
 
 def _validate_climb_photo_uploads():
@@ -665,7 +774,12 @@ def api_peak_comment_create():
     if comment is None:
         return _json_error("We couldn't post that comment right now.", 500)
 
-    return _json_success({"comment": comment, "comment_id": comment.get("id")})
+    return _json_success(
+        {
+            "comment": _serialize_comment(comment, user_id),
+            "comment_id": comment.get("id"),
+        }
+    )
 
 
 @api.route("/peak-comment/<int:comment_id>/delete", methods=["POST"])

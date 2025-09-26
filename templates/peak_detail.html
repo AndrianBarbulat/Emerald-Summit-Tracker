@@ -369,60 +369,208 @@
             </div>
             {% endif %}
 
-            <div class="column is-12-tablet is-6-desktop">
-                <div class="box peak-detail-section">
-                    <div class="peak-detail-section__header">
+            <div
+                class="column is-12"
+                data-peak-community
+                data-peak-id="{{ peak.id }}"
+                data-empty-comments-text="No trail notes yet for this peak."
+            >
+                <div class="box peak-detail-section peak-detail-community">
+                    <div class="peak-detail-section__header peak-detail-community__header">
                         <div>
                             <p class="peak-detail-section__eyebrow">Community</p>
-                            <h2 class="title is-5 peak-detail-section__title">Recent Climbers</h2>
+                            <h2 class="title is-4 peak-detail-section__title">
+                                <span class="icon peak-detail-community__title-icon"><i class="fas fa-users"></i></span>
+                                <span>Community</span>
+                            </h2>
                         </div>
                     </div>
 
-                    {% if climbers %}
-                    <div class="peak-detail-list">
-                        {% for climber in climbers %}
-                        <article class="peak-detail-list-item">
-                            <div class="peak-detail-list-item__body">
-                                <div class="peak-detail-list-item__header">
-                                    <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
-                                    <p class="peak-detail-list-item__meta">{{ climber.date_climbed[:10] if climber.date_climbed else 'Recent climb' }}</p>
-                                </div>
+                    <div class="peak-detail-community__stats">
+                        <div class="peak-detail-community-stat">
+                            <span class="peak-detail-community-stat__label">Reach</span>
+                            <p class="peak-detail-community-stat__value">
+                                {{ total_climbers }} climber{% if total_climbers != 1 %}s{% endif %} have reached this summit
+                            </p>
+                        </div>
+                        <div class="peak-detail-community-stat peak-detail-community-stat--difficulty">
+                            <span class="peak-detail-community-stat__label">Average Difficulty</span>
+                            <div class="peak-detail-stars-display" aria-label="Average difficulty {{ '%.1f'|format(avg_difficulty) if avg_difficulty is not none else 'not yet rated' }}">
+                                {% for star_number in range(1, 6) %}
+                                <span class="peak-detail-stars-display__star{% if star_number <= avg_difficulty_stars %} is-filled{% endif %}">
+                                    <i class="fas fa-star" aria-hidden="true"></i>
+                                </span>
+                                {% endfor %}
+                                <span class="peak-detail-stars-display__value">
+                                    {% if avg_difficulty is not none %}
+                                    {{ '%.1f'|format(avg_difficulty) }}
+                                    {% else %}
+                                    Not yet rated
+                                    {% endif %}
+                                </span>
                             </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="has-text-grey">No climbers have logged this peak yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="column is-12-tablet is-6-desktop">
-                <div class="box peak-detail-section">
-                    <div class="peak-detail-section__header">
-                        <div>
-                            <p class="peak-detail-section__eyebrow">Community</p>
-                            <h2 class="title is-5 peak-detail-section__title">Comments</h2>
                         </div>
                     </div>
 
-                    {% if comments %}
-                    <div class="peak-detail-list">
-                        {% for comment in comments %}
-                        <article class="peak-detail-list-item">
-                            <div class="peak-detail-list-item__body">
-                                <div class="peak-detail-list-item__header">
-                                    <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
-                                    <p class="peak-detail-list-item__meta">{{ comment.created_at[:10] if comment.created_at else 'Recent comment' }}</p>
+                    <div class="columns is-variable is-6 is-multiline">
+                        <div class="column is-12-tablet is-5-desktop">
+                            <div class="peak-detail-community-panel">
+                                <div class="peak-detail-section__header">
+                                    <div>
+                                        <p class="peak-detail-section__eyebrow">Who Climbed It</p>
+                                        <h3 class="title is-5 peak-detail-section__title">Recent Climbers</h3>
+                                    </div>
+                                    {% if total_climbers > 5 %}
+                                    <button
+                                        type="button"
+                                        class="button is-text peak-detail-community__toggle"
+                                        data-peak-community-toggle
+                                        data-collapsed-label="View all {{ total_climbers }} climbers"
+                                        data-expanded-label="Show fewer"
+                                    >
+                                        View all {{ total_climbers }} climbers
+                                    </button>
+                                    {% endif %}
                                 </div>
-                                <p class="peak-detail-list-item__copy">{{ comment.comment_text }}</p>
+
+                                {% if climbers %}
+                                <div class="peak-detail-list">
+                                    {% for climber in climbers %}
+                                    <article class="peak-detail-list-item">
+                                        <div class="peak-detail-list-item__body">
+                                            <div class="peak-detail-list-item__header">
+                                                {% if climber.profile_url %}
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
+                                                    <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
+                                                </a>
+                                                {% else %}
+                                                <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
+                                                {% endif %}
+                                                <p class="peak-detail-list-item__meta">{{ climber.date_label }}</p>
+                                            </div>
+                                            <div class="peak-detail-stars-display peak-detail-stars-display--inline" aria-label="Difficulty {{ climber.difficulty_rating or 'not rated' }}">
+                                                {% for star_number in range(1, 6) %}
+                                                <span class="peak-detail-stars-display__star{% if star_number <= climber.difficulty_stars %} is-filled{% endif %}">
+                                                    <i class="fas fa-star" aria-hidden="true"></i>
+                                                </span>
+                                                {% endfor %}
+                                                <span class="peak-detail-stars-display__value">
+                                                    {{ climber.difficulty_rating or 'No rating' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+
+                                {% if total_climbers > 5 %}
+                                <div class="peak-detail-list is-hidden" data-peak-community-hidden-climbers hidden>
+                                    {% for climber in all_climbers[5:] %}
+                                    <article class="peak-detail-list-item">
+                                        <div class="peak-detail-list-item__body">
+                                            <div class="peak-detail-list-item__header">
+                                                {% if climber.profile_url %}
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
+                                                    <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
+                                                </a>
+                                                {% else %}
+                                                <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
+                                                {% endif %}
+                                                <p class="peak-detail-list-item__meta">{{ climber.date_label }}</p>
+                                            </div>
+                                            <div class="peak-detail-stars-display peak-detail-stars-display--inline" aria-label="Difficulty {{ climber.difficulty_rating or 'not rated' }}">
+                                                {% for star_number in range(1, 6) %}
+                                                <span class="peak-detail-stars-display__star{% if star_number <= climber.difficulty_stars %} is-filled{% endif %}">
+                                                    <i class="fas fa-star" aria-hidden="true"></i>
+                                                </span>
+                                                {% endfor %}
+                                                <span class="peak-detail-stars-display__value">
+                                                    {{ climber.difficulty_rating or 'No rating' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <p class="has-text-grey">No climbers have logged this peak yet.</p>
+                                {% endif %}
                             </div>
-                        </article>
-                        {% endfor %}
+                        </div>
+
+                        <div class="column is-12-tablet is-7-desktop">
+                            <div class="peak-detail-community-panel">
+                                <div class="peak-detail-section__header">
+                                    <div>
+                                        <p class="peak-detail-section__eyebrow">Trail Notes</p>
+                                        <h3 class="title is-5 peak-detail-section__title">Trail Notes &amp; Tips</h3>
+                                    </div>
+                                </div>
+
+                                {% if profile %}
+                                <form class="peak-detail-comment-form" data-peak-comment-form novalidate>
+                                    <div class="field">
+                                        <div class="control">
+                                            <textarea
+                                                class="textarea"
+                                                name="comment_text"
+                                                maxlength="2000"
+                                                rows="4"
+                                                placeholder="Share route conditions, weather tips, or anything the next climber should know..."
+                                                data-peak-comment-input
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                    <p class="peak-detail-comment-form__error" data-peak-comment-error aria-live="polite"></p>
+                                    <div class="buttons is-right peak-detail-comment-form__actions">
+                                        <button type="submit" class="button peak-detail-comment-form__submit" data-peak-comment-submit>Post</button>
+                                    </div>
+                                </form>
+                                {% else %}
+                                <p class="peak-detail-community__prompt">
+                                    Sign up or log in to share trail notes and tips for this peak.
+                                </p>
+                                {% endif %}
+
+                                <div class="peak-detail-list" data-peak-comments-list>
+                                    {% for comment in comments %}
+                                    <article class="peak-detail-list-item" data-comment-id="{{ comment.id }}">
+                                        <div class="peak-detail-list-item__body">
+                                            <div class="peak-detail-list-item__header">
+                                                <div class="peak-detail-list-item__heading">
+                                                    {% if comment.profile_url %}
+                                                    <a href="{{ comment.profile_url }}" class="peak-detail-list-item__title-link">
+                                                        <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
+                                                    </a>
+                                                    {% else %}
+                                                    <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
+                                                    {% endif %}
+                                                    <p class="peak-detail-list-item__meta">{{ comment.relative_time }}</p>
+                                                </div>
+                                                {% if comment.can_delete %}
+                                                <button
+                                                    type="button"
+                                                    class="button is-text peak-detail-comment-delete"
+                                                    data-comment-delete
+                                                    data-comment-id="{{ comment.id }}"
+                                                >
+                                                    Delete
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                            <p class="peak-detail-list-item__copy">{{ comment.comment_text }}</p>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+
+                                <p class="has-text-grey{% if comments %} is-hidden{% endif %}" data-peak-comments-empty>
+                                    No trail notes yet for this peak.
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                    {% else %}
-                    <p class="has-text-grey">No comments yet for this peak.</p>
-                    {% endif %}
                 </div>
             </div>
         </div>

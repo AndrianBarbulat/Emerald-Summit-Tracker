@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{{ public_profile.display_name or "Climber" }} | Emerald Peak Explorer{% endblock %}
+
+{% block content %}
+<section class="section peak-detail-page">
+    <div class="container">
+        <div class="box peak-detail-section">
+            <div class="peak-detail-section__header">
+                <div>
+                    <p class="peak-detail-section__eyebrow">Profile</p>
+                    <h1 class="title is-3 peak-detail-section__title">{{ public_profile.display_name or "Climber" }}</h1>
+                </div>
+                {% if is_profile_owner %}
+                <a href="/account" class="button is-light">Account Settings</a>
+                {% endif %}
+            </div>
+
+            <div class="columns is-variable is-6 is-multiline">
+                <div class="column is-12-tablet is-4-desktop">
+                    <div class="peak-detail-card peak-detail-card__stats">
+                        <div class="peak-detail-stat peak-detail-stat--wide">
+                            <span class="peak-detail-stat__label">Display Name</span>
+                            <span class="peak-detail-stat__value">{{ public_profile.display_name or "-" }}</span>
+                        </div>
+                        <div class="peak-detail-stat">
+                            <span class="peak-detail-stat__label">Location</span>
+                            <span class="peak-detail-stat__value">{{ public_profile.location or "-" }}</span>
+                        </div>
+                        <div class="peak-detail-stat peak-detail-stat--wide">
+                            <span class="peak-detail-stat__label">Website</span>
+                            <span class="peak-detail-stat__value">
+                                {% if public_profile.website %}
+                                <a href="{{ public_profile.website }}" target="_blank" rel="noreferrer noopener">{{ public_profile.website }}</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="column is-12-tablet is-8-desktop">
+                    <div class="peak-detail-card">
+                        <div class="peak-detail-section__header">
+                            <div>
+                                <p class="peak-detail-section__eyebrow">About</p>
+                                <h2 class="title is-5 peak-detail-section__title">Climber Bio</h2>
+                            </div>
+                        </div>
+
+                        {% if public_profile.bio %}
+                        <div class="content">
+                            <p>{{ public_profile.bio }}</p>
+                        </div>
+                        {% else %}
+                        <p class="has-text-grey">This climber has not added a public bio yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

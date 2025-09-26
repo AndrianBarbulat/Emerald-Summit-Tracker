@@ -1,7 +1,7 @@
 import re
 from datetime import datetime, timezone
 
-from flask import Flask, abort, jsonify, render_template, request, redirect, session
+from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for
 
 from api_routes import api
 from supabase_utils import (
@@ -11,6 +11,7 @@ from supabase_utils import (
     get_peak_by_id,
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
+    get_profile_by_display_name,
     get_user_climbs,
     get_user_has_climbed,
     get_user_peak_climbs,
@@ -171,6 +172,164 @@ def _to_float(value):
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _format_short_date(value: str) -> str:
+    dt = _parse_datetime(value)
+    if dt is None:
+        return "Recent climb"
+    return dt.strftime("%d %b %Y")
+
+
+def _difficulty_numeric_value(value) -> float | None:
+    if value is None or str(value).strip() == "":
+        return None
+
+    try:
+        numeric = float(value)
+        if 0 <= numeric <= 5:
+            return numeric
+        return None
+    except (TypeError, ValueError):
+        pass
+
+    named_values = {
+        "easy": 1.0,
+        "moderate": 2.0,
+        "medium": 2.0,
+        "hard": 3.0,
+        "challenging": 3.0,
+        "very hard": 4.0,
+        "strenuous": 4.0,
+        "expert": 5.0,
+        "extreme": 5.0,
+    }
+    return named_values.get(str(value or "").strip().lower())
+
+
+def _difficulty_star_count(value) -> int:
+    numeric_value = _difficulty_numeric_value(value)
+    if numeric_value is None:
+        return 0
+    return max(0, min(5, int(round(numeric_value))))
+
+
+def _profile_visibility_value(profile: dict | None) -> str:
+    if not isinstance(profile, dict):
+        return ""
+
+    candidate_values = [
+        profile.get("profile_visibility"),
+        profile.get("public_profile"),
+        profile.get("is_public"),
+        profile.get("show_profile"),
+    ]
+
+    preferences = profile.get("preferences")
+    if isinstance(preferences, dict):
+        candidate_values.extend(
+            [
+                preferences.get("profile_visibility"),
+                preferences.get("public_profile"),
+                preferences.get("is_public"),
+                preferences.get("show_profile"),
+            ]
+        )
+
+    for value in candidate_values:
+        if isinstance(value, bool):
+            return "public" if value else "private"
+
+        normalized = str(value or "").strip().lower()
+        if normalized:
+            return normalized
+
+    return ""
+
+
+def _is_profile_public(profile: dict | None) -> bool:
+    visibility = _profile_visibility_value(profile)
+    if visibility in {"private", "only me", "me", "hidden", "off", "false", "0", "none", "friends", "only friends"}:
+        return False
+    if visibility in {"public", "everyone", "all", "true", "1", "on", "yes"}:
+        return True
+    return bool(str((profile or {}).get("display_name") or "").strip())
+
+
+def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str | None:
+    if not isinstance(profile, dict):
+        return None
+
+    display_name = str(profile.get("display_name") or "").strip()
+    if not display_name:
+        return None
+
+    profile_user_id = str(profile.get("id") or "").strip()
+    if _is_profile_public(profile) or (current_user_id and profile_user_id == str(current_user_id)):
+        return url_for("public_profile", display_name=display_name)
+
+    return None
+
+
+def _build_peak_climber_entries(climbers: list[dict], current_user_id: str | None) -> list[dict]:
+    unique_climbers = []
+    seen_keys = set()
+
+    for climber in climbers:
+        current_climber = dict(climber or {})
+        profile = dict(current_climber.get("profile") or {})
+        display_name = str(current_climber.get("display_name") or profile.get("display_name") or "").strip()
+        user_id = str(current_climber.get("user_id") or profile.get("id") or "").strip()
+        unique_key = user_id or display_name or str(current_climber.get("id") or "")
+        if not unique_key or unique_key in seen_keys:
+            continue
+
+        seen_keys.add(unique_key)
+        profile_record = {
+            **profile,
+            "id": profile.get("id") or user_id,
+            "display_name": profile.get("display_name") or display_name,
+        }
+        raw_date = current_climber.get("date_climbed") or current_climber.get("climbed_at") or current_climber.get("created_at")
+        difficulty_rating = current_climber.get("difficulty_rating") or current_climber.get("difficulty")
+        unique_climbers.append(
+            {
+                **current_climber,
+                "date_climbed": raw_date,
+                "date_label": _format_short_date(raw_date),
+                "difficulty_rating": difficulty_rating,
+                "difficulty_stars": _difficulty_star_count(difficulty_rating),
+                "profile_url": _profile_url_for(profile_record, current_user_id),
+            }
+        )
+
+    return unique_climbers
+
+
+def _build_peak_comment_entries(comments: list[dict], current_user_id: str | None) -> list[dict]:
+    comment_entries = []
+    for comment in comments:
+        current_comment = dict(comment or {})
+        profile = dict(current_comment.get("profile") or {})
+        display_name = str(current_comment.get("display_name") or profile.get("display_name") or "").strip()
+        user_id = str(current_comment.get("user_id") or profile.get("id") or "").strip()
+        profile_record = {
+            **profile,
+            "id": profile.get("id") or user_id,
+            "display_name": profile.get("display_name") or display_name,
+        }
+        created_at = current_comment.get("created_at")
+        comment_entries.append(
+            {
+                **current_comment,
+                "comment_text": current_comment.get("comment_text") or current_comment.get("text") or "",
+                "relative_time": _relative_time(created_at),
+                "profile_url": _profile_url_for(profile_record, current_user_id),
+                "can_delete": bool(current_user_id and user_id == str(current_user_id)),
+            }
+        )
+
+    return comment_entries
 
 
 def _normalize_peak_status(status: str | None) -> str:
@@ -568,11 +727,13 @@ def peak_detail(peak_id: int):
         user_climbs = get_user_peak_climbs(user_id, peak_id)
 
     peak_status = "climbed" if has_climbed else ("bucket_listed" if is_bucket_listed else "not_attempted")
-    climbers = get_peak_climbers_with_profiles(peak_id, limit=5)
-    comments = get_peak_comments_with_profiles(peak_id)
+    climber_rows = get_peak_climbers_with_profiles(peak_id, limit=None)
+    climbers = _build_peak_climber_entries(climber_rows, user_id)
+    comments = _build_peak_comment_entries(get_peak_comments_with_profiles(peak_id), user_id)
     avg_difficulty = get_peak_average_difficulty(peak_id)
     peak_latitude = _to_float(peak.get("latitude") or peak.get("lat"))
     peak_longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
+    total_climbers = len(climbers)
 
     return render_template(
         "peak_detail.html",
@@ -583,13 +744,51 @@ def peak_detail(peak_id: int):
             "user_status": peak_status,
         },
         avg_difficulty=avg_difficulty,
-        climbers=climbers,
+        climbers=climbers[:5],
         comments=comments,
+        current_user_id=user_id,
+        total_climbers=total_climbers,
+        all_climbers=climbers,
+        avg_difficulty_stars=_difficulty_star_count(avg_difficulty),
         has_climbed=has_climbed,
         is_bucket_listed=is_bucket_listed,
         peak_status=peak_status,
         user_climbs=user_climbs,
         active_page="summit_list",
+        **context,
+    )
+
+
+@app.route("/profile/me")
+def my_profile():
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
+    display_name = str(context["profile"].get("display_name") or "").strip()
+    if not display_name:
+        return redirect("/account")
+
+    return redirect(url_for("public_profile", display_name=display_name))
+
+
+@app.route("/profile/<display_name>")
+def public_profile(display_name: str):
+    context = get_session_context()
+    profile_record = get_profile_by_display_name(display_name)
+    if profile_record is None:
+        abort(404)
+
+    current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
+    is_owner = bool(current_user_id and str(profile_record.get("id") or "") == current_user_id)
+    if not is_owner and not _is_profile_public(profile_record):
+        abort(404)
+
+    return render_template(
+        "profile_public.html",
+        public_profile=profile_record,
+        is_profile_owner=is_owner,
+        active_page="profile",
         **context,
     )
 

@@ -154,6 +154,10 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-peak-tracking]').forEach(function(panel) {
         initPeakTrackingPanel(panel);
     });
+
+    document.querySelectorAll('[data-peak-community]').forEach(function(section) {
+        initPeakCommunitySection(section);
+    });
 });
 
 const AUTH_MODAL_COPY = {
@@ -584,6 +588,206 @@ function initPeakTrackingPanel(panel) {
             }
         });
     }
+}
+
+function initPeakCommunitySection(section) {
+    if (!section) {
+        return;
+    }
+
+    const hiddenClimbers = section.querySelector('[data-peak-community-hidden-climbers]');
+    const toggleButton = section.querySelector('[data-peak-community-toggle]');
+    const commentForm = section.querySelector('[data-peak-comment-form]');
+    const commentInput = section.querySelector('[data-peak-comment-input]');
+
+    if (toggleButton && hiddenClimbers) {
+        toggleButton.addEventListener('click', function() {
+            const isHidden = hiddenClimbers.hasAttribute('hidden');
+            if (isHidden) {
+                hiddenClimbers.removeAttribute('hidden');
+                hiddenClimbers.classList.remove('is-hidden');
+            } else {
+                hiddenClimbers.setAttribute('hidden', '');
+                hiddenClimbers.classList.add('is-hidden');
+            }
+
+            const label = isHidden
+                ? toggleButton.getAttribute('data-expanded-label')
+                : toggleButton.getAttribute('data-collapsed-label');
+            toggleButton.textContent = String(label || '').trim();
+        });
+    }
+
+    syncPeakCommentEmptyState(section);
+
+    if (commentInput) {
+        commentInput.addEventListener('input', function() {
+            setPeakCommentError(section, '');
+        });
+    }
+
+    if (commentForm) {
+        commentForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const peakId = Number(section.dataset.peakId || 0);
+            const submitButton = commentForm.querySelector('[data-peak-comment-submit]');
+            const commentText = String(commentInput ? commentInput.value || '' : '').trim();
+
+            if (!peakId) {
+                return;
+            }
+
+            if (!commentText) {
+                setPeakCommentError(section, 'Please write a trail note before posting.');
+                if (commentInput) {
+                    commentInput.focus();
+                }
+                return;
+            }
+
+            setPeakCommentError(section, '');
+            if (submitButton) {
+                submitButton.classList.add('is-loading');
+            }
+
+            try {
+                const result = await postJsonRequest('/api/peak-comment', {
+                    peak_id: peakId,
+                    comment_text: commentText
+                });
+                prependPeakComment(section, result.comment || {});
+                if (commentInput) {
+                    commentInput.value = '';
+                    commentInput.focus();
+                }
+                showSiteToast('Trail note posted.');
+            } catch (error) {
+                setPeakCommentError(section, error.message || 'We could not post that trail note right now.');
+            } finally {
+                if (submitButton) {
+                    submitButton.classList.remove('is-loading');
+                }
+            }
+        });
+    }
+
+    section.addEventListener('click', async function(event) {
+        const deleteButton = event.target.closest('[data-comment-delete]');
+        if (!deleteButton) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const commentId = Number(deleteButton.getAttribute('data-comment-id') || 0);
+        if (!commentId) {
+            return;
+        }
+
+        deleteButton.classList.add('is-loading');
+        deleteButton.disabled = true;
+
+        try {
+            await postJsonRequest('/api/peak-comment/' + commentId + '/delete', {});
+            const article = section.querySelector('[data-comment-id="' + commentId + '"]');
+            if (article && article.parentNode) {
+                article.parentNode.removeChild(article);
+            }
+            syncPeakCommentEmptyState(section);
+            showSiteToast('Trail note deleted.');
+        } catch (error) {
+            showSiteToast(error.message || 'We could not delete that trail note right now.');
+            deleteButton.disabled = false;
+        } finally {
+            deleteButton.classList.remove('is-loading');
+        }
+    });
+}
+
+function setPeakCommentError(section, message) {
+    const errorElement = section ? section.querySelector('[data-peak-comment-error]') : null;
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = String(message || '').trim();
+}
+
+function syncPeakCommentEmptyState(section) {
+    const list = section ? section.querySelector('[data-peak-comments-list]') : null;
+    const emptyState = section ? section.querySelector('[data-peak-comments-empty]') : null;
+    if (!list || !emptyState) {
+        return;
+    }
+
+    const hasComments = Boolean(list.querySelector('[data-comment-id]'));
+    emptyState.classList.toggle('is-hidden', hasComments);
+}
+
+function prependPeakComment(section, comment) {
+    const list = section ? section.querySelector('[data-peak-comments-list]') : null;
+    if (!list) {
+        return;
+    }
+
+    const article = document.createElement('article');
+    article.className = 'peak-detail-list-item';
+    if (comment && comment.id !== undefined && comment.id !== null) {
+        article.setAttribute('data-comment-id', String(comment.id));
+    }
+
+    const body = document.createElement('div');
+    body.className = 'peak-detail-list-item__body';
+
+    const header = document.createElement('div');
+    header.className = 'peak-detail-list-item__header';
+
+    const heading = document.createElement('div');
+    heading.className = 'peak-detail-list-item__heading';
+
+    if (comment.profile_url) {
+        const link = document.createElement('a');
+        link.className = 'peak-detail-list-item__title-link';
+        link.href = String(comment.profile_url);
+
+        const title = document.createElement('p');
+        title.className = 'peak-detail-list-item__title';
+        title.textContent = String(comment.display_name || 'Climber');
+        link.appendChild(title);
+        heading.appendChild(link);
+    } else {
+        const title = document.createElement('p');
+        title.className = 'peak-detail-list-item__title';
+        title.textContent = String(comment.display_name || 'Climber');
+        heading.appendChild(title);
+    }
+
+    const meta = document.createElement('p');
+    meta.className = 'peak-detail-list-item__meta';
+    meta.textContent = String(comment.relative_time || 'just now');
+    heading.appendChild(meta);
+    header.appendChild(heading);
+
+    if (comment.can_delete && comment.id !== undefined && comment.id !== null) {
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'button is-text peak-detail-comment-delete';
+        deleteButton.setAttribute('data-comment-delete', '');
+        deleteButton.setAttribute('data-comment-id', String(comment.id));
+        deleteButton.textContent = 'Delete';
+        header.appendChild(deleteButton);
+    }
+
+    const copy = document.createElement('p');
+    copy.className = 'peak-detail-list-item__copy';
+    copy.textContent = String(comment.comment_text || '');
+
+    body.appendChild(header);
+    body.appendChild(copy);
+    article.appendChild(body);
+    list.insertBefore(article, list.firstChild);
+    syncPeakCommentEmptyState(section);
 }
 
 function openPeakLogForm(panel, form) {

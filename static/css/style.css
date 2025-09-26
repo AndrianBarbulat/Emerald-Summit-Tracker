@@ -684,6 +684,101 @@ body {
     margin-bottom: 0;
 }
 
+.peak-detail-community {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.peak-detail-community__header .peak-detail-section__title {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.6rem;
+}
+
+.peak-detail-community__title-icon {
+    color: var(--color-gold);
+}
+
+.peak-detail-community__stats {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.peak-detail-community-stat {
+    background: rgba(245, 241, 235, 0.7);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 0.55rem;
+    padding: 1rem 1.1rem;
+}
+
+.peak-detail-community-stat__label {
+    color: var(--color-grey);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.peak-detail-community-stat__value {
+    color: var(--color-forest);
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.peak-detail-community-stat--difficulty {
+    align-content: start;
+}
+
+.peak-detail-community-panel {
+    display: grid;
+    gap: 1rem;
+    height: 100%;
+}
+
+.peak-detail-stars-display {
+    align-items: center;
+    color: rgba(212, 168, 83, 0.32);
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+}
+
+.peak-detail-stars-display--inline {
+    gap: 0.18rem;
+}
+
+.peak-detail-stars-display__star {
+    font-size: 0.92rem;
+    line-height: 1;
+}
+
+.peak-detail-stars-display__star.is-filled {
+    color: var(--color-gold);
+}
+
+.peak-detail-stars-display__value {
+    color: var(--color-grey);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 0.45rem;
+}
+
+.peak-detail-community__toggle {
+    color: var(--color-sage);
+    font-weight: 600;
+    min-height: 44px;
+    padding: 0;
+}
+
+.peak-detail-community__toggle:hover,
+.peak-detail-community__toggle:focus-visible {
+    color: var(--color-forest);
+}
+
 .site-toast-container {
     display: grid;
     gap: 0.75rem;
@@ -736,10 +831,25 @@ body {
     justify-content: space-between;
 }
 
+.peak-detail-list-item__heading {
+    display: grid;
+    gap: 0.15rem;
+}
+
 .peak-detail-list-item__title {
     color: var(--color-forest);
     font-weight: 700;
     margin: 0;
+}
+
+.peak-detail-list-item__title-link {
+    color: inherit;
+}
+
+.peak-detail-list-item__title-link:hover .peak-detail-list-item__title,
+.peak-detail-list-item__title-link:focus-visible .peak-detail-list-item__title {
+    color: var(--color-sage);
+    text-decoration: underline;
 }
 
 .peak-detail-list-item__meta {
@@ -788,6 +898,64 @@ body {
     height: 100%;
     object-fit: cover;
     width: 100%;
+}
+
+.peak-detail-comment-form {
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.peak-detail-comment-form .textarea {
+    border-radius: var(--radius-sm);
+    min-height: 120px;
+}
+
+.peak-detail-comment-form .textarea:focus {
+    border-color: var(--color-mint);
+    box-shadow: 0 0 0 0.125em rgba(116, 198, 157, 0.25);
+}
+
+.peak-detail-comment-form__actions {
+    margin-bottom: 0;
+}
+
+.peak-detail-comment-form__submit {
+    background: var(--color-forest);
+    border-color: transparent;
+    color: var(--color-white);
+    min-height: 44px;
+    padding-inline: 1.1rem;
+}
+
+.peak-detail-comment-form__submit:hover,
+.peak-detail-comment-form__submit:focus-visible {
+    background: #214d39;
+    color: var(--color-white);
+}
+
+.peak-detail-comment-form__error {
+    color: var(--color-danger);
+    font-size: 0.9rem;
+    margin: 0 0 0.65rem;
+    min-height: 1.25rem;
+}
+
+.peak-detail-comment-delete {
+    color: var(--color-grey);
+    min-height: 44px;
+    padding: 0;
+}
+
+.peak-detail-comment-delete:hover,
+.peak-detail-comment-delete:focus-visible {
+    color: var(--color-danger);
+}
+
+.peak-detail-community__prompt {
+    color: var(--color-grey);
+    margin: 0;
 }
 
 .site-navbar {
@@ -1387,6 +1555,19 @@ body {
     .peak-detail-list-item__header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .peak-detail-community__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-stars-display__value {
+        margin-left: 0.15rem;
+    }
+
+    .peak-detail-comment-form__actions .button,
+    .peak-detail-community__toggle {
+        width: 100%;
     }
 
     .site-toast-container {

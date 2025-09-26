@@ -460,11 +460,11 @@ def get_user_peak_climbs(user_id: str, peak_id: Any) -> List[Dict[str, Any]]:
     return [_normalize_climb_record(climb) for climb in climbs]
 
 
-def get_peak_climbers_with_profiles(peak_id: Any, limit: int = 5) -> List[Dict[str, Any]]:
+def get_peak_climbers_with_profiles(peak_id: Any, limit: Optional[int] = 5) -> List[Dict[str, Any]]:
     climbs = _query_peak_climb_rows(
         peak_id,
         limit=limit,
-        select_clause="*, profiles(id, display_name, avatar_url)",
+        select_clause="*, profiles(*)",
     )
     enriched_climbs = _enrich_user_records(climbs)
     normalized_climbs = []
@@ -691,7 +691,7 @@ def get_peak_comments(peak_id: Any) -> List[Dict[str, Any]]:
 def get_peak_comments_with_profiles(peak_id: Any) -> List[Dict[str, Any]]:
     comments = _query_peak_comment_rows(
         peak_id,
-        select_clause="*, profiles(id, display_name, avatar_url)",
+        select_clause="*, profiles(*)",
     )
     enriched_comments = _enrich_user_records(comments)
     normalized_comments = []
