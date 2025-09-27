@@ -869,6 +869,51 @@ body {
     font-weight: 700;
 }
 
+.peak-detail-user-climb-log {
+    height: 100%;
+}
+
+.peak-detail-user-climb-item__meta-row {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+}
+
+.peak-detail-user-climb-item__weather {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.4rem;
+}
+
+.peak-detail-user-climb-item__actions {
+    gap: 0.55rem;
+    margin-bottom: 0;
+}
+
+.peak-detail-user-climb-item__action {
+    min-height: 44px;
+}
+
+.peak-detail-user-climb-item__edit {
+    margin-top: 1rem;
+}
+
+.peak-detail-user-climb-item__edit.is-hidden {
+    display: none;
+}
+
+.peak-detail-user-climb-form {
+    background: var(--color-white);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.peak-detail-user-climb-form__error {
+    margin-top: 0.25rem;
+}
+
 .peak-detail-photo-gallery {
     display: grid;
     gap: 0.7rem;
@@ -1563,6 +1608,15 @@ body {
 
     .peak-detail-stars-display__value {
         margin-left: 0.15rem;
+    }
+
+    .peak-detail-user-climb-item__actions {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .peak-detail-user-climb-item__action {
+        width: 100%;
     }
 
     .peak-detail-comment-form__actions .button,

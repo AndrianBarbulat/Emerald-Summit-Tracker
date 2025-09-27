@@ -332,6 +332,25 @@ def _build_peak_comment_entries(comments: list[dict], current_user_id: str | Non
     return comment_entries
 
 
+def _build_user_peak_climb_entries(user_climbs: list[dict]) -> list[dict]:
+    climb_entries = []
+    for climb in user_climbs:
+        current_climb = dict(climb or {})
+        raw_date = current_climb.get("date_climbed") or current_climb.get("climbed_at") or current_climb.get("created_at")
+        difficulty_rating = current_climb.get("difficulty_rating") or current_climb.get("difficulty")
+        climb_entries.append(
+            {
+                **current_climb,
+                "date_climbed": raw_date,
+                "date_label": _format_short_date(raw_date),
+                "difficulty_rating": difficulty_rating,
+                "difficulty_stars": _difficulty_star_count(difficulty_rating),
+            }
+        )
+
+    return climb_entries
+
+
 def _normalize_peak_status(status: str | None) -> str:
     normalized = str(status or "").strip().lower()
     if normalized == "bucket":
@@ -724,7 +743,7 @@ def peak_detail(peak_id: int):
     if user_id:
         has_climbed = get_user_has_climbed(user_id, peak_id) is not None
         is_bucket_listed = get_bucket_list_entry(user_id, peak_id) is not None
-        user_climbs = get_user_peak_climbs(user_id, peak_id)
+        user_climbs = _build_user_peak_climb_entries(get_user_peak_climbs(user_id, peak_id))
 
     peak_status = "climbed" if has_climbed else ("bucket_listed" if is_bucket_listed else "not_attempted")
     climber_rows = get_peak_climbers_with_profiles(peak_id, limit=None)

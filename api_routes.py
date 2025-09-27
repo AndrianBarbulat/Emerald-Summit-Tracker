@@ -725,11 +725,21 @@ def api_climb(climb_id: int):
     if str(climb.get("user_id") or "") != user_id:
         return _json_error("You can only modify your own climbs.", 400)
 
+    peak_id = _parse_int(climb.get("peak_id"))
+
     if request.method == "DELETE":
         deleted_climb = delete_climb(climb_id, user_id)
         if deleted_climb is None and get_climb_by_id(climb_id) is not None:
             return _json_error("We couldn't delete that climb right now.", 500)
-        return _json_success({"climb_id": climb_id})
+        payload = {"climb_id": climb_id}
+        if peak_id is not None:
+            payload.update(
+                {
+                    "peak_id": peak_id,
+                    **_current_user_status(user_id, peak_id),
+                }
+            )
+        return _json_success(payload)
 
     payload = _get_request_data()
     fields, field_error = _normalize_climb_fields(payload, require_date=False)
@@ -747,7 +757,9 @@ def api_climb(climb_id: int):
         {
             "climb": updated_climb,
             "climb_id": updated_climb.get("id", climb_id),
+            "peak_id": peak_id,
             "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
+            **(_current_user_status(user_id, peak_id) if peak_id is not None else {}),
         }
     )
 

@@ -155,10 +155,25 @@ document.addEventListener('DOMContentLoaded', function() {
         initPeakTrackingPanel(panel);
     });
 
+    document.querySelectorAll('[data-user-climb-log-section]').forEach(function(section) {
+        initUserClimbLogSection(section);
+    });
+
     document.querySelectorAll('[data-peak-community]').forEach(function(section) {
         initPeakCommunitySection(section);
     });
 });
+
+const CLIMB_WEATHER_META = {
+    sunny: { icon: 'fa-sun', label: 'Sunny' },
+    cloudy: { icon: 'fa-cloud-sun', label: 'Cloudy' },
+    overcast: { icon: 'fa-cloud', label: 'Overcast' },
+    rainy: { icon: 'fa-cloud-rain', label: 'Rainy' },
+    windy: { icon: 'fa-wind', label: 'Windy' },
+    snowy: { icon: 'fa-snowflake', label: 'Snowy' },
+    foggy: { icon: 'fa-smog', label: 'Foggy' },
+    mixed: { icon: 'fa-cloud-sun-rain', label: 'Mixed' }
+};
 
 const AUTH_MODAL_COPY = {
     login: {
@@ -332,14 +347,37 @@ function getTodayDateValueLocal() {
 }
 
 async function postJsonRequest(url, payload) {
-    const response = await fetch(url, {
-        body: JSON.stringify(payload),
+    return jsonRequest(url, 'POST', payload);
+}
+
+async function putJsonRequest(url, payload) {
+    return jsonRequest(url, 'PUT', payload);
+}
+
+async function deleteJsonRequest(url, payload) {
+    return jsonRequest(url, 'DELETE', payload);
+}
+
+async function jsonRequest(url, method, payload) {
+    const headers = {
+        'Accept': 'application/json'
+    };
+    const options = {
         credentials: 'same-origin',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        },
-        method: 'POST'
+        headers: headers,
+        method: method || 'POST'
+    };
+
+    if (payload !== undefined) {
+        headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(url, {
+        body: options.body,
+        credentials: options.credentials,
+        headers: options.headers,
+        method: options.method
     });
 
     const result = await response.json().catch(function() {
@@ -571,6 +609,10 @@ function initPeakTrackingPanel(panel) {
                 formData.set('peak_id', String(peakId));
                 const result = await postFormDataRequest('/api/log-climb', formData);
                 updatePeakTrackingPanel(panel, result.user_status);
+                const userClimbSection = findUserClimbLogSection(peakId);
+                if (userClimbSection && result.climb) {
+                    upsertUserClimbItem(userClimbSection, result.climb);
+                }
                 closePeakLogForm(panel, form, true);
                 showSiteToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.');
                 if (result.warning) {
@@ -588,6 +630,545 @@ function initPeakTrackingPanel(panel) {
             }
         });
     }
+}
+
+function initUserClimbLogSection(section) {
+    if (!section) {
+        return;
+    }
+
+    initializeUserClimbEditForms(section);
+    syncUserClimbSectionVisibility(section);
+
+    section.addEventListener('input', function(event) {
+        const form = event.target.closest('[data-user-climb-edit-form]');
+        if (!form) {
+            return;
+        }
+
+        if (event.target.matches('[data-peak-log-notes]')) {
+            syncPeakLogNotesCounter(form);
+            setUserClimbFormError(form.closest('[data-user-climb-item]'), '');
+        }
+    });
+
+    section.addEventListener('click', async function(event) {
+        const starButton = event.target.closest('[data-peak-star-value]');
+        const starForm = starButton ? starButton.closest('[data-user-climb-edit-form]') : null;
+        if (starButton && starForm) {
+            event.preventDefault();
+            setPeakLogStarRating(starForm, Number(starButton.getAttribute('data-peak-star-value') || 0));
+            return;
+        }
+
+        const actionButton = event.target.closest('[data-user-climb-action]');
+        if (!actionButton) {
+            return;
+        }
+
+        event.preventDefault();
+        const item = actionButton.closest('[data-user-climb-item]');
+        if (!item) {
+            return;
+        }
+
+        const actionName = actionButton.getAttribute('data-user-climb-action');
+        if (actionName === 'edit') {
+            openUserClimbEdit(section, item);
+            return;
+        }
+
+        if (actionName === 'cancel-edit') {
+            closeUserClimbEdit(item, true);
+            return;
+        }
+
+        if (actionName === 'delete') {
+            const climbId = Number(item.getAttribute('data-climb-id') || 0);
+            if (!climbId) {
+                return;
+            }
+
+            const confirmed = window.confirm('Delete this climb log? This cannot be undone.');
+            if (!confirmed) {
+                return;
+            }
+
+            actionButton.classList.add('is-loading');
+            actionButton.disabled = true;
+
+            try {
+                const result = await deleteJsonRequest('/api/climb/' + climbId);
+                if (item.parentNode) {
+                    item.parentNode.removeChild(item);
+                }
+                syncUserClimbSectionVisibility(section);
+                const panel = findPeakTrackingPanel(result.peak_id || section.dataset.peakId);
+                if (panel && result.user_status) {
+                    updatePeakTrackingPanel(panel, result.user_status);
+                }
+                showSiteToast('Climb log deleted.');
+            } catch (error) {
+                actionButton.disabled = false;
+                showSiteToast(error.message || 'We could not delete that climb log right now.');
+            } finally {
+                actionButton.classList.remove('is-loading');
+            }
+        }
+    });
+
+    section.addEventListener('submit', async function(event) {
+        const form = event.target.closest('[data-user-climb-edit-form]');
+        if (!form) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const item = form.closest('[data-user-climb-item]');
+        const climbId = Number(item ? item.getAttribute('data-climb-id') || 0 : 0);
+        const dateInput = form.querySelector('[data-user-climb-date]');
+        const submitButton = form.querySelector('[data-user-climb-submit]');
+        const notesInput = form.querySelector('[data-peak-log-notes]');
+        const weatherSelect = form.querySelector('[data-user-climb-weather]');
+        const difficultyInput = form.querySelector('[data-peak-star-rating-input]');
+
+        if (!item || !climbId) {
+            return;
+        }
+
+        if (!dateInput || !String(dateInput.value || '').trim()) {
+            setUserClimbFormError(item, 'Please choose a climb date.');
+            if (dateInput) {
+                dateInput.focus();
+            }
+            return;
+        }
+
+        setUserClimbFormError(item, '');
+        togglePeakLogFormBusy(form, true);
+        if (submitButton) {
+            submitButton.classList.add('is-loading');
+        }
+
+        try {
+            const result = await putJsonRequest('/api/climb/' + climbId, {
+                date_climbed: String(dateInput.value || '').trim(),
+                notes: notesInput ? notesInput.value : '',
+                weather: weatherSelect ? weatherSelect.value : '',
+                difficulty_rating: difficultyInput ? difficultyInput.value : ''
+            });
+            replaceUserClimbItem(section, item, result.climb || {});
+            const panel = findPeakTrackingPanel(result.peak_id || section.dataset.peakId);
+            if (panel && result.user_status) {
+                updatePeakTrackingPanel(panel, result.user_status);
+            }
+            showSiteToast('Climb log updated.');
+        } catch (error) {
+            setUserClimbFormError(item, error.message || 'We could not save that climb log right now.');
+        } finally {
+            togglePeakLogFormBusy(form, false);
+            if (submitButton) {
+                submitButton.classList.remove('is-loading');
+            }
+        }
+    });
+}
+
+function initializeUserClimbEditForms(scope) {
+    if (!scope) {
+        return;
+    }
+
+    const forms = scope.matches && scope.matches('[data-user-climb-edit-form]')
+        ? [scope]
+        : Array.from(scope.querySelectorAll('[data-user-climb-edit-form]'));
+
+    forms.forEach(function(form) {
+        syncPeakLogNotesCounter(form);
+        const difficultyInput = form.querySelector('[data-peak-star-rating-input]');
+        setPeakLogStarRating(form, Number(difficultyInput ? difficultyInput.value || 0 : 0));
+    });
+}
+
+function openUserClimbEdit(section, item) {
+    if (!section || !item) {
+        return;
+    }
+
+    section.querySelectorAll('[data-user-climb-item]').forEach(function(otherItem) {
+        if (otherItem !== item) {
+            closeUserClimbEdit(otherItem, true);
+        }
+    });
+
+    const display = item.querySelector('[data-user-climb-display]');
+    const edit = item.querySelector('[data-user-climb-edit]');
+    const form = item.querySelector('[data-user-climb-edit-form]');
+    if (display) {
+        display.hidden = true;
+        display.classList.add('is-hidden');
+    }
+    if (edit) {
+        edit.hidden = false;
+        edit.classList.remove('is-hidden');
+    }
+    item.classList.add('is-editing');
+    setUserClimbFormError(item, '');
+    if (form) {
+        initializeUserClimbEditForms(form);
+    }
+
+    const focusTarget = item.querySelector('[data-user-climb-date]');
+    if (focusTarget) {
+        focusTarget.focus();
+    }
+}
+
+function closeUserClimbEdit(item, shouldReset) {
+    if (!item) {
+        return;
+    }
+
+    const display = item.querySelector('[data-user-climb-display]');
+    const edit = item.querySelector('[data-user-climb-edit]');
+    const form = item.querySelector('[data-user-climb-edit-form]');
+    if (shouldReset && form) {
+        form.reset();
+        initializeUserClimbEditForms(form);
+    }
+
+    if (display) {
+        display.hidden = false;
+        display.classList.remove('is-hidden');
+    }
+    if (edit) {
+        edit.hidden = true;
+        edit.classList.add('is-hidden');
+    }
+    item.classList.remove('is-editing');
+    setUserClimbFormError(item, '');
+}
+
+function setUserClimbFormError(item, message) {
+    const errorElement = item ? item.querySelector('[data-user-climb-error]') : null;
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = String(message || '').trim();
+}
+
+function syncUserClimbSectionVisibility(section) {
+    if (!section) {
+        return;
+    }
+
+    const list = section.querySelector('[data-user-climb-log-list]');
+    const hasItems = Boolean(list && list.querySelector('[data-user-climb-item]'));
+    section.hidden = !hasItems;
+    section.classList.toggle('is-hidden', !hasItems);
+}
+
+function findUserClimbLogSection(peakId) {
+    const normalizedPeakId = String(peakId || '').trim();
+    if (!normalizedPeakId) {
+        return null;
+    }
+
+    return document.querySelector('[data-user-climb-log-section][data-peak-id="' + normalizedPeakId + '"]');
+}
+
+function findPeakTrackingPanel(peakId) {
+    const normalizedPeakId = String(peakId || '').trim();
+    if (!normalizedPeakId) {
+        return null;
+    }
+
+    return document.querySelector('[data-peak-tracking][data-peak-id="' + normalizedPeakId + '"]');
+}
+
+function replaceUserClimbItem(section, item, climb) {
+    const list = section ? section.querySelector('[data-user-climb-log-list]') : null;
+    if (!list || !item || !climb) {
+        return;
+    }
+
+    item.insertAdjacentHTML('afterend', buildUserClimbItemMarkup(climb, section.dataset.peakName || 'Peak'));
+    if (item.parentNode) {
+        item.parentNode.removeChild(item);
+    }
+    initializeUserClimbEditForms(section);
+    syncUserClimbSectionVisibility(section);
+}
+
+function upsertUserClimbItem(section, climb) {
+    const list = section ? section.querySelector('[data-user-climb-log-list]') : null;
+    if (!section || !list || !climb || climb.id === undefined || climb.id === null) {
+        return;
+    }
+
+    const climbId = String(climb.id);
+    let existingItem = null;
+    list.querySelectorAll('[data-user-climb-item]').forEach(function(item) {
+        if (existingItem || String(item.getAttribute('data-climb-id') || '') !== climbId) {
+            return;
+        }
+        existingItem = item;
+    });
+
+    if (existingItem) {
+        replaceUserClimbItem(section, existingItem, climb);
+        return;
+    }
+
+    list.insertAdjacentHTML('afterbegin', buildUserClimbItemMarkup(climb, section.dataset.peakName || 'Peak'));
+    initializeUserClimbEditForms(section);
+    syncUserClimbSectionVisibility(section);
+}
+
+function buildUserClimbItemMarkup(climb, peakName) {
+    const normalizedClimb = normalizeUserClimbRecord(climb);
+    const weatherMeta = normalizedClimb.weather ? (CLIMB_WEATHER_META[normalizedClimb.weather] || null) : null;
+    const difficultyDisplayLabel = normalizedClimb.difficultyLabel || 'No rating';
+    const weatherMarkup = weatherMeta
+        ? '<p class="peak-detail-list-item__meta peak-detail-user-climb-item__weather">'
+            + '<span class="icon is-small" aria-hidden="true"><i class="fas ' + escapeHtml(weatherMeta.icon) + '"></i></span>'
+            + '<span>' + escapeHtml(weatherMeta.label) + '</span>'
+        + '</p>'
+        : '';
+    const notesMarkup = normalizedClimb.notes
+        ? '<p class="peak-detail-list-item__copy">' + escapeHtml(normalizedClimb.notes) + '</p>'
+        : '';
+    const photoMarkup = normalizedClimb.photoUrls.length
+        ? '<div class="peak-detail-photo-gallery" aria-label="Climb photo gallery">' + buildUserClimbPhotoMarkup(normalizedClimb.photoUrls, peakName) + '</div>'
+        : '';
+
+    return ''
+        + '<article class="peak-detail-list-item peak-detail-user-climb-item" data-user-climb-item data-climb-id="' + escapeHtml(String(normalizedClimb.id || '')) + '">'
+        + '  <div class="peak-detail-user-climb-item__display" data-user-climb-display>'
+        + '    <div class="peak-detail-list-item__body">'
+        + '      <div class="peak-detail-list-item__header">'
+        + '        <div class="peak-detail-list-item__heading">'
+        + '          <p class="peak-detail-list-item__title">' + escapeHtml(normalizedClimb.dateLabel) + '</p>'
+        + '          <div class="peak-detail-user-climb-item__meta-row">'
+        +               weatherMarkup
+        +               buildClimbStarsMarkup(normalizedClimb.difficultyStars, difficultyDisplayLabel, true)
+        + '          </div>'
+        + '        </div>'
+        + '        <div class="buttons peak-detail-user-climb-item__actions">'
+        + '          <button type="button" class="button is-light peak-detail-user-climb-item__action" data-user-climb-action="edit">Edit</button>'
+        + '          <button type="button" class="button is-danger is-light peak-detail-user-climb-item__action" data-user-climb-action="delete">Delete</button>'
+        + '        </div>'
+        + '      </div>'
+        +        notesMarkup
+        +        photoMarkup
+        + '    </div>'
+        + '  </div>'
+        + '  <div class="peak-detail-user-climb-item__edit is-hidden" data-user-climb-edit hidden>'
+        + '    <form class="peak-detail-log-form peak-detail-user-climb-form" data-user-climb-edit-form novalidate>'
+        + '      <div class="columns is-multiline is-variable is-3">'
+        + '        <div class="column is-12-mobile is-6-tablet">'
+        + '          <div class="field">'
+        + '            <label class="label">Date</label>'
+        + '            <div class="control">'
+        + '              <input class="input" type="date" name="date_climbed" value="' + escapeHtml(normalizedClimb.dateInputValue) + '" data-user-climb-date>'
+        + '            </div>'
+        + '          </div>'
+        + '        </div>'
+        + '        <div class="column is-12-mobile is-6-tablet">'
+        + '          <div class="field">'
+        + '            <label class="label">Weather</label>'
+        + '            <div class="control"><div class="select is-fullwidth"><select name="weather" data-user-climb-weather>'
+        +                  buildWeatherOptionsMarkup(normalizedClimb.weather)
+        + '            </select></div></div>'
+        + '          </div>'
+        + '        </div>'
+        + '        <div class="column is-12">'
+        + '          <div class="field">'
+        + '            <div class="peak-detail-log-form__field-head">'
+        + '              <label class="label">Notes</label>'
+        + '              <span class="peak-detail-log-form__counter" data-peak-log-notes-counter>' + escapeHtml(String(normalizedClimb.notes.length)) + ' / 500</span>'
+        + '            </div>'
+        + '            <div class="control">'
+        + '              <textarea class="textarea" name="notes" rows="4" maxlength="500" data-peak-log-notes>' + escapeHtml(normalizedClimb.notes) + '</textarea>'
+        + '            </div>'
+        + '          </div>'
+        + '        </div>'
+        + '        <div class="column is-12">'
+        + '          <div class="field">'
+        + '            <div class="peak-detail-log-form__field-head">'
+        + '              <label class="label">Difficulty</label>'
+        + '              <span class="peak-detail-log-form__counter" data-peak-log-stars-label>' + escapeHtml(normalizedClimb.difficultyStars ? (String(normalizedClimb.difficultyStars) + ' / 5') : 'Tap to rate') + '</span>'
+        + '            </div>'
+        + '            <div class="peak-detail-stars" data-peak-star-rating>'
+        + '              <input type="hidden" name="difficulty_rating" value="' + escapeHtml(normalizedClimb.difficultyInputValue) + '" data-peak-star-rating-input>'
+        +                    buildClimbEditStarsMarkup(normalizedClimb.difficultyStars)
+        + '            </div>'
+        + '          </div>'
+        + '        </div>'
+        + '      </div>'
+        + '      <p class="peak-detail-log-form__error peak-detail-user-climb-form__error" data-user-climb-error aria-live="polite"></p>'
+        + '      <div class="buttons peak-detail-log-form__actions">'
+        + '        <button type="button" class="button peak-detail-log-form__cancel" data-user-climb-action="cancel-edit">Cancel</button>'
+        + '        <button type="submit" class="button peak-detail-log-form__submit" data-user-climb-submit>Save Changes</button>'
+        + '      </div>'
+        + '    </form>'
+        + '  </div>'
+        + '</article>';
+}
+
+function buildUserClimbPhotoMarkup(photoUrls, peakName) {
+    return photoUrls.map(function(photoUrl, index) {
+        return ''
+            + '<a href="' + escapeHtml(photoUrl) + '" class="peak-detail-photo-gallery__link" target="_blank" rel="noreferrer noopener">'
+            + '  <img src="' + escapeHtml(photoUrl) + '" alt="' + escapeHtml(String(peakName || 'Peak') + ' climb photo ' + (index + 1)) + '" class="peak-detail-photo-gallery__image" loading="lazy">'
+            + '</a>';
+    }).join('');
+}
+
+function buildWeatherOptionsMarkup(selectedWeather) {
+    const normalizedWeather = String(selectedWeather || '').trim().toLowerCase();
+    let markup = '<option value="">Select weather</option>';
+    Object.keys(CLIMB_WEATHER_META).forEach(function(weatherKey) {
+        const meta = CLIMB_WEATHER_META[weatherKey];
+        const selected = weatherKey === normalizedWeather ? ' selected' : '';
+        markup += '<option value="' + escapeHtml(weatherKey) + '"' + selected + '>' + escapeHtml(meta.label) + '</option>';
+    });
+    return markup;
+}
+
+function buildClimbEditStarsMarkup(activeStars) {
+    const starCount = Number(activeStars || 0);
+    let markup = '';
+    for (let index = 1; index <= 5; index += 1) {
+        const isActive = index <= starCount && starCount > 0;
+        markup += ''
+            + '<button type="button" class="peak-detail-stars__button' + (isActive ? ' is-active' : '') + '" data-peak-star-value="' + index + '" aria-label="Set difficulty to ' + index + ' out of 5" aria-pressed="' + (isActive ? 'true' : 'false') + '">'
+            + '  <i class="fas fa-star" aria-hidden="true"></i>'
+            + '</button>';
+    }
+    return markup;
+}
+
+function buildClimbStarsMarkup(starCount, label, isInline) {
+    const normalizedCount = Number(starCount || 0);
+    let starsMarkup = '<div class="peak-detail-stars-display' + (isInline ? ' peak-detail-stars-display--inline' : '') + '" aria-label="Difficulty ' + escapeHtml(String(label || 'not rated')) + '">';
+    for (let index = 1; index <= 5; index += 1) {
+        starsMarkup += '<span class="peak-detail-stars-display__star' + (index <= normalizedCount ? ' is-filled' : '') + '"><i class="fas fa-star" aria-hidden="true"></i></span>';
+    }
+    starsMarkup += '<span class="peak-detail-stars-display__value">' + escapeHtml(String(label || 'No rating')) + '</span></div>';
+    return starsMarkup;
+}
+
+function normalizeUserClimbRecord(climb) {
+    const currentClimb = climb || {};
+    const dateValue = normalizeDateInputValue(currentClimb.date_climbed || currentClimb.climbed_at || currentClimb.created_at);
+    const weatherValue = String(currentClimb.weather || '').trim().toLowerCase();
+    const difficultyStars = normalizeDifficultyStars(currentClimb.difficulty_rating || currentClimb.difficulty);
+    const difficultyLabel = String(currentClimb.difficulty_rating || currentClimb.difficulty || '').trim();
+    return {
+        id: currentClimb.id,
+        dateInputValue: dateValue,
+        dateLabel: formatUserClimbDateLabel(dateValue),
+        notes: String(currentClimb.notes || ''),
+        weather: weatherValue,
+        difficultyInputValue: difficultyStars ? String(difficultyStars) : '',
+        difficultyStars: difficultyStars,
+        difficultyLabel: difficultyLabel,
+        photoUrls: normalizePhotoUrlList(currentClimb.photo_urls)
+    };
+}
+
+function normalizePhotoUrlList(value) {
+    if (Array.isArray(value)) {
+        return value.filter(function(item) {
+            return String(item || '').trim();
+        }).map(function(item) {
+            return String(item).trim();
+        });
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return [];
+        }
+
+        try {
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+                return normalizePhotoUrlList(parsed);
+            }
+        } catch (error) {
+            return [trimmed];
+        }
+
+        return [trimmed];
+    }
+
+    return [];
+}
+
+function normalizeDateInputValue(value) {
+    const rawValue = String(value || '').trim();
+    if (!rawValue) {
+        return '';
+    }
+    return rawValue.slice(0, 10);
+}
+
+function formatUserClimbDateLabel(dateValue) {
+    if (!dateValue) {
+        return 'Climb log';
+    }
+
+    const parsedDate = new Date(dateValue + 'T00:00:00');
+    if (Number.isNaN(parsedDate.getTime())) {
+        return dateValue;
+    }
+
+    return parsedDate.toLocaleDateString('en-IE', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function normalizeDifficultyStars(value) {
+    if (value === undefined || value === null || String(value).trim() === '') {
+        return 0;
+    }
+
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) {
+        return Math.max(0, Math.min(5, Math.round(numericValue)));
+    }
+
+    const namedValues = {
+        easy: 1,
+        moderate: 2,
+        medium: 2,
+        hard: 3,
+        challenging: 3,
+        'very hard': 4,
+        strenuous: 4,
+        expert: 5,
+        extreme: 5
+    };
+    return namedValues[String(value || '').trim().toLowerCase()] || 0;
+}
+
+function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(character) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[character] || character;
+    });
 }
 
 function initPeakCommunitySection(section) {

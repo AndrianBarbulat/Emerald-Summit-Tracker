@@ -17,6 +17,16 @@
 {% set peak_lng_display = '%.6f'|format(peak.longitude) if peak.longitude is not none else '-' %}
 {% set peak_isolation = peak.isolation_km or peak.isolation or peak.isolation_m %}
 {% set peak_topo_map = peak.topo_map or peak.topographic_map or peak.topo_map_sheet or peak.map_sheet or 'OpenTopoMap' %}
+{% set weather_icons = {
+    'sunny': 'fa-sun',
+    'cloudy': 'fa-cloud-sun',
+    'overcast': 'fa-cloud',
+    'rainy': 'fa-cloud-rain',
+    'windy': 'fa-wind',
+    'snowy': 'fa-snowflake',
+    'foggy': 'fa-smog',
+    'mixed': 'fa-cloud-sun-rain'
+} %}
 
 <section class="peak-detail-hero">
     <div class="container">
@@ -308,63 +318,162 @@
 
         <div class="columns is-variable is-6 is-multiline">
             {% if profile %}
-            <div class="column is-12">
-                <div class="box peak-detail-section">
+            <div
+                class="column is-12{% if not user_climbs %} is-hidden{% endif %}"
+                data-user-climb-log-section
+                data-peak-id="{{ peak.id }}"
+                data-peak-name="{{ peak.name or 'Peak' }}"
+                {% if not user_climbs %}hidden{% endif %}
+            >
+                <div class="box peak-detail-section peak-detail-user-climb-log">
                     <div class="peak-detail-section__header">
                         <div>
                             <p class="peak-detail-section__eyebrow">Your Data</p>
-                            <h2 class="title is-5 peak-detail-section__title">Your Climb Logs</h2>
+                            <h2 class="title is-5 peak-detail-section__title">Your Climb Log</h2>
                         </div>
-                        {% if has_climbed %}
                         {{ render_peak_status('climbed') }}
-                        {% endif %}
                     </div>
 
-                    {% if user_climbs %}
-                    <div class="peak-detail-list">
+                    <div class="peak-detail-list" data-user-climb-log-list>
                         {% for climb in user_climbs %}
-                        <article class="peak-detail-list-item">
-                            <div class="peak-detail-list-item__body">
-                                <div class="peak-detail-list-item__header">
-                                    <p class="peak-detail-list-item__title">
-                                        {{ climb.date_climbed[:10] if climb.date_climbed else 'Climb log' }}
-                                    </p>
-                                    {% if climb.difficulty_rating %}
-                                    <span class="tag is-light peak-detail-list-item__tag">{{ climb.difficulty_rating }}</span>
+                        <article class="peak-detail-list-item peak-detail-user-climb-item" data-user-climb-item data-climb-id="{{ climb.id }}">
+                            <div class="peak-detail-user-climb-item__display" data-user-climb-display>
+                                <div class="peak-detail-list-item__body">
+                                    <div class="peak-detail-list-item__header">
+                                        <div class="peak-detail-list-item__heading">
+                                            <p class="peak-detail-list-item__title">{{ climb.date_label }}</p>
+                                            <div class="peak-detail-user-climb-item__meta-row">
+                                                {% if climb.weather %}
+                                                <p class="peak-detail-list-item__meta peak-detail-user-climb-item__weather">
+                                                    <span class="icon is-small" aria-hidden="true">
+                                                        <i class="fas {{ weather_icons.get(climb.weather, 'fa-cloud') }}"></i>
+                                                    </span>
+                                                    <span>{{ climb.weather | title }}</span>
+                                                </p>
+                                                {% endif %}
+                                                <div class="peak-detail-stars-display peak-detail-stars-display--inline" aria-label="Difficulty {{ climb.difficulty_rating or 'not rated' }}">
+                                                    {% for star_number in range(1, 6) %}
+                                                    <span class="peak-detail-stars-display__star{% if star_number <= climb.difficulty_stars %} is-filled{% endif %}">
+                                                        <i class="fas fa-star" aria-hidden="true"></i>
+                                                    </span>
+                                                    {% endfor %}
+                                                    <span class="peak-detail-stars-display__value">
+                                                        {{ climb.difficulty_rating or 'No rating' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="buttons peak-detail-user-climb-item__actions">
+                                            <button type="button" class="button is-light peak-detail-user-climb-item__action" data-user-climb-action="edit">Edit</button>
+                                            <button type="button" class="button is-danger is-light peak-detail-user-climb-item__action" data-user-climb-action="delete">Delete</button>
+                                        </div>
+                                    </div>
+                                    {% if climb.notes %}
+                                    <p class="peak-detail-list-item__copy">{{ climb.notes }}</p>
+                                    {% endif %}
+                                    {% if climb.photo_urls %}
+                                    <div class="peak-detail-photo-gallery" aria-label="Climb photo gallery">
+                                        {% for photo_url in climb.photo_urls %}
+                                        <a
+                                            href="{{ photo_url }}"
+                                            class="peak-detail-photo-gallery__link"
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                        >
+                                            <img
+                                                src="{{ photo_url }}"
+                                                alt="{{ peak.name or 'Peak' }} climb photo {{ loop.index }}"
+                                                class="peak-detail-photo-gallery__image"
+                                                loading="lazy"
+                                            >
+                                        </a>
+                                        {% endfor %}
+                                    </div>
                                     {% endif %}
                                 </div>
-                                {% if climb.weather %}
-                                <p class="peak-detail-list-item__meta">Weather: {{ climb.weather }}</p>
-                                {% endif %}
-                                {% if climb.notes %}
-                                <p class="peak-detail-list-item__copy">{{ climb.notes }}</p>
-                                {% endif %}
-                                {% if climb.photo_urls %}
-                                <div class="peak-detail-photo-gallery" aria-label="Climb photo gallery">
-                                    {% for photo_url in climb.photo_urls %}
-                                    <a
-                                        href="{{ photo_url }}"
-                                        class="peak-detail-photo-gallery__link"
-                                        target="_blank"
-                                        rel="noreferrer noopener"
-                                    >
-                                        <img
-                                            src="{{ photo_url }}"
-                                            alt="{{ peak.name or 'Peak' }} climb photo {{ loop.index }}"
-                                            class="peak-detail-photo-gallery__image"
-                                            loading="lazy"
-                                        >
-                                    </a>
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
+                            </div>
+                            <div class="peak-detail-user-climb-item__edit is-hidden" data-user-climb-edit hidden>
+                                <form class="peak-detail-log-form peak-detail-user-climb-form" data-user-climb-edit-form novalidate>
+                                    <div class="columns is-multiline is-variable is-3">
+                                        <div class="column is-12-mobile is-6-tablet">
+                                            <div class="field">
+                                                <label class="label">Date</label>
+                                                <div class="control">
+                                                    <input
+                                                        class="input"
+                                                        type="date"
+                                                        name="date_climbed"
+                                                        value="{{ climb.date_climbed[:10] if climb.date_climbed else '' }}"
+                                                        data-user-climb-date
+                                                    >
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-12-mobile is-6-tablet">
+                                            <div class="field">
+                                                <label class="label">Weather</label>
+                                                <div class="control">
+                                                    <div class="select is-fullwidth">
+                                                        <select name="weather" data-user-climb-weather>
+                                                            <option value="">Select weather</option>
+                                                            {% for weather_value in ['sunny', 'cloudy', 'overcast', 'rainy', 'windy', 'snowy', 'foggy', 'mixed'] %}
+                                                            <option value="{{ weather_value }}"{% if climb.weather == weather_value %} selected{% endif %}>{{ weather_value | title }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-12">
+                                            <div class="field">
+                                                <div class="peak-detail-log-form__field-head">
+                                                    <label class="label">Notes</label>
+                                                    <span class="peak-detail-log-form__counter" data-peak-log-notes-counter>{{ (climb.notes or '') | length }} / 500</span>
+                                                </div>
+                                                <div class="control">
+                                                    <textarea
+                                                        class="textarea"
+                                                        name="notes"
+                                                        rows="4"
+                                                        maxlength="500"
+                                                        data-peak-log-notes
+                                                    >{{ climb.notes or '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="column is-12">
+                                            <div class="field">
+                                                <div class="peak-detail-log-form__field-head">
+                                                    <label class="label">Difficulty</label>
+                                                    <span class="peak-detail-log-form__counter" data-peak-log-stars-label>{% if climb.difficulty_stars %}{{ climb.difficulty_stars }} / 5{% else %}Tap to rate{% endif %}</span>
+                                                </div>
+                                                <div class="peak-detail-stars" data-peak-star-rating>
+                                                    <input type="hidden" name="difficulty_rating" value="{{ climb.difficulty_stars if climb.difficulty_stars else '' }}" data-peak-star-rating-input>
+                                                    {% for star in range(1, 6) %}
+                                                    <button
+                                                        type="button"
+                                                        class="peak-detail-stars__button{% if star <= climb.difficulty_stars %} is-active{% endif %}"
+                                                        data-peak-star-value="{{ star }}"
+                                                        aria-label="Set difficulty to {{ star }} out of 5"
+                                                        aria-pressed="{{ 'true' if star <= climb.difficulty_stars else 'false' }}"
+                                                    >
+                                                        <i class="fas fa-star" aria-hidden="true"></i>
+                                                    </button>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="peak-detail-log-form__error peak-detail-user-climb-form__error" data-user-climb-error aria-live="polite"></p>
+                                    <div class="buttons peak-detail-log-form__actions">
+                                        <button type="button" class="button peak-detail-log-form__cancel" data-user-climb-action="cancel-edit">Cancel</button>
+                                        <button type="submit" class="button peak-detail-log-form__submit" data-user-climb-submit>Save Changes</button>
+                                    </div>
+                                </form>
                             </div>
                         </article>
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <p class="has-text-grey">You have not logged a climb for this peak yet.</p>
-                    {% endif %}
                 </div>
             </div>
             {% endif %}
