@@ -1003,6 +1003,86 @@ body {
     margin: 0;
 }
 
+.peak-detail-related__grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.peak-detail-related-card {
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    color: inherit;
+    display: block;
+    min-height: 100%;
+    padding: 0.95rem 1rem;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.peak-detail-related-card:hover,
+.peak-detail-related-card:focus-visible {
+    border-color: rgba(27, 67, 50, 0.18);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.peak-detail-related-card__body {
+    align-items: center;
+    display: flex;
+    gap: 0.9rem;
+    justify-content: space-between;
+}
+
+.peak-detail-related-card__copy {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.peak-detail-related-card__title {
+    color: var(--color-forest);
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0;
+}
+
+.peak-detail-related-card__meta {
+    color: var(--color-grey);
+    display: inline-flex;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    gap: 0.35rem;
+    margin: 0;
+}
+
+.peak-detail-related-card__status {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 1rem;
+    height: 2.1rem;
+    justify-content: center;
+    width: 2.1rem;
+}
+
+.peak-detail-related-card__status--climbed {
+    background: rgba(45, 140, 95, 0.12);
+    color: #2d8c5f;
+}
+
+.peak-detail-related-card__status--bucket_listed {
+    background: rgba(212, 168, 83, 0.16);
+    color: #bf9137;
+}
+
+.peak-detail-related-card__status--not_attempted {
+    background: rgba(126, 126, 126, 0.14);
+    color: #767676;
+}
+
 .site-navbar {
     background: var(--color-forest);
     box-shadow: var(--shadow-md);
@@ -1617,6 +1697,10 @@ body {
 
     .peak-detail-user-climb-item__action {
         width: 100%;
+    }
+
+    .peak-detail-related-card__body {
+        align-items: flex-start;
     }
 
     .peak-detail-comment-form__actions .button,

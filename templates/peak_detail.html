@@ -17,6 +17,7 @@
 {% set peak_lng_display = '%.6f'|format(peak.longitude) if peak.longitude is not none else '-' %}
 {% set peak_isolation = peak.isolation_km or peak.isolation or peak.isolation_m %}
 {% set peak_topo_map = peak.topo_map or peak.topographic_map or peak.topo_map_sheet or peak.map_sheet or 'OpenTopoMap' %}
+{% set default_height_unit = 'm' %}
 {% set weather_icons = {
     'sunny': 'fa-sun',
     'cloudy': 'fa-cloud-sun',
@@ -472,6 +473,52 @@
                                 </form>
                             </div>
                         </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if related_peaks %}
+            <div class="column is-12">
+                <div class="box peak-detail-section peak-detail-related">
+                    <div class="peak-detail-section__header">
+                        <div>
+                            <p class="peak-detail-section__eyebrow">Explore More</p>
+                            <h2 class="title is-5 peak-detail-section__title">{{ related_peaks_title }}</h2>
+                        </div>
+                    </div>
+
+                    <div class="peak-detail-related__grid">
+                        {% for related_peak in related_peaks %}
+                        {% set related_height_m = related_peak.height_m or related_peak.height %}
+                        <a href="{{ url_for('peak_detail', peak_id=related_peak.id) }}" class="peak-detail-related-card">
+                            <div class="peak-detail-related-card__body">
+                                <div class="peak-detail-related-card__copy">
+                                    <p class="peak-detail-related-card__title">{{ related_peak.name or 'Unnamed Peak' }}</p>
+                                    <p class="peak-detail-related-card__meta">
+                                        {% if related_height_m %}{{ related_height_m }}{{ default_height_unit }}{% else %}Height unknown{% endif %}
+                                        <span aria-hidden="true">&bull;</span>
+                                        <span>{{ related_peak.county or 'Unknown county' }}</span>
+                                    </p>
+                                </div>
+                                {% if profile %}
+                                <span
+                                    class="peak-detail-related-card__status peak-detail-related-card__status--{{ related_peak.user_status }}"
+                                    title="{% if related_peak.user_status == 'climbed' %}Climbed{% elif related_peak.user_status == 'bucket_listed' %}Bucket listed{% else %}Not attempted{% endif %}"
+                                    aria-label="{% if related_peak.user_status == 'climbed' %}Climbed{% elif related_peak.user_status == 'bucket_listed' %}Bucket listed{% else %}Not attempted{% endif %}"
+                                >
+                                    {% if related_peak.user_status == 'climbed' %}
+                                    <i class="fas fa-circle-check" aria-hidden="true"></i>
+                                    {% elif related_peak.user_status == 'bucket_listed' %}
+                                    <i class="fas fa-bookmark" aria-hidden="true"></i>
+                                    {% else %}
+                                    <i class="fas fa-minus" aria-hidden="true"></i>
+                                    {% endif %}
+                                </span>
+                                {% endif %}
+                            </div>
+                        </a>
                         {% endfor %}
                     </div>
                 </div>

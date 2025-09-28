@@ -351,6 +351,79 @@ def _build_user_peak_climb_entries(user_climbs: list[dict]) -> list[dict]:
     return climb_entries
 
 
+def _normalize_lookup_value(value) -> str:
+    return str(value or "").strip().lower()
+
+
+def _related_peak_sort_key(peak: dict) -> tuple:
+    try:
+        rank_value = int(peak.get("height_rank"))
+    except (TypeError, ValueError):
+        rank_value = 10_000
+
+    peak_height = _to_float(peak.get("height_m") or peak.get("height"))
+    normalized_height = -(peak_height or 0.0)
+    peak_name = str(peak.get("name") or "").strip().lower()
+    return (rank_value, normalized_height, peak_name)
+
+
+def _build_related_peaks(current_peak: dict, current_user_id: str | None) -> dict:
+    all_peaks = get_all_peaks()
+    current_peak_id = current_peak.get("id")
+    range_area = str(current_peak.get("range_area") or "").strip()
+    county = str(current_peak.get("county") or "").strip()
+
+    def matching_peaks(field_name: str, expected_value: str) -> list[dict]:
+        normalized_expected = _normalize_lookup_value(expected_value)
+        if not normalized_expected:
+            return []
+
+        return [
+            peak
+            for peak in all_peaks
+            if peak.get("id") != current_peak_id
+            and _normalize_lookup_value(peak.get(field_name)) == normalized_expected
+        ]
+
+    range_area_matches = matching_peaks("range_area", range_area)
+    county_matches = matching_peaks("county", county)
+
+    related_label = ""
+    related_peaks = []
+    if len(range_area_matches) >= 3 or (range_area_matches and not county_matches):
+        related_label = range_area
+        related_peaks = range_area_matches
+    elif county_matches:
+        related_label = county
+        related_peaks = county_matches
+    else:
+        related_label = range_area
+        related_peaks = range_area_matches
+
+    related_peaks = sorted(related_peaks, key=_related_peak_sort_key)[:5]
+    if current_user_id and related_peaks:
+        peak_statuses = get_peak_statuses(
+            current_user_id,
+            [peak.get("id") for peak in related_peaks if peak.get("id") is not None],
+        )
+        related_peaks = _decorate_peaks_with_statuses(related_peaks, peak_statuses)
+    else:
+        related_peaks = [
+            {
+                **peak,
+                "is_bucket_listed": False,
+                "is_climbed": False,
+                "user_status": "not_attempted",
+            }
+            for peak in related_peaks
+        ]
+
+    return {
+        "title": f"More in {related_label}" if related_label and related_peaks else None,
+        "peaks": related_peaks,
+    }
+
+
 def _normalize_peak_status(status: str | None) -> str:
     normalized = str(status or "").strip().lower()
     if normalized == "bucket":
@@ -753,6 +826,7 @@ def peak_detail(peak_id: int):
     peak_latitude = _to_float(peak.get("latitude") or peak.get("lat"))
     peak_longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
     total_climbers = len(climbers)
+    related_peaks_data = _build_related_peaks(peak, user_id)
 
     return render_template(
         "peak_detail.html",
@@ -772,6 +846,8 @@ def peak_detail(peak_id: int):
         has_climbed=has_climbed,
         is_bucket_listed=is_bucket_listed,
         peak_status=peak_status,
+        related_peaks=related_peaks_data["peaks"],
+        related_peaks_title=related_peaks_data["title"],
         user_climbs=user_climbs,
         active_page="summit_list",
         **context,
