@@ -684,6 +684,87 @@ body {
     margin-bottom: 0;
 }
 
+.error-page {
+    align-items: center;
+    display: flex;
+    min-height: calc(100vh - 52px - 220px);
+    padding-block: 3rem;
+}
+
+.error-page__panel {
+    background:
+        radial-gradient(circle at top, rgba(216, 243, 220, 0.7), rgba(216, 243, 220, 0) 55%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 241, 235, 0.96));
+    border-radius: var(--radius-lg);
+    margin-inline: auto;
+    max-width: 44rem;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.error-page__icon {
+    color: #b2b8bd;
+    font-size: clamp(4rem, 9vw, 6rem);
+    line-height: 1;
+    margin-bottom: 1rem;
+}
+
+.error-page__eyebrow {
+    color: var(--color-sage);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    margin-bottom: 0.65rem;
+    text-transform: uppercase;
+}
+
+.error-page__title {
+    color: var(--color-forest);
+    margin-bottom: 0.85rem;
+}
+
+.error-page__copy {
+    color: var(--color-grey);
+    font-size: 1rem;
+    line-height: 1.75;
+    margin: 0 auto 1.5rem;
+    max-width: 34rem;
+}
+
+.error-page__actions {
+    justify-content: center;
+    margin-bottom: 0;
+}
+
+.error-page__button {
+    min-height: 44px;
+    padding-inline: 1.2rem;
+}
+
+.error-page__button--primary {
+    background: var(--color-gold);
+    border-color: transparent;
+    color: var(--color-forest);
+}
+
+.error-page__button--primary:hover,
+.error-page__button--primary:focus-visible {
+    background: #bf9137;
+    color: var(--color-forest);
+}
+
+.error-page__button--secondary {
+    background: transparent;
+    border-color: rgba(27, 67, 50, 0.16);
+    color: var(--color-forest);
+}
+
+.error-page__button--secondary:hover,
+.error-page__button--secondary:focus-visible {
+    background: rgba(27, 67, 50, 0.06);
+    color: var(--color-forest);
+}
+
 .peak-detail-community {
     display: grid;
     gap: 1.5rem;
@@ -1701,6 +1782,24 @@ body {
 
     .peak-detail-related-card__body {
         align-items: flex-start;
+    }
+
+    .error-page {
+        min-height: auto;
+        padding-block: 2rem;
+    }
+
+    .error-page__panel {
+        padding: 2.2rem 1.25rem;
+    }
+
+    .error-page__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .error-page__actions .button {
+        width: 100%;
     }
 
     .peak-detail-comment-form__actions .button,

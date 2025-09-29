@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Peak Not Found | Emerald Peak Explorer{% endblock %}
+
+{% block content %}
+<section class="section error-page">
+    <div class="container">
+        <div class="box error-page__panel">
+            <div class="error-page__icon" aria-hidden="true">
+                <i class="fas fa-mountain"></i>
+            </div>
+            <p class="error-page__eyebrow">404 Error</p>
+            <h1 class="title error-page__title">Peak Not Found</h1>
+            <p class="error-page__copy">
+                The trail marker led somewhere unexpected. The peak or page you were looking for
+                may have moved, been renamed, or never existed in the first place.
+            </p>
+            <div class="buttons error-page__actions">
+                <a href="{{ url_for('summit_list') }}" class="button error-page__button error-page__button--primary">Browse All Peaks</a>
+                <a href="{{ home_url }}" class="button error-page__button error-page__button--secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

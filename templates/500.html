@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Something Went Wrong | Emerald Peak Explorer{% endblock %}
+
+{% block content %}
+<section class="section error-page">
+    <div class="container">
+        <div class="box error-page__panel">
+            <div class="error-page__icon" aria-hidden="true">
+                <i class="fas fa-mountain"></i>
+            </div>
+            <p class="error-page__eyebrow">500 Error</p>
+            <h1 class="title error-page__title">Something Went Wrong</h1>
+            <p class="error-page__copy">
+                We hit rough weather while loading this page. Please try again in a moment,
+                or keep exploring from the summit list instead.
+            </p>
+            <div class="buttons error-page__actions">
+                <a href="{{ url_for('summit_list') }}" class="button error-page__button error-page__button--primary">Browse All Peaks</a>
+                <a href="{{ home_url }}" class="button error-page__button error-page__button--secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

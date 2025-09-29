@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Access Restricted | Emerald Peak Explorer{% endblock %}
+
+{% block content %}
+<section class="section error-page">
+    <div class="container">
+        <div class="box error-page__panel">
+            <div class="error-page__icon" aria-hidden="true">
+                <i class="fas fa-mountain"></i>
+            </div>
+            <p class="error-page__eyebrow">403 Error</p>
+            <h1 class="title error-page__title">Access Restricted</h1>
+            <p class="error-page__copy">
+                This route is off-limits right now. You might need to sign in with a different account
+                or head back to a page that is open to all climbers.
+            </p>
+            <div class="buttons error-page__actions">
+                <a href="{{ url_for('summit_list') }}" class="button error-page__button error-page__button--primary">Browse All Peaks</a>
+                <a href="{{ home_url }}" class="button error-page__button error-page__button--secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

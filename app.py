@@ -2,6 +2,7 @@ import re
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for
+from werkzeug.exceptions import HTTPException
 
 from api_routes import api
 from supabase_utils import (
@@ -32,6 +33,30 @@ def get_session_context() -> dict:
         "user": session.get("user"),
         "profile": session.get("profile"),
     }
+
+
+def _is_api_request() -> bool:
+    return request.path.startswith("/api/") or request.blueprint == "api"
+
+
+def _json_api_error(status_code: int, message: str):
+    return jsonify({"success": False, "ok": False, "error": message}), status_code
+
+
+def _error_home_url() -> str:
+    current_profile = session.get("profile")
+    if isinstance(current_profile, dict) and current_profile.get("id"):
+        return url_for("home")
+    return url_for("index")
+
+
+def _render_site_error(template_name: str, status_code: int):
+    return render_template(
+        template_name,
+        home_url=_error_home_url(),
+        active_page="error",
+        **get_session_context(),
+    ), status_code
 
 
 def _minimal_profile(user_id: str, email: str) -> dict:
@@ -896,6 +921,37 @@ def account_settings():
         return redirect("/")
 
     return render_template("account_settings.html", active_page="account", **context)
+
+
+@app.errorhandler(404)
+def handle_not_found(error):
+    if _is_api_request():
+        return _json_api_error(404, "Resource not found.")
+    return _render_site_error("404.html", 404)
+
+
+@app.errorhandler(403)
+def handle_forbidden(error):
+    if _is_api_request():
+        return _json_api_error(403, "You do not have permission to access this resource.")
+    return _render_site_error("403.html", 403)
+
+
+@app.errorhandler(405)
+def handle_method_not_allowed(error):
+    if _is_api_request():
+        return _json_api_error(405, "Method not allowed.")
+    if isinstance(error, HTTPException):
+        return error
+    return _json_api_error(405, "Method not allowed.")
+
+
+@app.errorhandler(500)
+def handle_internal_error(error):
+    if _is_api_request():
+        return _json_api_error(500, "Internal server error.")
+    app.logger.error("Unhandled application error: %s", error)
+    return _render_site_error("500.html", 500)
 
 
 if __name__ == "__main__":
