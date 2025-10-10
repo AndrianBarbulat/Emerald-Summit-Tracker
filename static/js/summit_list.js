@@ -630,10 +630,18 @@ document.addEventListener('DOMContentLoaded', function() {
             rowActionState.openLogPeakId = null;
             clearActionError(peakKey);
             render(currentFilteredPeaks);
+            notifyToast(
+                result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.',
+                'success'
+            );
+            if (result.warning) {
+                notifyToast(result.warning, 'warning');
+            }
         } catch (error) {
             rowActionState.logSubmittingPeakId = null;
             setActionError(peakKey, error.message || 'We could not save that climb.');
             render(currentFilteredPeaks);
+            notifyToast(error.message || 'We could not save that climb.', 'error');
         }
     }
 
@@ -681,17 +689,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        const wasBucketListed = Boolean(peak.isBucketListed);
         clearActionError(peakKey);
         rowActionState.bucketPendingPeakIds[peakKey] = true;
         render(currentFilteredPeaks);
 
         try {
-            const endpoint = peak.isBucketListed ? '/api/bucket-list/remove' : '/api/bucket-list/add';
+            const endpoint = wasBucketListed ? '/api/bucket-list/remove' : '/api/bucket-list/add';
             const result = await postJson(endpoint, { peak_id: peak.id });
             applyMembershipResponse(peakKey, result);
             clearActionError(peakKey);
+            notifyToast(
+                wasBucketListed ? 'Removed from your bucket list.' : 'Added to your bucket list.',
+                'warning'
+            );
         } catch (error) {
             setActionError(peakKey, error.message || 'We could not update your bucket list.');
+            notifyToast(error.message || 'We could not update your bucket list.', 'error');
         } finally {
             delete rowActionState.bucketPendingPeakIds[peakKey];
             render(currentFilteredPeaks);
@@ -730,6 +744,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         delete rowActionState.errorsByPeakId[peakKey];
+    }
+
+    function notifyToast(message, type) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type);
+        }
     }
 
     async function postJson(url, payload) {

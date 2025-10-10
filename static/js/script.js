@@ -175,6 +175,12 @@ const CLIMB_WEATHER_META = {
     mixed: { icon: 'fa-cloud-sun-rain', label: 'Mixed' }
 };
 
+const TOAST_META = {
+    success: { icon: 'fa-circle-check', label: 'Success' },
+    warning: { icon: 'fa-triangle-exclamation', label: 'Warning' },
+    error: { icon: 'fa-circle-xmark', label: 'Error' }
+};
+
 const AUTH_MODAL_COPY = {
     login: {
         title: 'Welcome Back',
@@ -540,9 +546,16 @@ function initPeakTrackingPanel(panel) {
                         : 'Added to your bucket list.',
                     false
                 );
+                showToast(
+                    currentStatus === 'bucket_listed'
+                        ? 'Removed from your bucket list.'
+                        : 'Added to your bucket list.',
+                    'warning'
+                );
             }
         } catch (error) {
             setPeakTrackingMessage(panel, error.message || 'We could not update this peak right now.', true);
+            showToast(error.message || 'We could not update this peak right now.', 'error');
         } finally {
             button.classList.remove('is-loading');
         }
@@ -614,14 +627,15 @@ function initPeakTrackingPanel(panel) {
                     upsertUserClimbItem(userClimbSection, result.climb);
                 }
                 closePeakLogForm(panel, form, true);
-                showSiteToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.');
+                showToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.', 'success');
                 if (result.warning) {
                     window.setTimeout(function() {
-                        showSiteToast(result.warning);
+                        showToast(result.warning, 'warning');
                     }, 320);
                 }
             } catch (error) {
                 setPeakLogFormError(panel, error.message || 'We could not save this summit right now.');
+                showToast(error.message || 'We could not save this summit right now.', 'error');
             } finally {
                 togglePeakLogFormBusy(form, false);
                 if (submitButton) {
@@ -707,10 +721,10 @@ function initUserClimbLogSection(section) {
                 if (panel && result.user_status) {
                     updatePeakTrackingPanel(panel, result.user_status);
                 }
-                showSiteToast('Climb log deleted.');
+                showToast('Climb log deleted.', 'success');
             } catch (error) {
                 actionButton.disabled = false;
-                showSiteToast(error.message || 'We could not delete that climb log right now.');
+                showToast(error.message || 'We could not delete that climb log right now.', 'error');
             } finally {
                 actionButton.classList.remove('is-loading');
             }
@@ -763,9 +777,10 @@ function initUserClimbLogSection(section) {
             if (panel && result.user_status) {
                 updatePeakTrackingPanel(panel, result.user_status);
             }
-            showSiteToast('Climb log updated.');
+            showToast('Climb log updated.', 'success');
         } catch (error) {
             setUserClimbFormError(item, error.message || 'We could not save that climb log right now.');
+            showToast(error.message || 'We could not save that climb log right now.', 'error');
         } finally {
             togglePeakLogFormBusy(form, false);
             if (submitButton) {
@@ -1242,9 +1257,10 @@ function initPeakCommunitySection(section) {
                     commentInput.value = '';
                     commentInput.focus();
                 }
-                showSiteToast('Trail note posted.');
+                showToast('Trail note posted.', 'success');
             } catch (error) {
                 setPeakCommentError(section, error.message || 'We could not post that trail note right now.');
+                showToast(error.message || 'We could not post that trail note right now.', 'error');
             } finally {
                 if (submitButton) {
                     submitButton.classList.remove('is-loading');
@@ -1276,9 +1292,9 @@ function initPeakCommunitySection(section) {
                 article.parentNode.removeChild(article);
             }
             syncPeakCommentEmptyState(section);
-            showSiteToast('Trail note deleted.');
+            showToast('Trail note deleted.', 'success');
         } catch (error) {
-            showSiteToast(error.message || 'We could not delete that trail note right now.');
+            showToast(error.message || 'We could not delete that trail note right now.', 'error');
             deleteButton.disabled = false;
         } finally {
             deleteButton.classList.remove('is-loading');
@@ -1522,37 +1538,100 @@ function setPeakLogStarRating(form, value) {
 }
 
 function ensureSiteToastContainer() {
-    let container = document.querySelector('.site-toast-container');
+    let container = document.querySelector('[data-toast-container]');
     if (container) {
         return container;
     }
 
     container = document.createElement('div');
     container.className = 'site-toast-container';
+    container.setAttribute('data-toast-container', '');
+    container.setAttribute('aria-live', 'polite');
+    container.setAttribute('aria-atomic', 'false');
     document.body.appendChild(container);
     return container;
 }
 
-function showSiteToast(message) {
+function showToast(message, type) {
+    const normalizedMessage = String(message || '').trim();
+    if (!normalizedMessage) {
+        return null;
+    }
+
+    const normalizedType = TOAST_META[type] ? type : 'success';
+    const toastMeta = TOAST_META[normalizedType];
     const container = ensureSiteToastContainer();
     const toast = document.createElement('div');
-    toast.className = 'site-toast';
-    toast.textContent = String(message || '').trim();
+    const icon = document.createElement('span');
+    const body = document.createElement('div');
+    const label = document.createElement('span');
+    const copy = document.createElement('div');
+    const dismissButton = document.createElement('button');
+
+    toast.className = 'site-toast site-toast--' + normalizedType;
+    toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
+
+    icon.className = 'site-toast__icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.innerHTML = '<i class="fas ' + toastMeta.icon + '"></i>';
+
+    body.className = 'site-toast__body';
+    label.className = 'site-toast__label';
+    label.textContent = toastMeta.label;
+    copy.className = 'site-toast__message';
+    copy.textContent = normalizedMessage;
+    body.appendChild(label);
+    body.appendChild(copy);
+
+    dismissButton.type = 'button';
+    dismissButton.className = 'site-toast__dismiss';
+    dismissButton.setAttribute('aria-label', 'Dismiss notification');
+    dismissButton.innerHTML = '<i class="fas fa-xmark" aria-hidden="true"></i>';
+
+    toast.appendChild(icon);
+    toast.appendChild(body);
+    toast.appendChild(dismissButton);
     container.appendChild(toast);
+
+    let isClosed = false;
+    let removalTimer = 0;
+    let dismissTimer = 0;
+
+    const closeToast = function() {
+        if (isClosed) {
+            return;
+        }
+
+        isClosed = true;
+        window.clearTimeout(dismissTimer);
+        toast.classList.remove('is-visible');
+        toast.classList.add('is-leaving');
+
+        removalTimer = window.setTimeout(function() {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 240);
+    };
+
+    dismissButton.addEventListener('click', function() {
+        window.clearTimeout(removalTimer);
+        closeToast();
+    });
 
     window.requestAnimationFrame(function() {
         toast.classList.add('is-visible');
     });
 
-    window.setTimeout(function() {
-        toast.classList.remove('is-visible');
-        window.setTimeout(function() {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast);
-            }
-        }, 220);
-    }, 2800);
+    dismissTimer = window.setTimeout(closeToast, 4000);
+    return toast;
 }
+
+function showSiteToast(message, type) {
+    return showToast(message, type || 'success');
+}
+
+window.showToast = showToast;
 
 function setAuthMode(type) {
     const elements = authModalElements();

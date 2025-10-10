@@ -279,11 +279,6 @@
                             </div>
                         </div>
 
-                        <!-- Success Notification (hidden by default) -->
-                        <div class="notification is-success is-light mt-5" style="display: none;">
-                            <button class="delete"></button>
-                            <p><strong>Success!</strong> Your profile has been updated.</p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -293,13 +288,6 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const deleteButtons = document.querySelectorAll('.notification .delete');
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                this.parentElement.style.display = 'none';
-            });
-        });
-
         document.querySelectorAll('.menu-list a').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -309,6 +297,15 @@
                     targetElement.scrollIntoView({ behavior: 'smooth' });
                 }
             });
+        });
+
+        window.addEventListener('profile:updated', function(event) {
+            if (typeof window.showToast !== 'function') {
+                return;
+            }
+
+            const detail = event && event.detail ? event.detail : {};
+            window.showToast(detail.message || 'Your profile has been updated.', 'success');
         });
     });
 </script>
