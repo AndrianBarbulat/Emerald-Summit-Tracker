@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}My Climbs | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/my_climbs.css') }}">
+{% endblock %}
+
+{% block content %}
+{% set weather_icons = {
+    'sunny': 'fa-sun',
+    'cloudy': 'fa-cloud-sun',
+    'overcast': 'fa-cloud',
+    'rainy': 'fa-cloud-rain',
+    'windy': 'fa-wind',
+    'snowy': 'fa-snowflake',
+    'foggy': 'fa-smog',
+    'mixed': 'fa-cloud-sun-rain'
+} %}
+
+<div class="my-climbs-page">
+    <section class="section my-climbs-header">
+        <div class="container">
+            <div class="my-climbs-header__layout">
+                <div>
+                    <p class="my-climbs-header__eyebrow">Progress Log</p>
+                    <h1 class="title is-2 my-climbs-header__title">My Climbs</h1>
+                    <p class="my-climbs-header__copy">A complete record of your summit history across Ireland’s peaks.</p>
+                </div>
+                <div class="buttons my-climbs-header__views">
+                    <a
+                        href="{{ url_for('my_climbs', view='list', year=selected_year or None, month=selected_month or None, q=search_query or None) }}"
+                        class="button my-climbs-view-toggle{% if current_view == 'list' %} is-active{% endif %}"
+                    >
+                        <span class="icon"><i class="fas fa-list"></i></span>
+                        <span>List View</span>
+                    </a>
+                    <a
+                        href="{{ url_for('my_climbs', view='map', year=selected_year or None, month=selected_month or None, q=search_query or None) }}"
+                        class="button my-climbs-view-toggle{% if current_view == 'map' %} is-active{% endif %}"
+                    >
+                        <span class="icon"><i class="fas fa-map-location-dot"></i></span>
+                        <span>Map View</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="my-climbs-stats">
+                <article class="box my-climbs-stat">
+                    <p class="my-climbs-stat__label">Total Climbs</p>
+                    <p class="my-climbs-stat__value">{{ climb_stats.total_climbs }}</p>
+                </article>
+                <article class="box my-climbs-stat">
+                    <p class="my-climbs-stat__label">Unique Peaks</p>
+                    <p class="my-climbs-stat__value">{{ climb_stats.unique_peaks }}</p>
+                </article>
+                <article class="box my-climbs-stat">
+                    <p class="my-climbs-stat__label">Total Elevation</p>
+                    <p class="my-climbs-stat__value">{{ "{:,}".format(climb_stats.total_elevation_m) }}m</p>
+                </article>
+                <article class="box my-climbs-stat">
+                    <p class="my-climbs-stat__label">Avg Difficulty</p>
+                    <div class="my-climbs-stat__stars" aria-label="Average difficulty {{ '%.1f'|format(climb_stats.avg_difficulty) if climb_stats.avg_difficulty is not none else 'not rated' }}">
+                        {% for star_number in range(1, 6) %}
+                        <span class="my-climbs-stat__star{% if star_number <= climb_stats.avg_difficulty_stars %} is-filled{% endif %}">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                        </span>
+                        {% endfor %}
+                        <span class="my-climbs-stat__meta">
+                            {% if climb_stats.avg_difficulty is not none %}
+                            {{ '%.1f'|format(climb_stats.avg_difficulty) }}
+                            {% else %}
+                            No ratings
+                            {% endif %}
+                        </span>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0 my-climbs-content">
+        <div class="container">
+            <div class="box my-climbs-filter-box">
+                <form method="get" action="{{ url_for('my_climbs') }}" class="my-climbs-filter-box__form">
+                    <input type="hidden" name="view" value="{{ current_view }}">
+                    <div class="field my-climbs-filter-box__search">
+                        <label class="label" for="my-climbs-search">Search by peak name</label>
+                        <div class="control has-icons-left">
+                            <input
+                                id="my-climbs-search"
+                                class="input"
+                                type="search"
+                                name="q"
+                                value="{{ search_query }}"
+                                placeholder="Search climbs by peak..."
+                            >
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="my-climbs-year">Year</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="my-climbs-year" name="year">
+                                    <option value="">All years</option>
+                                    {% for year_option in available_years %}
+                                    <option value="{{ year_option }}"{% if selected_year == year_option|string %} selected{% endif %}>{{ year_option }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="my-climbs-month">Month</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="my-climbs-month" name="month">
+                                    <option value="">All months</option>
+                                    {% for month_option in month_options %}
+                                    <option value="{{ month_option.value }}"{% if selected_month == month_option.value|string %} selected{% endif %}>{{ month_option.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="my-climbs-filter-box__actions">
+                        <button type="submit" class="button my-climbs-filter-box__submit">Apply Filters</button>
+                        <a href="{{ url_for('my_climbs', view=current_view if current_view != 'list' else None) }}" class="button is-light">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            {% if current_view == 'map' %}
+            <div class="box my-climbs-map-placeholder">
+                <h2 class="title is-5">Map View Coming Next</h2>
+                <p class="has-text-grey">List View is ready now. Map View will land in the next pass with your climbs plotted across Ireland.</p>
+                <a href="{{ url_for('my_climbs', view='list', year=selected_year or None, month=selected_month or None, q=search_query or None) }}" class="button my-climbs-map-placeholder__button">Back to List View</a>
+            </div>
+            {% else %}
+                {% if my_climbs %}
+                <div class="box my-climbs-table-panel">
+                    <div class="my-climbs-table-wrap">
+                        <table class="table is-fullwidth my-climbs-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Peak Name</th>
+                                    <th>Height</th>
+                                    <th>Difficulty</th>
+                                    <th>Weather</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody data-my-climbs-table>
+                                {% for climb in my_climbs %}
+                                <tr class="my-climbs-table__row{% if climb.has_details %} is-expandable{% endif %}"{% if climb.has_details %} data-climb-row="{{ climb.id }}"{% endif %}>
+                                    <td class="my-climbs-table__date">{{ climb.date_label }}</td>
+                                    <td>
+                                        <a href="{{ url_for('peak_detail', peak_id=climb.peak_id) }}" class="my-climbs-table__peak-link">{{ climb.peak_name }}</a>
+                                    </td>
+                                    <td>
+                                        {% if climb.height_m %}
+                                        {{ climb.height_m }}m
+                                        {% else %}
+                                        <span class="has-text-grey">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="my-climbs-table__stars" aria-label="Difficulty {{ climb.difficulty_rating or 'not rated' }}">
+                                            {% for star_number in range(1, 6) %}
+                                            <span class="my-climbs-table__star{% if star_number <= climb.difficulty_stars %} is-filled{% endif %}">
+                                                <i class="fas fa-star" aria-hidden="true"></i>
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if climb.weather %}
+                                        <span class="my-climbs-table__weather" title="{{ climb.weather | title }}">
+                                            <i class="fas {{ weather_icons.get(climb.weather, 'fa-cloud') }}" aria-hidden="true"></i>
+                                        </span>
+                                        {% else %}
+                                        <span class="has-text-grey">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="my-climbs-table__notes">
+                                        {% if climb.has_details %}
+                                        <button
+                                            type="button"
+                                            class="my-climbs-table__notes-trigger"
+                                            data-climb-toggle="{{ climb.id }}"
+                                            aria-expanded="false"
+                                        >
+                                            <span>{{ climb.notes_preview }}</span>
+                                            <span class="icon" aria-hidden="true"><i class="fas fa-chevron-down"></i></span>
+                                        </button>
+                                        {% else %}
+                                        <span class="has-text-grey">{{ climb.notes_preview }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if climb.has_details %}
+                                <tr class="my-climbs-table__detail-row is-hidden" data-climb-detail="{{ climb.id }}" hidden>
+                                    <td colspan="6">
+                                        <div class="my-climbs-table__detail-card">
+                                            {% if climb.notes %}
+                                            <div class="my-climbs-table__detail-block">
+                                                <p class="my-climbs-table__detail-label">Full Notes</p>
+                                                <p class="my-climbs-table__detail-copy">{{ climb.notes }}</p>
+                                            </div>
+                                            {% endif %}
+                                            {% if climb.photo_urls %}
+                                            <div class="my-climbs-table__detail-block">
+                                                <p class="my-climbs-table__detail-label">Photos</p>
+                                                <div class="peak-detail-photo-gallery">
+                                                    {% for photo_url in climb.photo_urls %}
+                                                    <a
+                                                        href="{{ photo_url }}"
+                                                        class="peak-detail-photo-gallery__link"
+                                                        target="_blank"
+                                                        rel="noreferrer noopener"
+                                                    >
+                                                        <img
+                                                            src="{{ photo_url }}"
+                                                            alt="{{ climb.peak_name }} climb photo {{ loop.index }}"
+                                                            class="peak-detail-photo-gallery__image"
+                                                            loading="lazy"
+                                                        >
+                                                    </a>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% else %}
+                <div class="box my-climbs-empty-state">
+                    <span class="icon my-climbs-empty-state__icon"><i class="fas fa-mountain"></i></span>
+                    <h2 class="title is-4">No climbs match those filters</h2>
+                    <p class="has-text-grey">Try a different year, month, or search term, or start logging summits from the peak pages.</p>
+                    <div class="buttons is-centered">
+                        <a href="{{ url_for('my_climbs') }}" class="button is-light">Reset Filters</a>
+                        <a href="{{ url_for('summit_list') }}" class="button my-climbs-empty-state__button">Browse All Peaks</a>
+                    </div>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
+{% endblock %}

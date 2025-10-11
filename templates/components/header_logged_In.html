@@ -49,10 +49,10 @@
                     </a>
 
                     <div class="navbar-dropdown is-right">
-                        <a href="/profile/me" class="navbar-item">My Profile</a>
-                        <a href="/my-climbs" class="navbar-item">My Climbs</a>
+                        <a href="/profile/me" class="navbar-item {{ 'is-active' if active_page == 'profile' else '' }}">My Profile</a>
+                        <a href="/my-climbs" class="navbar-item {{ 'is-active' if active_page == 'my_climbs' else '' }}">My Climbs</a>
                         <a href="/my-bucket-list" class="navbar-item">Bucket List</a>
-                        <a href="/account" class="navbar-item">Account Settings</a>
+                        <a href="/account" class="navbar-item {{ 'is-active' if active_page == 'account' else '' }}">Account Settings</a>
                         <hr class="navbar-divider">
                         <a href="/logout" class="navbar-item">Logout</a>
                     </div>

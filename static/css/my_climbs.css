@@ -1,0 +1,354 @@
+.my-climbs-page {
+    background:
+        radial-gradient(circle at top left, rgba(116, 198, 157, 0.12), transparent 28%),
+        linear-gradient(180deg, #f7fbf8 0%, var(--color-cream) 48%, #ffffff 100%);
+    color: var(--color-slate);
+}
+
+.my-climbs-header {
+    background: linear-gradient(135deg, rgba(240, 247, 243, 0.98) 0%, rgba(230, 240, 234, 0.96) 100%);
+    border-bottom: 1px solid rgba(27, 67, 50, 0.08);
+}
+
+.my-climbs-header__layout {
+    align-items: end;
+    display: flex;
+    gap: 1.25rem;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.my-climbs-header__eyebrow {
+    color: var(--color-sage);
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.8rem;
+    text-transform: uppercase;
+}
+
+.my-climbs-header__title {
+    color: var(--color-forest);
+    letter-spacing: -0.03em;
+    margin-bottom: 0.55rem;
+}
+
+.my-climbs-header__copy {
+    color: var(--color-grey);
+    margin: 0;
+    max-width: 38rem;
+}
+
+.my-climbs-header__views {
+    flex-wrap: nowrap;
+    margin-bottom: 0;
+}
+
+.my-climbs-view-toggle {
+    border-radius: 999px;
+    font-weight: 600;
+    min-height: 2.9rem;
+    padding-inline: 1.1rem;
+}
+
+.my-climbs-view-toggle.is-active {
+    background: var(--color-forest);
+    border-color: transparent;
+    color: var(--color-white);
+}
+
+.my-climbs-stats {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.my-climbs-stat {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: 0 12px 28px rgba(27, 67, 50, 0.08);
+    padding: 1rem 1.05rem;
+}
+
+.my-climbs-stat__label {
+    color: var(--color-grey);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+.my-climbs-stat__value {
+    color: var(--color-forest);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.my-climbs-stat__stars {
+    align-items: center;
+    color: rgba(212, 168, 83, 0.32);
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.18rem;
+}
+
+.my-climbs-stat__star.is-filled {
+    color: var(--color-gold);
+}
+
+.my-climbs-stat__meta {
+    color: var(--color-grey);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-left: 0.45rem;
+}
+
+.my-climbs-filter-box {
+    margin-bottom: 1rem;
+}
+
+.my-climbs-filter-box__form {
+    align-items: end;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 0.9fr)) auto;
+}
+
+.my-climbs-filter-box .label {
+    color: var(--color-forest);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.my-climbs-filter-box .input,
+.my-climbs-filter-box .select select {
+    border-radius: var(--radius-sm);
+}
+
+.my-climbs-filter-box__search {
+    min-width: 0;
+}
+
+.my-climbs-filter-box__actions {
+    display: inline-flex;
+    gap: 0.65rem;
+}
+
+.my-climbs-filter-box__submit,
+.my-climbs-empty-state__button,
+.my-climbs-map-placeholder__button {
+    background: var(--color-forest);
+    border-color: transparent;
+    color: var(--color-white);
+}
+
+.my-climbs-filter-box__submit:hover,
+.my-climbs-filter-box__submit:focus-visible,
+.my-climbs-empty-state__button:hover,
+.my-climbs-empty-state__button:focus-visible,
+.my-climbs-map-placeholder__button:hover,
+.my-climbs-map-placeholder__button:focus-visible {
+    background: #214d39;
+    color: var(--color-white);
+}
+
+.my-climbs-map-placeholder,
+.my-climbs-empty-state {
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.my-climbs-empty-state__icon {
+    color: rgba(82, 121, 111, 0.45);
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.my-climbs-table-panel {
+    overflow: hidden;
+}
+
+.my-climbs-table-wrap {
+    overflow-x: auto;
+}
+
+.my-climbs-table {
+    margin-bottom: 0;
+    min-width: 760px;
+}
+
+.my-climbs-table thead th {
+    border-bottom: 1px solid rgba(27, 67, 50, 0.12);
+    color: var(--color-forest);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.my-climbs-table tbody td {
+    border-bottom: 1px solid rgba(27, 67, 50, 0.08);
+    vertical-align: middle;
+}
+
+.my-climbs-table__row.is-expandable:hover {
+    background: rgba(245, 241, 235, 0.42);
+}
+
+.my-climbs-table__date {
+    color: var(--color-forest);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.my-climbs-table__peak-link {
+    color: var(--color-sage);
+    font-weight: 700;
+}
+
+.my-climbs-table__peak-link:hover,
+.my-climbs-table__peak-link:focus-visible {
+    color: var(--color-forest);
+    text-decoration: underline;
+}
+
+.my-climbs-table__stars {
+    color: rgba(212, 168, 83, 0.3);
+    display: inline-flex;
+    gap: 0.12rem;
+}
+
+.my-climbs-table__star.is-filled {
+    color: var(--color-gold);
+}
+
+.my-climbs-table__weather {
+    color: var(--color-sage);
+    display: inline-flex;
+    font-size: 1rem;
+}
+
+.my-climbs-table__notes {
+    min-width: 18rem;
+}
+
+.my-climbs-table__notes-trigger {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-slate);
+    cursor: pointer;
+    display: flex;
+    font: inherit;
+    font-size: 0.95rem;
+    gap: 0.6rem;
+    justify-content: space-between;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+}
+
+.my-climbs-table__notes-trigger:hover,
+.my-climbs-table__notes-trigger:focus-visible {
+    color: var(--color-forest);
+}
+
+.my-climbs-table__notes-trigger .icon {
+    color: var(--color-grey);
+    transition: transform 0.2s ease;
+}
+
+.my-climbs-table__notes-trigger[aria-expanded="true"] .icon {
+    transform: rotate(180deg);
+}
+
+.my-climbs-table__detail-row td {
+    background: rgba(245, 241, 235, 0.55);
+    padding: 0;
+}
+
+.my-climbs-table__detail-row.is-hidden {
+    display: none;
+}
+
+.my-climbs-table__detail-card {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem 1.1rem 1.2rem;
+}
+
+.my-climbs-table__detail-block {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.my-climbs-table__detail-label {
+    color: var(--color-grey);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.my-climbs-table__detail-copy {
+    color: var(--color-slate);
+    line-height: 1.7;
+    margin: 0;
+}
+
+@media screen and (max-width: 1023px) {
+    .my-climbs-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .my-climbs-filter-box__form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .my-climbs-filter-box__search,
+    .my-climbs-filter-box__actions {
+        grid-column: 1 / -1;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .my-climbs-header__layout {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .my-climbs-header__views {
+        flex-wrap: wrap;
+    }
+
+    .my-climbs-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .my-climbs-header__title {
+        font-size: 1.9rem;
+    }
+
+    .my-climbs-filter-box__form {
+        grid-template-columns: 1fr;
+    }
+
+    .my-climbs-filter-box__actions {
+        display: grid;
+        width: 100%;
+    }
+
+    .my-climbs-filter-box__actions .button,
+    .my-climbs-header__views .button {
+        width: 100%;
+    }
+}

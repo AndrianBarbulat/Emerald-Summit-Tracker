@@ -279,6 +279,38 @@ def get_user_climbs(user_id: str) -> List[Dict[str, Any]]:
         return []
 
 
+def get_user_climb_history(user_id: str) -> List[Dict[str, Any]]:
+    climbs = get_user_climbs(user_id)
+    if not climbs:
+        return []
+
+    peaks_by_id = {
+        str(peak.get("id")): peak
+        for peak in get_all_peaks()
+        if peak.get("id") is not None
+    }
+
+    enriched_climbs = []
+    for climb in climbs:
+        current_climb = dict(climb or {})
+        peak_id = current_climb.get("peak_id")
+        peak = dict(peaks_by_id.get(str(peak_id)) or {})
+
+        current_climb["peak"] = peak
+        current_climb["peak_name"] = (
+            current_climb.get("peak_name")
+            or peak.get("name")
+            or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
+        )
+        current_climb["peak_height_m"] = peak.get("height_m") or peak.get("height")
+        current_climb["peak_county"] = peak.get("county")
+        current_climb["peak_province"] = peak.get("province")
+        current_climb["peak_range_area"] = peak.get("range_area")
+        enriched_climbs.append(current_climb)
+
+    return enriched_climbs
+
+
 def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_CLIMBS)

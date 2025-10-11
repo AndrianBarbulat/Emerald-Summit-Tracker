@@ -13,6 +13,7 @@ from supabase_utils import (
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
     get_profile_by_display_name,
+    get_user_climb_history,
     get_user_climbs,
     get_user_has_climbed,
     get_user_peak_climbs,
@@ -374,6 +375,75 @@ def _build_user_peak_climb_entries(user_climbs: list[dict]) -> list[dict]:
         )
 
     return climb_entries
+
+
+def _notes_preview(value: str | None, limit: int = 50) -> str:
+    collapsed_text = re.sub(r"\s+", " ", str(value or "").strip())
+    if not collapsed_text:
+        return "No notes added"
+    if len(collapsed_text) <= limit:
+        return collapsed_text
+    return collapsed_text[: max(limit - 1, 1)].rstrip() + "…"
+
+
+def _build_my_climb_entries(climbs: list[dict]) -> list[dict]:
+    climb_entries = []
+    for climb in climbs:
+        current_climb = dict(climb or {})
+        raw_date = current_climb.get("date_climbed") or current_climb.get("climbed_at") or current_climb.get("created_at")
+        parsed_date = _parse_datetime(raw_date)
+        difficulty_rating = current_climb.get("difficulty_rating") or current_climb.get("difficulty")
+        weather = str(current_climb.get("weather") or "").strip().lower()
+        notes = str(current_climb.get("notes") or "").strip()
+        peak_height = _to_float(current_climb.get("peak_height_m") or current_climb.get("height_m") or current_climb.get("height"))
+        photo_urls = current_climb.get("photo_urls") if isinstance(current_climb.get("photo_urls"), list) else []
+
+        climb_entries.append(
+            {
+                **current_climb,
+                "date_climbed": raw_date,
+                "date_label": _format_short_date(raw_date),
+                "date_sort": parsed_date or datetime.min.replace(tzinfo=timezone.utc),
+                "year": parsed_date.year if parsed_date else None,
+                "month": parsed_date.month if parsed_date else None,
+                "difficulty_rating": difficulty_rating,
+                "difficulty_stars": _difficulty_star_count(difficulty_rating),
+                "difficulty_value": _difficulty_numeric_value(difficulty_rating),
+                "height_m": int(round(peak_height)) if peak_height is not None else None,
+                "weather": weather,
+                "notes": notes,
+                "notes_preview": _notes_preview(notes, 50),
+                "has_details": bool(notes or photo_urls),
+                "photo_urls": photo_urls,
+            }
+        )
+
+    return sorted(climb_entries, key=lambda climb: climb["date_sort"], reverse=True)
+
+
+def _build_my_climb_stats(climbs: list[dict]) -> dict:
+    difficulty_values = [
+        climb.get("difficulty_value")
+        for climb in climbs
+        if climb.get("difficulty_value") is not None
+    ]
+    avg_difficulty = round(sum(difficulty_values) / len(difficulty_values), 1) if difficulty_values else None
+    total_elevation_m = int(
+        round(
+            sum(
+                climb.get("height_m") or 0
+                for climb in climbs
+            )
+        )
+    )
+
+    return {
+        "total_climbs": len(climbs),
+        "unique_peaks": len({climb.get("peak_id") for climb in climbs if climb.get("peak_id") is not None}),
+        "total_elevation_m": total_elevation_m,
+        "avg_difficulty": avg_difficulty,
+        "avg_difficulty_stars": _difficulty_star_count(avg_difficulty),
+    }
 
 
 def _normalize_lookup_value(value) -> str:
@@ -770,6 +840,54 @@ def home():
         dashboard_progress=dashboard_progress,
         peak_statuses=peak_statuses,
         suggested_peaks=suggested_peaks,
+        **context,
+    )
+
+
+@app.route("/my-climbs")
+def my_climbs():
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
+    user_id = context["profile"].get("id")
+    view_mode = "map" if (request.args.get("view") or "").strip().lower() == "map" else "list"
+    selected_year = (request.args.get("year") or "").strip()
+    selected_month = (request.args.get("month") or "").strip()
+    search_query = (request.args.get("q") or "").strip()
+
+    all_climbs = _build_my_climb_entries(get_user_climb_history(user_id))
+    available_years = sorted({climb["year"] for climb in all_climbs if climb.get("year")}, reverse=True)
+    month_options = [
+        {"value": month_number, "label": datetime(2000, month_number, 1).strftime("%B")}
+        for month_number in range(1, 13)
+    ]
+
+    filtered_climbs = []
+    normalized_query = search_query.lower()
+    selected_year_value = int(selected_year) if selected_year.isdigit() else None
+    selected_month_value = int(selected_month) if selected_month.isdigit() else None
+
+    for climb in all_climbs:
+        if selected_year_value and climb.get("year") != selected_year_value:
+            continue
+        if selected_month_value and climb.get("month") != selected_month_value:
+            continue
+        if normalized_query and normalized_query not in str(climb.get("peak_name") or "").lower():
+            continue
+        filtered_climbs.append(climb)
+
+    return render_template(
+        "my_climbs.html",
+        active_page="my_climbs",
+        available_years=available_years,
+        climb_stats=_build_my_climb_stats(filtered_climbs),
+        current_view=view_mode,
+        month_options=month_options,
+        my_climbs=filtered_climbs,
+        search_query=search_query,
+        selected_month=selected_month,
+        selected_year=selected_year,
         **context,
     )
 
