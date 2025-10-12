@@ -3,7 +3,20 @@
 {% block title %}My Climbs | Emerald Peak Explorer{% endblock %}
 
 {% block extra_css %}
+{% if current_view == 'map' and my_climb_map.markers %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endif %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/my_climbs.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+{% if current_view == 'map' and my_climb_map.markers %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    window.myClimbsMapData = {{ my_climb_map.markers | tojson }};
+</script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -134,11 +147,45 @@
             </div>
 
             {% if current_view == 'map' %}
-            <div class="box my-climbs-map-placeholder">
-                <h2 class="title is-5">Map View Coming Next</h2>
-                <p class="has-text-grey">List View is ready now. Map View will land in the next pass with your climbs plotted across Ireland.</p>
-                <a href="{{ url_for('my_climbs', view='list', year=selected_year or None, month=selected_month or None, q=search_query or None) }}" class="button my-climbs-map-placeholder__button">Back to List View</a>
-            </div>
+                {% if my_climb_map.markers %}
+                <div class="box my-climbs-map-panel">
+                    <div class="my-climbs-map-shell">
+                        <div class="my-climbs-map-summary">
+                            <p class="my-climbs-map-summary__eyebrow">Climb Progress</p>
+                            <p class="my-climbs-map-summary__value">
+                                {{ my_climb_map.unique_peaks }} peak{% if my_climb_map.unique_peaks != 1 %}s{% endif %} climbed
+                            </p>
+                            <p class="my-climbs-map-summary__meta">
+                                {{ my_climb_map.completion_percent }}% of {{ my_climb_map.total_peaks }} Irish peaks logged
+                            </p>
+                            <div
+                                class="my-climbs-map-summary__progress"
+                                role="progressbar"
+                                aria-label="Peak completion progress"
+                                aria-valuemin="0"
+                                aria-valuemax="{{ my_climb_map.total_peaks or 1 }}"
+                                aria-valuenow="{{ my_climb_map.unique_peaks }}"
+                            >
+                                <span
+                                    class="my-climbs-map-summary__progress-fill"
+                                    style="width: {{ my_climb_map.completion_percent }}%;"
+                                ></span>
+                            </div>
+                        </div>
+                        <div id="my-climbs-map" class="my-climbs-map" data-my-climbs-map></div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="box my-climbs-empty-state">
+                    <span class="icon my-climbs-empty-state__icon"><i class="fas fa-map-location-dot"></i></span>
+                    <h2 class="title is-4">No climbed peaks to map yet</h2>
+                    <p class="has-text-grey">Try a different year, month, or search term, or log a summit from a peak page to start plotting your progress.</p>
+                    <div class="buttons is-centered">
+                        <a href="{{ url_for('my_climbs', view='map') }}" class="button is-light">Reset Filters</a>
+                        <a href="{{ url_for('summit_list') }}" class="button my-climbs-empty-state__button">Browse All Peaks</a>
+                    </div>
+                </div>
+                {% endif %}
             {% else %}
                 {% if my_climbs %}
                 <div class="box my-climbs-table-panel">
@@ -258,8 +305,4 @@
         </div>
     </section>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
 {% endblock %}

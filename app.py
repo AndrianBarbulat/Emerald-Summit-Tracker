@@ -446,6 +446,83 @@ def _build_my_climb_stats(climbs: list[dict]) -> dict:
     }
 
 
+def _build_my_climb_map_data(climbs: list[dict], total_peaks: int) -> dict:
+    markers_by_peak: dict[str, dict] = {}
+    fallback_sort_date = datetime.min.replace(tzinfo=timezone.utc)
+
+    for climb in climbs:
+        peak = climb.get("peak") if isinstance(climb.get("peak"), dict) else {}
+        peak_id = climb.get("peak_id")
+        if peak_id is None:
+            continue
+
+        lat = _to_float(
+            climb.get("latitude")
+            or peak.get("latitude")
+            or peak.get("lat")
+        )
+        lon = _to_float(
+            climb.get("longitude")
+            or climb.get("lon")
+            or climb.get("lng")
+            or peak.get("longitude")
+            or peak.get("lon")
+            or peak.get("lng")
+        )
+        if lat is None or lon is None:
+            continue
+
+        peak_key = _peak_key(peak_id)
+        date_sort = climb.get("date_sort") or fallback_sort_date
+        existing_marker = markers_by_peak.get(peak_key)
+
+        if existing_marker is None:
+            markers_by_peak[peak_key] = {
+                "peak_id": peak_id,
+                "name": climb.get("peak_name") or peak.get("name") or f"Peak #{peak_id}",
+                "latitude": lat,
+                "longitude": lon,
+                "climb_count": 1,
+                "latest_climb_label": climb.get("date_label") or "Unknown date",
+                "latest_climb_sort": date_sort,
+            }
+            continue
+
+        existing_marker["climb_count"] += 1
+        if date_sort > existing_marker["latest_climb_sort"]:
+            existing_marker["latest_climb_sort"] = date_sort
+            existing_marker["latest_climb_label"] = climb.get("date_label") or "Unknown date"
+
+    markers = sorted(
+        markers_by_peak.values(),
+        key=lambda marker: (
+            marker.get("latest_climb_sort") or fallback_sort_date,
+            str(marker.get("name") or "").lower(),
+        ),
+        reverse=True,
+    )
+    unique_peaks = len(markers)
+    completion_percent = int(round((unique_peaks / total_peaks) * 100)) if total_peaks else 0
+    completion_percent = max(0, min(completion_percent, 100))
+
+    return {
+        "markers": [
+            {
+                "peak_id": marker.get("peak_id"),
+                "name": marker.get("name"),
+                "latitude": marker.get("latitude"),
+                "longitude": marker.get("longitude"),
+                "climb_count": marker.get("climb_count"),
+                "latest_climb_label": marker.get("latest_climb_label"),
+            }
+            for marker in markers
+        ],
+        "unique_peaks": unique_peaks,
+        "total_peaks": total_peaks,
+        "completion_percent": completion_percent,
+    }
+
+
 def _normalize_lookup_value(value) -> str:
     return str(value or "").strip().lower()
 
@@ -877,6 +954,9 @@ def my_climbs():
             continue
         filtered_climbs.append(climb)
 
+    total_peaks = len(get_all_peaks())
+    my_climb_map = _build_my_climb_map_data(filtered_climbs, total_peaks)
+
     return render_template(
         "my_climbs.html",
         active_page="my_climbs",
@@ -884,6 +964,7 @@ def my_climbs():
         climb_stats=_build_my_climb_stats(filtered_climbs),
         current_view=view_mode,
         month_options=month_options,
+        my_climb_map=my_climb_map,
         my_climbs=filtered_climbs,
         search_query=search_query,
         selected_month=selected_month,
