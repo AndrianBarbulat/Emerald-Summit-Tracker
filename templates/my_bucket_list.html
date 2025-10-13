@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}My Bucket List | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+{% if current_view == 'map' and bucket_map.markers %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/my_bucket_list.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+{% if current_view == 'map' and bucket_map.markers %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    window.bucketListMapData = {{ bucket_map.markers | tojson }};
+</script>
+{% endif %}
+<script src="{{ url_for('static', filename='js/my_bucket_list.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="bucket-list-page" data-bucket-list-page>
+    <section class="section bucket-list-header">
+        <div class="container">
+            <div class="bucket-list-header__layout">
+                <div class="bucket-list-header__copy">
+                    <p class="bucket-list-header__eyebrow">Saved Summits</p>
+                    <h1 class="title is-2 bucket-list-header__title">
+                        <span class="icon bucket-list-header__icon"><i class="fas fa-bookmark"></i></span>
+                        <span>My Bucket List</span>
+                    </h1>
+                    <p class="bucket-list-header__count" data-bucket-count-copy>
+                        {{ bucket_count }} peak{% if bucket_count != 1 %}s{% endif %} to explore
+                    </p>
+                </div>
+                <div class="buttons bucket-list-header__views">
+                    <a
+                        href="{{ url_for('my_bucket_list', view='list', sort=current_sort or None) }}"
+                        class="button bucket-list-view-toggle{% if current_view == 'list' %} is-active{% endif %}"
+                    >
+                        <span class="icon"><i class="fas fa-list"></i></span>
+                        <span>List View</span>
+                    </a>
+                    <a
+                        href="{{ url_for('my_bucket_list', view='map', sort=current_sort or None) }}"
+                        class="button bucket-list-view-toggle{% if current_view == 'map' %} is-active{% endif %}"
+                    >
+                        <span class="icon"><i class="fas fa-map-location-dot"></i></span>
+                        <span>Map View</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="box bucket-list-toolbar">
+                <form method="get" action="{{ url_for('my_bucket_list') }}" class="bucket-list-toolbar__form">
+                    <input type="hidden" name="view" value="{{ current_view }}">
+                    <div class="field bucket-list-toolbar__field">
+                        <label class="label" for="bucket-list-sort">Sort</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="bucket-list-sort" name="sort">
+                                    {% for option in sort_options %}
+                                    <option value="{{ option.value }}"{% if current_sort == option.value %} selected{% endif %}>{{ option.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bucket-list-toolbar__actions">
+                        <button type="submit" class="button bucket-list-toolbar__submit">Update View</button>
+                        <a href="{{ url_for('summit_list') }}" class="button is-light">Browse Summit List</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0 bucket-list-content">
+        <div class="container">
+            {% if bucket_entries %}
+                {% if current_view == 'map' %}
+                    {% if bucket_map.markers %}
+                    <div class="box bucket-list-map-panel" data-bucket-map-panel>
+                        <div class="bucket-list-map-shell">
+                            <div class="bucket-list-map-summary">
+                                <p class="bucket-list-map-summary__eyebrow">Explore Queue</p>
+                            <p class="bucket-list-map-summary__value" data-bucket-count-copy>
+                                {{ bucket_count }} peak{% if bucket_count != 1 %}s{% endif %} to explore
+                            </p>
+                                <p class="bucket-list-map-summary__meta">Pinned across Ireland so you can spot clusters and plan your next outing.</p>
+                            </div>
+                            <div id="bucket-list-map" class="bucket-list-map" data-bucket-list-map></div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="box bucket-list-map-empty">
+                        <p class="bucket-list-map-empty__title">Map view is ready, but these saved peaks do not have coordinate data yet.</p>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <div class="bucket-list-grid" data-bucket-list-grid>
+                    {% for entry in bucket_entries %}
+                    <article
+                        class="box bucket-list-card"
+                        data-bucket-item
+                        data-peak-id="{{ entry.peak_id }}"
+                    >
+                        <div class="bucket-list-card__top">
+                            <div class="bucket-list-card__copy">
+                                <a href="{{ url_for('peak_detail', peak_id=entry.peak_id) }}" class="bucket-list-card__title">
+                                    {{ entry.name }}
+                                </a>
+                                <div class="bucket-list-card__meta">
+                                    <span>{% if entry.height_m %}{{ entry.height_m }}m{% else %}Height unknown{% endif %}</span>
+                                    <span>{{ entry.county or 'Unknown county' }}</span>
+                                    <span>Added {{ entry.date_added_label }}</span>
+                                </div>
+                            </div>
+                            <span class="bucket-list-province bucket-list-province--{{ entry.province_key }}">
+                                {{ entry.province or 'Province unknown' }}
+                            </span>
+                        </div>
+
+                        <div class="bucket-list-card__actions">
+                            <button type="button" class="button bucket-list-card__log-button" data-bucket-action="open-log-form">
+                                <span class="icon"><i class="fas fa-mountain"></i></span>
+                                <span>Log Climb</span>
+                            </button>
+                            <button type="button" class="button bucket-list-card__remove-button" data-bucket-action="remove">
+                                <span class="icon"><i class="fas fa-bookmark-slash"></i></span>
+                                <span>Remove</span>
+                            </button>
+                        </div>
+
+                        <div class="bucket-list-card__feedback" data-bucket-feedback></div>
+
+                        <form class="bucket-list-log-form is-hidden" data-bucket-log-form hidden>
+                            <div class="bucket-list-log-form__grid">
+                                <div class="field">
+                                    <label class="label" for="bucket-log-date-{{ entry.peak_id }}">Date</label>
+                                    <div class="control">
+                                        <input
+                                            id="bucket-log-date-{{ entry.peak_id }}"
+                                            class="input"
+                                            type="date"
+                                            name="date_climbed"
+                                            data-bucket-log-date
+                                        >
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label" for="bucket-log-weather-{{ entry.peak_id }}">Weather</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="bucket-log-weather-{{ entry.peak_id }}" name="weather">
+                                                <option value="">Select weather</option>
+                                                <option value="sunny">Sunny</option>
+                                                <option value="cloudy">Cloudy</option>
+                                                <option value="overcast">Overcast</option>
+                                                <option value="rainy">Rainy</option>
+                                                <option value="windy">Windy</option>
+                                                <option value="snowy">Snowy</option>
+                                                <option value="foggy">Foggy</option>
+                                                <option value="mixed">Mixed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field">
+                                    <label class="label" for="bucket-log-difficulty-{{ entry.peak_id }}">Difficulty</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="bucket-log-difficulty-{{ entry.peak_id }}" name="difficulty_rating">
+                                                <option value="">Rate difficulty</option>
+                                                {% for value in range(1, 6) %}
+                                                <option value="{{ value }}">{{ value }} star{% if value != 1 %}s{% endif %}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label class="label" for="bucket-log-notes-{{ entry.peak_id }}">Notes</label>
+                                <div class="control">
+                                    <textarea
+                                        id="bucket-log-notes-{{ entry.peak_id }}"
+                                        class="textarea"
+                                        name="notes"
+                                        rows="3"
+                                        maxlength="500"
+                                        placeholder="Trail conditions, route tips, or who you climbed with..."
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div class="bucket-list-log-form__actions">
+                                <button type="submit" class="button bucket-list-log-form__submit" data-bucket-log-submit>
+                                    <span class="icon"><i class="fas fa-check"></i></span>
+                                    <span>Save Climb</span>
+                                </button>
+                                <button type="button" class="button is-light" data-bucket-action="cancel-log-form">Cancel</button>
+                            </div>
+                        </form>
+                    </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="box bucket-list-empty-state{% if bucket_entries %} is-hidden{% endif %}" data-bucket-empty{% if bucket_entries %} hidden{% endif %}>
+                <span class="icon bucket-list-empty-state__icon"><i class="fas fa-bookmark"></i></span>
+                <h2 class="title is-4">Your bucket list is empty!</h2>
+                <p class="bucket-list-empty-state__copy">Browse the Summit List and save peaks you want to climb next.</p>
+                <div class="buttons is-centered">
+                    <a href="{{ url_for('summit_list') }}" class="button bucket-list-empty-state__button">Browse the Summit List</a>
+                    <a href="{{ url_for('home') }}" class="button is-light">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

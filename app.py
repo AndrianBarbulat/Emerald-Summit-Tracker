@@ -13,6 +13,7 @@ from supabase_utils import (
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
     get_profile_by_display_name,
+    get_user_bucket_list,
     get_user_climb_history,
     get_user_climbs,
     get_user_has_climbed,
@@ -523,6 +524,145 @@ def _build_my_climb_map_data(climbs: list[dict], total_peaks: int) -> dict:
     }
 
 
+def _build_bucket_list_entries(
+    bucket_items: list[dict],
+    peaks_by_id: dict[str, dict],
+    peak_statuses: dict[str, str] | None = None,
+) -> list[dict]:
+    entries = []
+    peak_statuses = peak_statuses or {}
+
+    for bucket_item in bucket_items:
+        current_item = dict(bucket_item or {})
+        peak_id = current_item.get("peak_id")
+        peak = dict(peaks_by_id.get(_peak_key(peak_id)) or {})
+        raw_date_added = (
+            current_item.get("created_at")
+            or current_item.get("added_at")
+            or current_item.get("date_added")
+            or current_item.get("inserted_at")
+        )
+        parsed_date_added = _parse_datetime(raw_date_added)
+        height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        latitude = _to_float(peak.get("latitude") or peak.get("lat"))
+        longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
+        province = peak.get("province") or current_item.get("province")
+        province_key = str(province or "").strip().lower().replace(" ", "-") or "default"
+
+        entries.append(
+            {
+                **current_item,
+                "peak": peak,
+                "peak_id": peak_id,
+                "name": current_item.get("peak_name") or peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
+                "height_m": int(round(height_m)) if height_m is not None else None,
+                "county": peak.get("county") or current_item.get("county"),
+                "province": province,
+                "province_key": province_key,
+                "date_added": raw_date_added,
+                "date_added_label": _format_short_date(raw_date_added) if raw_date_added else "Recently added",
+                "date_sort": parsed_date_added or datetime.min.replace(tzinfo=timezone.utc),
+                "latitude": latitude,
+                "longitude": longitude,
+                "user_status": _normalize_peak_status(peak_statuses.get(_peak_key(peak_id)) or "bucket_listed"),
+            }
+        )
+
+    return entries
+
+
+def _sort_bucket_list_entries(entries: list[dict], sort_by: str) -> list[dict]:
+    normalized_sort = str(sort_by or "").strip().lower()
+
+    if normalized_sort == "height":
+        return sorted(
+            entries,
+            key=lambda entry: (
+                1 if entry.get("height_m") is None else 0,
+                -(entry.get("height_m") or 0),
+                str(entry.get("name") or "").lower(),
+            ),
+        )
+
+    if normalized_sort == "name":
+        return sorted(
+            entries,
+            key=lambda entry: (
+                str(entry.get("name") or "").lower(),
+                str(entry.get("county") or "").lower(),
+            ),
+        )
+
+    if normalized_sort == "county":
+        return sorted(
+            entries,
+            key=lambda entry: (
+                str(entry.get("county") or "").lower(),
+                str(entry.get("name") or "").lower(),
+            ),
+        )
+
+    return sorted(
+        entries,
+        key=lambda entry: (
+            entry.get("date_sort") or datetime.min.replace(tzinfo=timezone.utc),
+            str(entry.get("name") or "").lower(),
+        ),
+        reverse=True,
+    )
+
+
+def _build_bucket_list_map_data(entries: list[dict]) -> dict:
+    markers_by_peak: dict[str, dict] = {}
+
+    for entry in entries:
+        latitude = entry.get("latitude")
+        longitude = entry.get("longitude")
+        if latitude is None or longitude is None:
+            continue
+
+        peak_key = _peak_key(entry.get("peak_id"))
+        existing_marker = markers_by_peak.get(peak_key)
+        if existing_marker is None or (entry.get("date_sort") or datetime.min.replace(tzinfo=timezone.utc)) > existing_marker["date_sort"]:
+            markers_by_peak[peak_key] = {
+                "peak_id": entry.get("peak_id"),
+                "name": entry.get("name"),
+                "height_m": entry.get("height_m"),
+                "county": entry.get("county"),
+                "province": entry.get("province"),
+                "date_added_label": entry.get("date_added_label"),
+                "date_sort": entry.get("date_sort") or datetime.min.replace(tzinfo=timezone.utc),
+                "latitude": latitude,
+                "longitude": longitude,
+            }
+
+    markers = sorted(
+        markers_by_peak.values(),
+        key=lambda marker: (
+            marker.get("date_sort") or datetime.min.replace(tzinfo=timezone.utc),
+            str(marker.get("name") or "").lower(),
+        ),
+        reverse=True,
+    )
+
+    return {
+        "count": len(entries),
+        "markers": [
+            {
+                "peak_id": marker.get("peak_id"),
+                "name": marker.get("name"),
+                "height_m": marker.get("height_m"),
+                "county": marker.get("county"),
+                "province": marker.get("province"),
+                "date_added_label": marker.get("date_added_label"),
+                "latitude": marker.get("latitude"),
+                "longitude": marker.get("longitude"),
+            }
+            for marker in markers
+        ],
+    }
+
+
 def _normalize_lookup_value(value) -> str:
     return str(value or "").strip().lower()
 
@@ -969,6 +1109,53 @@ def my_climbs():
         search_query=search_query,
         selected_month=selected_month,
         selected_year=selected_year,
+        **context,
+    )
+
+
+@app.route("/my-bucket-list")
+def my_bucket_list():
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
+    user_id = context["profile"].get("id")
+    current_view = "map" if (request.args.get("view") or "").strip().lower() == "map" else "list"
+    current_sort = (request.args.get("sort") or "date_added").strip().lower() or "date_added"
+    sort_options = [
+        {"value": "date_added", "label": "Date Added"},
+        {"value": "height", "label": "Height"},
+        {"value": "name", "label": "Name"},
+        {"value": "county", "label": "County"},
+    ]
+    allowed_sorts = {option["value"] for option in sort_options}
+    if current_sort not in allowed_sorts:
+        current_sort = "date_added"
+
+    all_peaks = get_all_peaks()
+    peaks_by_id = {
+        _peak_key(peak.get("id")): peak
+        for peak in all_peaks
+        if peak.get("id") is not None
+    }
+    bucket_items = get_user_bucket_list(user_id)
+    peak_ids = [item.get("peak_id") for item in bucket_items if item.get("peak_id") is not None]
+    peak_statuses = get_peak_statuses(user_id, peak_ids)
+    bucket_entries = _sort_bucket_list_entries(
+        _build_bucket_list_entries(bucket_items, peaks_by_id, peak_statuses),
+        current_sort,
+    )
+    bucket_map = _build_bucket_list_map_data(bucket_entries)
+
+    return render_template(
+        "my_bucket_list.html",
+        active_page="my_bucket_list",
+        bucket_count=len(bucket_entries),
+        bucket_entries=bucket_entries,
+        bucket_map=bucket_map,
+        current_sort=current_sort,
+        current_view=current_view,
+        sort_options=sort_options,
         **context,
     )
 
