@@ -26,7 +26,11 @@
                                 <span class="icon"><i class="fas fa-map"></i></span>
                                 <span>Explore Map</span>
                             </button>
-                            <button class="button is-warning dashboard-welcome__button">
+                            <button
+                                type="button"
+                                class="button is-warning dashboard-welcome__button"
+                                data-dashboard-open-climb-modal
+                            >
                                 <span class="icon"><i class="fas fa-plus"></i></span>
                                 <span>Add Climbed Peak</span>
                             </button>
@@ -109,50 +113,22 @@
                                 Recent Activity
                             </h2>
                             
-                            <div class="timeline dashboard-timeline">
-                                <!-- Activity Item 1 -->
-                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
+                            <div class="timeline dashboard-timeline" data-dashboard-activity-feed data-dashboard-activity-limit="4">
+                                {% for activity in dashboard_recent_activity %}
+                                <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-timeline__item" data-dashboard-activity-item>
                                     <div class="column is-narrow dashboard-timeline__marker">
-                                        <span class="tag is-success dashboard-timeline__tag">Climbed</span>
+                                        <span class="tag {{ activity.tag_class }} dashboard-timeline__tag">{{ activity.label }}</span>
                                     </div>
                                     <div class="column dashboard-timeline__content">
-                                        <span class="has-text-weight-bold">Carrauntoohil</span> - You reached the summit!
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">2 days ago</span>
+                                        <span class="has-text-weight-bold">{{ activity.peak_name }}</span> - {{ activity.message }}
+                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">{{ activity.relative_time }}</span>
                                     </div>
                                 </div>
-                                
-                                <!-- Activity Item 2 -->
-                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
-                                    <div class="column is-narrow dashboard-timeline__marker">
-                                        <span class="tag is-warning dashboard-timeline__tag">Bucket List</span>
-                                    </div>
-                                    <div class="column dashboard-timeline__content">
-                                        <span class="has-text-weight-bold">Errigal</span> - Added to your bucket list
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">5 days ago</span>
-                                    </div>
+                                {% else %}
+                                <div class="dashboard-empty-state" data-dashboard-activity-empty>
+                                    Log your first climb to start building your activity feed.
                                 </div>
-                                
-                                <!-- Activity Item 3 -->
-                                <div class="columns is-mobile mb-3 dashboard-timeline__item">
-                                    <div class="column is-narrow dashboard-timeline__marker">
-                                        <span class="tag is-info dashboard-timeline__tag">Photo</span>
-                                    </div>
-                                    <div class="column dashboard-timeline__content">
-                                        <span class="has-text-weight-bold">Slieve Donard</span> - Uploaded 3 photos
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">1 week ago</span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Activity Item 4 -->
-                                <div class="columns is-mobile dashboard-timeline__item">
-                                    <div class="column is-narrow dashboard-timeline__marker">
-                                        <span class="tag is-success dashboard-timeline__tag">Climbed</span>
-                                    </div>
-                                    <div class="column dashboard-timeline__content">
-                                        <span class="has-text-weight-bold">Mount Leinster</span> - You reached the summit!
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">2 weeks ago</span>
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
                             
                             <div class="has-text-centered mt-4 dashboard-card__footer-link">
@@ -314,8 +290,9 @@
                                 Your Bucket List
                             </h2>
                             
+                            {% set has_bucket_list_preview = bucket_list_peaks | length > 0 %}
                             {% for peak in bucket_list_peaks %}
-                            <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-bucket-list__item">
+                            <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-bucket-list__item" data-dashboard-bucket-item data-peak-id="{{ peak.id }}">
                                 <div class="column dashboard-bucket-list__details">
                                     <p class="has-text-weight-bold dashboard-bucket-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ peak.height_m or peak.height }}m)</span></p>
                                     <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">{{ peak.county or 'Unknown county' }}</p>
@@ -324,11 +301,10 @@
                                     {{ peak_status(peak.user_status) }}
                                 </div>
                             </div>
-                            {% else %}
-                            <div class="dashboard-empty-state">
+                            {% endfor %}
+                            <div class="dashboard-empty-state{% if has_bucket_list_preview %} is-hidden{% endif %}" data-dashboard-bucket-empty{% if has_bucket_list_preview %} hidden{% endif %}>
                                 No peaks saved yet. Add a few from the summit list and they'll show up here.
                             </div>
-                            {% endfor %}
                             
                             <div class="has-text-centered mt-4 dashboard-card__footer-link">
                                 <a href="{{ url_for('my_bucket_list') }}" class="has-text-success">View Full Bucket List <i class="fas fa-arrow-right ml-1"></i></a>
@@ -338,9 +314,166 @@
                 </div>
             </div>
         </section>
+
+        <div class="modal dashboard-add-climb-modal" data-dashboard-climb-modal aria-hidden="true">
+            <div class="modal-background" data-dashboard-close-climb-modal></div>
+            <div class="modal-card dashboard-add-climb-modal__card">
+                <header class="modal-card-head dashboard-add-climb-modal__head">
+                    <div>
+                        <p class="modal-card-title dashboard-add-climb-modal__title">Add Climbed Peak</p>
+                        <p class="dashboard-add-climb-modal__subtitle">Search for a summit, then log the climb with your details.</p>
+                    </div>
+                    <button type="button" class="delete" aria-label="close" data-dashboard-close-climb-modal></button>
+                </header>
+                <section class="modal-card-body dashboard-add-climb-modal__body">
+                    <div class="field">
+                        <label class="label" for="dashboard-climb-search">Search Peaks</label>
+                        <div class="control has-icons-left">
+                            <input
+                                id="dashboard-climb-search"
+                                class="input"
+                                type="search"
+                                placeholder="Search peaks by name..."
+                                autocomplete="off"
+                                data-dashboard-peak-search
+                            >
+                            <span class="icon is-small is-left">
+                                <i class="fas fa-search"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-add-climb-modal__results is-hidden" data-dashboard-search-results hidden></div>
+                    <p class="dashboard-add-climb-modal__search-feedback is-hidden" data-dashboard-search-feedback hidden>
+                        No peaks found. Check your spelling?
+                    </p>
+
+                    <div class="dashboard-add-climb-modal__selected is-hidden" data-dashboard-selected-peak hidden>
+                        <p class="dashboard-add-climb-modal__selected-label">Selected Peak</p>
+                        <div class="dashboard-add-climb-modal__selected-card">
+                            <div>
+                                <p class="dashboard-add-climb-modal__selected-name" data-dashboard-selected-name></p>
+                                <p class="dashboard-add-climb-modal__selected-meta" data-dashboard-selected-meta></p>
+                            </div>
+                            <button type="button" class="button is-light is-small" data-dashboard-clear-selected-peak>Change</button>
+                        </div>
+                    </div>
+
+                    <form
+                        class="dashboard-add-climb-modal__form peak-detail-log-form is-hidden"
+                        data-dashboard-climb-form
+                        enctype="multipart/form-data"
+                        novalidate
+                        hidden
+                    >
+                        <input type="hidden" name="peak_id" value="" data-dashboard-selected-peak-id>
+                        <div class="columns is-multiline">
+                            <div class="column is-12-mobile is-6-tablet">
+                                <div class="field">
+                                    <label class="label" for="dashboard-climb-date">Date</label>
+                                    <div class="control">
+                                        <input id="dashboard-climb-date" class="input" type="date" name="date_climbed" data-dashboard-climb-date>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column is-12-mobile is-6-tablet">
+                                <div class="field">
+                                    <label class="label" for="dashboard-climb-weather">Weather</label>
+                                    <div class="control">
+                                        <div class="select is-fullwidth">
+                                            <select id="dashboard-climb-weather" name="weather">
+                                                <option value="">Select weather</option>
+                                                <option value="sunny">Sunny</option>
+                                                <option value="cloudy">Cloudy</option>
+                                                <option value="overcast">Overcast</option>
+                                                <option value="rainy">Rainy</option>
+                                                <option value="windy">Windy</option>
+                                                <option value="snowy">Snowy</option>
+                                                <option value="foggy">Foggy</option>
+                                                <option value="mixed">Mixed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column is-12">
+                                <div class="field">
+                                    <div class="peak-detail-log-form__field-head">
+                                        <label class="label" for="dashboard-climb-notes">Notes</label>
+                                        <span class="peak-detail-log-form__counter" data-peak-log-notes-counter>0 / 500</span>
+                                    </div>
+                                    <div class="control">
+                                        <textarea
+                                            id="dashboard-climb-notes"
+                                            class="textarea"
+                                            name="notes"
+                                            rows="4"
+                                            maxlength="500"
+                                            placeholder="Trail conditions, standout moments, or anything worth remembering..."
+                                            data-peak-log-notes
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column is-12">
+                                <div class="field">
+                                    <div class="peak-detail-log-form__field-head">
+                                        <label class="label">Difficulty</label>
+                                        <span class="peak-detail-log-form__counter" data-peak-log-stars-label>Tap to rate</span>
+                                    </div>
+                                    <div class="peak-detail-stars" data-peak-star-rating>
+                                        <input type="hidden" name="difficulty_rating" value="" data-peak-star-rating-input>
+                                        {% for star in range(1, 6) %}
+                                        <button
+                                            type="button"
+                                            class="peak-detail-stars__button"
+                                            data-peak-star-value="{{ star }}"
+                                            aria-label="Rate {{ star }} star{% if star != 1 %}s{% endif %}"
+                                            aria-pressed="false"
+                                        >
+                                            <i class="fas fa-star" aria-hidden="true"></i>
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="column is-12">
+                                <div class="field">
+                                    <div class="peak-detail-log-form__field-head">
+                                        <label class="label" for="dashboard-climb-photos">Photos</label>
+                                        <span class="peak-detail-log-form__counter">Up to 3 images</span>
+                                    </div>
+                                    <div class="control">
+                                        <input
+                                            id="dashboard-climb-photos"
+                                            class="input"
+                                            type="file"
+                                            name="photos"
+                                            accept="image/*"
+                                            multiple
+                                            data-peak-log-photos
+                                        >
+                                    </div>
+                                    <p class="peak-detail-log-form__hint">Image files only, max 5MB each.</p>
+                                    <p class="peak-detail-log-form__hint" data-peak-log-photo-summary>No photos selected.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="peak-detail-log-form__error dashboard-add-climb-modal__error" data-dashboard-climb-error aria-live="polite"></p>
+                        <div class="buttons peak-detail-log-form__actions dashboard-add-climb-modal__actions">
+                            <button type="button" class="button peak-detail-log-form__cancel" data-dashboard-close-climb-modal>Cancel</button>
+                            <button type="submit" class="button peak-detail-log-form__submit" data-dashboard-climb-submit>Log This Summit</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
     </div>
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    window.dashboardPeakSearchData = {{ dashboard_peak_search_data | tojson }};
+</script>
 <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 {% endblock %}

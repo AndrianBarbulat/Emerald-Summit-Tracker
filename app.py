@@ -911,6 +911,95 @@ def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[
     return enriched
 
 
+def _build_dashboard_activity_items(
+    climbs: list[dict],
+    bucket_items: list[dict],
+    peaks_by_id: dict[int, dict],
+    limit: int = 4,
+) -> list[dict]:
+    activity_items = []
+    fallback_date = datetime.min.replace(tzinfo=timezone.utc)
+
+    for climb in climbs:
+        peak_id = climb.get("peak_id")
+        peak = peaks_by_id.get(peak_id, {}) if peak_id is not None else {}
+        activity_date = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+        activity_items.append(
+            {
+                "type": "climbed",
+                "label": "Climbed",
+                "peak_id": peak_id,
+                "peak_name": (
+                    climb.get("peak_name")
+                    or peak.get("name")
+                    or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
+                ),
+                "message": "You reached the summit!",
+                "relative_time": _relative_time(activity_date),
+                "tag_class": "is-success",
+                "timestamp": _parse_datetime(activity_date) or fallback_date,
+            }
+        )
+
+    for bucket_item in bucket_items:
+        peak_id = bucket_item.get("peak_id")
+        peak = peaks_by_id.get(peak_id, {}) if peak_id is not None else {}
+        activity_date = (
+            bucket_item.get("created_at")
+            or bucket_item.get("added_at")
+            or bucket_item.get("date_added")
+            or bucket_item.get("inserted_at")
+        )
+        activity_items.append(
+            {
+                "type": "bucket_listed",
+                "label": "Bucket List",
+                "peak_id": peak_id,
+                "peak_name": peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
+                "message": "Added to your bucket list",
+                "relative_time": _relative_time(activity_date),
+                "tag_class": "is-warning",
+                "timestamp": _parse_datetime(activity_date) or fallback_date,
+            }
+        )
+
+    return sorted(
+        activity_items,
+        key=lambda activity: activity.get("timestamp") or fallback_date,
+        reverse=True,
+    )[:limit]
+
+
+def _build_dashboard_peak_search_data(peaks: list[dict]) -> list[dict]:
+    search_data = []
+    for peak in peaks:
+        peak_id = peak.get("id")
+        if peak_id is None:
+            continue
+
+        if peak.get("user_status") == "climbed":
+            continue
+
+        height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        search_data.append(
+            {
+                "id": peak_id,
+                "name": peak.get("name") or f"Peak #{peak_id}",
+                "height_m": int(round(height_m)) if height_m is not None else None,
+                "county": peak.get("county"),
+                "province": peak.get("province"),
+            }
+        )
+
+    return sorted(
+        search_data,
+        key=lambda peak: (
+            str(peak.get("name") or "").lower(),
+            str(peak.get("county") or "").lower(),
+        ),
+    )
+
+
 @app.route("/")
 def index():
     context = get_session_context()
@@ -1010,6 +1099,9 @@ def home():
     )
     decorated_peaks = _decorate_peaks_with_statuses(all_peaks, peak_statuses)
     climbs = get_user_climbs(user_id)
+    bucket_items = get_user_bucket_list(user_id)
+    dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, peaks_by_id)
+    dashboard_peak_search_data = _build_dashboard_peak_search_data(decorated_peaks)
 
     suggested_peaks = sorted(
         [
@@ -1054,7 +1146,9 @@ def home():
         "home.html",
         active_page="dashboard",
         bucket_list_peaks=bucket_list_peaks,
+        dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
+        dashboard_recent_activity=dashboard_recent_activity,
         peak_statuses=peak_statuses,
         suggested_peaks=suggested_peaks,
         **context,

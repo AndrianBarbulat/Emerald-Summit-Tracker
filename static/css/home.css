@@ -69,6 +69,173 @@
     padding-right: 1.15rem;
 }
 
+.dashboard-add-climb-modal {
+    padding: 1rem;
+}
+
+.dashboard-add-climb-modal__card {
+    border-radius: var(--radius-lg);
+    max-width: 44rem;
+    overflow: hidden;
+    width: min(44rem, 100%);
+}
+
+.dashboard-add-climb-modal__head {
+    background:
+        radial-gradient(circle at top right, rgba(212, 168, 83, 0.16), transparent 26%),
+        linear-gradient(135deg, var(--color-forest) 0%, #24553f 100%);
+    border-bottom: 0;
+    color: var(--color-white);
+    padding: 1.25rem 1.35rem;
+}
+
+.dashboard-add-climb-modal__title {
+    color: var(--color-white);
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.dashboard-add-climb-modal__subtitle {
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0;
+}
+
+.dashboard-add-climb-modal__body {
+    background: linear-gradient(180deg, #ffffff 0%, rgba(245, 241, 235, 0.42) 100%);
+    display: grid;
+    gap: 1rem;
+    padding: 1.35rem;
+}
+
+.dashboard-add-climb-modal__body .label {
+    color: var(--color-forest);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.dashboard-add-climb-modal__body .input,
+.dashboard-add-climb-modal__body .textarea,
+.dashboard-add-climb-modal__body .select select {
+    border-radius: var(--radius-sm);
+}
+
+.dashboard-add-climb-modal__body .input:focus,
+.dashboard-add-climb-modal__body .textarea:focus,
+.dashboard-add-climb-modal__body .select select:focus {
+    border-color: var(--color-mint);
+    box-shadow: 0 0 0 0.2rem rgba(116, 198, 157, 0.18);
+}
+
+.dashboard-add-climb-modal__results {
+    border: 1px solid rgba(27, 67, 50, 0.1);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    display: grid;
+    max-height: 16rem;
+    overflow-y: auto;
+}
+
+.dashboard-add-climb-modal__results.is-hidden,
+.dashboard-add-climb-modal__selected.is-hidden,
+.dashboard-add-climb-modal__form.is-hidden,
+.dashboard-add-climb-modal__search-feedback.is-hidden {
+    display: none;
+}
+
+.dashboard-add-climb-modal__result {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.98);
+    border: 0;
+    border-bottom: 1px solid rgba(27, 67, 50, 0.08);
+    cursor: pointer;
+    display: flex;
+    gap: 0.9rem;
+    justify-content: space-between;
+    padding: 0.9rem 1rem;
+    text-align: left;
+    width: 100%;
+}
+
+.dashboard-add-climb-modal__result:last-child {
+    border-bottom: 0;
+}
+
+.dashboard-add-climb-modal__result:hover,
+.dashboard-add-climb-modal__result:focus-visible {
+    background: rgba(245, 241, 235, 0.7);
+}
+
+.dashboard-add-climb-modal__result-name {
+    color: var(--color-forest);
+    font-weight: 700;
+    margin: 0 0 0.18rem;
+}
+
+.dashboard-add-climb-modal__result-meta {
+    color: var(--color-grey);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.dashboard-add-climb-modal__search-feedback {
+    color: var(--color-grey);
+    margin: -0.35rem 0 0;
+}
+
+.dashboard-add-climb-modal__selected {
+    margin-top: -0.15rem;
+}
+
+.dashboard-add-climb-modal__selected-label {
+    color: var(--color-grey);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.55rem;
+    text-transform: uppercase;
+}
+
+.dashboard-add-climb-modal__selected-card {
+    align-items: center;
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.95rem 1rem;
+}
+
+.dashboard-add-climb-modal__selected-name {
+    color: var(--color-forest);
+    font-weight: 700;
+    margin: 0 0 0.2rem;
+}
+
+.dashboard-add-climb-modal__selected-meta {
+    color: var(--color-grey);
+    margin: 0;
+}
+
+.dashboard-add-climb-modal__form {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+    margin-top: 0.1rem;
+}
+
+.dashboard-add-climb-modal__error {
+    min-height: 1.4rem;
+}
+
+.dashboard-add-climb-modal__actions {
+    margin-bottom: 0;
+}
+
 .dashboard-grid {
     align-items: stretch;
 }
@@ -312,6 +479,18 @@
         justify-content: center;
         width: 100%;
     }
+
+    .dashboard-add-climb-modal__card {
+        margin: 0;
+        max-width: none;
+        width: 100%;
+    }
+
+    .dashboard-add-climb-modal__selected-card,
+    .dashboard-add-climb-modal__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }
 
 @media screen and (max-width: 480px) {
@@ -337,6 +516,24 @@
 
     .dashboard-card {
         padding: 1rem;
+    }
+
+    .dashboard-add-climb-modal {
+        padding: 0.5rem;
+    }
+
+    .dashboard-add-climb-modal__head,
+    .dashboard-add-climb-modal__body {
+        padding: 1rem;
+    }
+
+    .dashboard-add-climb-modal__title {
+        font-size: 1.2rem;
+    }
+
+    .dashboard-add-climb-modal__selected-card .button,
+    .dashboard-add-climb-modal__actions .button {
+        width: 100%;
     }
 
     .dashboard-card__title {
