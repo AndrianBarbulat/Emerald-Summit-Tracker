@@ -395,6 +395,55 @@
     margin: 0;
 }
 
+.my-climbs-table__detail-actions {
+    gap: 0.75rem;
+    margin-bottom: 0;
+    margin-top: 0.25rem;
+}
+
+.my-climbs-edit-form {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+}
+
+.my-climbs-edit-form__error {
+    min-height: 1.3rem;
+}
+
+.my-climbs-table__delete-confirm {
+    align-items: start;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(220, 53, 69, 0.14);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+}
+
+.my-climbs-table__delete-copy {
+    color: var(--color-slate);
+    font-weight: 600;
+    margin: 0;
+}
+
+.my-climbs-table__row,
+.my-climbs-table__detail-row {
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.my-climbs-table__row.is-removing,
+.my-climbs-table__detail-row.is-removing {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+.my-climbs-table-panel.is-hidden,
+.my-climbs-empty-state.is-hidden {
+    display: none;
+}
+
 @media screen and (max-width: 1023px) {
     .my-climbs-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -439,6 +488,14 @@
         max-width: none;
         position: relative;
         top: auto;
+    }
+
+    .my-climbs-table__detail-actions {
+        flex-direction: column;
+    }
+
+    .my-climbs-table__detail-actions .button {
+        width: 100%;
     }
 }
 

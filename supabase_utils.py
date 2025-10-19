@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+from urllib.parse import unquote, urlparse
 
 from dotenv import load_dotenv
 from supabase import Client, create_client
@@ -74,6 +75,40 @@ def _normalize_photo_urls(value: Any) -> List[str]:
         return [stripped]
 
     return []
+
+
+def extract_climb_photo_storage_paths(value: Any) -> List[str]:
+    normalized_urls = _normalize_photo_urls(value)
+    if not normalized_urls:
+        return []
+
+    bucket_marker = f"/storage/v1/object/public/{STORAGE_BUCKET_SUMMIT_PHOTOS}/"
+    storage_paths: List[str] = []
+    seen_paths = set()
+
+    for photo_url in normalized_urls:
+        parsed_url = urlparse(photo_url)
+        candidate_path = ""
+
+        if parsed_url.scheme and parsed_url.netloc:
+            parsed_path = unquote(parsed_url.path or "")
+            if bucket_marker in parsed_path:
+                candidate_path = parsed_path.split(bucket_marker, 1)[1]
+        else:
+            candidate_path = str(photo_url or "").strip()
+
+        candidate_path = unquote(str(candidate_path or "").strip()).lstrip("/")
+        bucket_prefix = f"{STORAGE_BUCKET_SUMMIT_PHOTOS}/"
+        if candidate_path.startswith(bucket_prefix):
+            candidate_path = candidate_path[len(bucket_prefix):]
+
+        if not candidate_path or candidate_path in seen_paths:
+            continue
+
+        seen_paths.add(candidate_path)
+        storage_paths.append(candidate_path)
+
+    return storage_paths
 
 
 def _normalize_climb_record(climb: Dict[str, Any]) -> Dict[str, Any]:

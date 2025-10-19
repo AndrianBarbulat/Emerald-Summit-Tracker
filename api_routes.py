@@ -14,6 +14,7 @@ from supabase_utils import (
     award_badge,
     delete_climb,
     delete_comment,
+    extract_climb_photo_storage_paths,
     delete_profile,
     get_all_peaks,
     get_climb_by_id,
@@ -728,10 +729,19 @@ def api_climb(climb_id: int):
     peak_id = _parse_int(climb.get("peak_id"))
 
     if request.method == "DELETE":
+        photo_storage_paths = extract_climb_photo_storage_paths(climb.get("photo_urls"))
         deleted_climb = delete_climb(climb_id, user_id)
         if deleted_climb is None and get_climb_by_id(climb_id) is not None:
             return _json_error("We couldn't delete that climb right now.", 500)
-        payload = {"climb_id": climb_id}
+
+        photos_deleted = delete_climb_photo_uploads(photo_storage_paths)
+        payload = {
+            "climb_id": climb_id,
+            "deleted_photo_count": len(photo_storage_paths) if photos_deleted else 0,
+        }
+        if photo_storage_paths and not photos_deleted:
+            payload["warning"] = "Climb removed, but we couldn't delete one or more uploaded photos."
+
         if peak_id is not None:
             payload.update(
                 {
