@@ -184,7 +184,10 @@
                             </div>
 
                             <div class="field">
-                                <label class="label" for="bucket-log-notes-{{ entry.peak_id }}">Notes</label>
+                                <div class="peak-detail-log-form__field-head">
+                                    <label class="label" for="bucket-log-notes-{{ entry.peak_id }}">Notes</label>
+                                    <span class="peak-detail-log-form__counter" data-peak-log-notes-counter>0 / 500</span>
+                                </div>
                                 <div class="control">
                                     <textarea
                                         id="bucket-log-notes-{{ entry.peak_id }}"
@@ -193,6 +196,7 @@
                                         rows="3"
                                         maxlength="500"
                                         placeholder="Trail conditions, route tips, or who you climbed with..."
+                                        data-peak-log-notes
                                     ></textarea>
                                 </div>
                             </div>

@@ -753,6 +753,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function postJson(url, payload) {
+        if (typeof window.postJsonRequest === 'function') {
+            return window.postJsonRequest(url, payload);
+        }
+
         const response = await fetch(url, {
             body: JSON.stringify(payload),
             credentials: 'same-origin',
@@ -768,7 +772,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (!response.ok) {
-            throw new Error(result.error || 'Something went wrong.');
+            if (typeof window.buildRequestError === 'function') {
+                throw window.buildRequestError(result, 'Something went wrong.');
+            }
+            throw new Error(result.message || result.error || 'Something went wrong.');
         }
 
         return result;

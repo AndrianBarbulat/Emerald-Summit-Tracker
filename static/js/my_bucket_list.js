@@ -19,7 +19,27 @@ function initBucketListPage() {
     };
 
     initializeBucketLogDates(page);
+    if (typeof window.initializeClimbFormValidation === 'function') {
+        page.querySelectorAll('[data-bucket-log-form]').forEach(function(form) {
+            window.initializeClimbFormValidation(form);
+        });
+    }
     initBucketListMap(state);
+
+    const clearBucketValidationState = function(event) {
+        const form = event.target.closest('[data-bucket-log-form]');
+        if (!form) {
+            return;
+        }
+
+        if (event.target.matches('[data-peak-log-notes], [data-bucket-log-date], select[name="weather"], select[name="difficulty_rating"]')) {
+            clearBucketFieldError(event.target);
+            clearBucketFeedback(form.closest('[data-bucket-item]'));
+        }
+    };
+
+    page.addEventListener('input', clearBucketValidationState);
+    page.addEventListener('change', clearBucketValidationState);
 
     page.addEventListener('click', async function(event) {
         const actionButton = event.target.closest('[data-bucket-action]');
@@ -100,11 +120,9 @@ function initBucketListPage() {
             return;
         }
 
-        if (!dateInput || !String(dateInput.value || '').trim()) {
-            setBucketFeedback(item, 'Please choose a climb date.', true);
-            if (dateInput) {
-                dateInput.focus();
-            }
+        const validation = validateBucketClimbForm(form);
+        if (!validation.isValid) {
+            setBucketFeedback(item, getBucketFirstFieldMessage(validation.fieldErrors), true);
             return;
         }
 
@@ -132,6 +150,7 @@ function initBucketListPage() {
                 notifyBucketToast(result.warning, 'warning');
             }
         } catch (error) {
+            applyBucketFieldErrors(form, error && error.fields ? error.fields : {});
             setBucketFeedback(item, error.message || 'We could not save that climb.', true);
             notifyBucketToast(error.message || 'We could not save that climb.', 'error');
         } finally {
@@ -198,8 +217,12 @@ function closeBucketLogForm(item) {
         return;
     }
 
+    if (typeof window.clearFormFieldErrors === 'function') {
+        window.clearFormFieldErrors(form);
+    }
     form.hidden = true;
     form.classList.add('is-hidden');
+    clearBucketFeedback(item);
 }
 
 function setBucketFeedback(item, message, isError) {
@@ -371,6 +394,10 @@ function fitBucketMapToMarkers(state) {
 }
 
 async function postBucketJson(url, payload) {
+    if (typeof window.postJsonRequest === 'function') {
+        return window.postJsonRequest(url, payload);
+    }
+
     const response = await fetch(url, {
         body: JSON.stringify(payload || {}),
         credentials: 'same-origin',
@@ -386,10 +413,47 @@ async function postBucketJson(url, payload) {
     });
 
     if (!response.ok) {
-        throw new Error(result.error || 'Something went wrong.');
+        if (typeof window.buildRequestError === 'function') {
+            throw window.buildRequestError(result, 'Something went wrong.');
+        }
+        throw new Error(result.message || result.error || 'Something went wrong.');
     }
 
     return result;
+}
+
+function validateBucketClimbForm(form) {
+    if (typeof window.validateClimbFormClient === 'function') {
+        return window.validateClimbFormClient(form);
+    }
+    return { fieldErrors: {}, isValid: true };
+}
+
+function applyBucketFieldErrors(form, fieldErrors) {
+    if (typeof window.applyFieldErrors === 'function') {
+        window.applyFieldErrors(form, fieldErrors, {
+            date_climbed: '[data-bucket-log-date]',
+            notes: '[data-peak-log-notes], textarea[name="notes"]',
+            difficulty_rating: 'select[name="difficulty_rating"]'
+        });
+    }
+}
+
+function clearBucketFieldError(control) {
+    if (typeof window.clearFieldError === 'function') {
+        window.clearFieldError(control);
+    }
+}
+
+function getBucketFirstFieldMessage(fieldErrors) {
+    if (!fieldErrors || typeof fieldErrors !== 'object') {
+        return '';
+    }
+
+    const firstMessage = Object.values(fieldErrors).find(function(message) {
+        return String(message || '').trim();
+    });
+    return String(firstMessage || '').trim();
 }
 
 function notifyBucketToast(message, type) {

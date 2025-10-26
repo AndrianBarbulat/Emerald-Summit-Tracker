@@ -51,6 +51,25 @@ body {
     min-width: 2.75rem;
 }
 
+.input.field-error,
+.textarea.field-error,
+.select select.field-error,
+input.field-error,
+textarea.field-error,
+select.field-error {
+    border-color: var(--color-danger) !important;
+    box-shadow: 0 0 0 0.125em rgba(192, 57, 43, 0.14) !important;
+}
+
+.field-error-message {
+    color: var(--color-danger);
+    display: block;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    margin-top: 0.4rem;
+    min-height: 1.2rem;
+}
+
 .box {
     border-radius: var(--radius-md);
     border: 1px solid var(--color-light-grey);
@@ -275,6 +294,11 @@ body {
     font-size: 0.82rem;
 }
 
+.peak-detail-log-form__counter.is-near-limit {
+    color: var(--color-danger);
+    font-weight: 700;
+}
+
 .peak-detail-log-form__hint {
     margin: 0.45rem 0 0;
 }
@@ -304,6 +328,12 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
+}
+
+.peak-detail-stars.field-error {
+    border: 1px solid rgba(192, 57, 43, 0.55);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem;
 }
 
 .peak-detail-stars__button {

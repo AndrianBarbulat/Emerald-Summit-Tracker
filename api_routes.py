@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, url_for
@@ -99,8 +100,21 @@ def _json_success(payload: dict | None = None, status: int = 200):
     return jsonify(data), status
 
 
-def _json_error(message: str, status: int = 400):
-    return jsonify({"success": False, "ok": False, "error": message}), status
+def _json_error(message: str, status: int = 400, fields: dict | None = None):
+    normalized_fields = {
+        str(field_name): str(field_message).strip()
+        for field_name, field_message in (fields or {}).items()
+        if str(field_name or "").strip() and str(field_message or "").strip()
+    }
+    return jsonify(
+        {
+            "success": False,
+            "ok": False,
+            "error": True,
+            "message": message,
+            "fields": normalized_fields,
+        }
+    ), status
 
 
 def _get_current_user_id() -> str | None:
@@ -142,10 +156,16 @@ def _parse_peak_id(payload: dict) -> int | None:
     return _parse_int(payload.get("peak_id"))
 
 
-def _clean_text(value, max_length: int, allow_empty: bool = True):
+def _strip_html_tags(value) -> str:
+    raw_text = str(value or "")
+    without_tags = re.sub(r"</?[A-Za-z][^>]*?>", "", raw_text)
+    return without_tags.strip()
+
+
+def _clean_text(value, max_length: int, allow_empty: bool = True, strip_html: bool = False):
     if value is _UNSET:
         return _UNSET
-    cleaned = str(value or "").strip()
+    cleaned = _strip_html_tags(value) if strip_html else str(value or "").strip()
     if not cleaned and not allow_empty:
         return None
     if len(cleaned) > max_length:
@@ -164,13 +184,15 @@ def _normalize_date_value(raw_value, required: bool):
     if raw_value is _UNSET or raw_value is None or str(raw_value).strip() == "":
         if not required:
             return _UNSET, None
-        return date.today().isoformat(), None
+        return None, "Please choose a climb date."
 
     normalized = str(raw_value).strip()
     try:
-        date.fromisoformat(normalized)
+        parsed_date = date.fromisoformat(normalized)
     except ValueError:
         return None, "Please choose a valid date."
+    if parsed_date > date.today():
+        return None, "Climb date cannot be in the future."
     return normalized, None
 
 
@@ -180,32 +202,32 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
         required=require_date,
     )
     if date_error:
-        return None, date_error
+        return None, {"date_climbed": date_error}
 
-    notes = _clean_text(_extract_field(payload, "notes"), 500)
+    notes = _clean_text(_extract_field(payload, "notes"), 500, strip_html=True)
     if notes is None:
-        return None, "Notes must be 500 characters or fewer."
+        return None, {"notes": "Notes must be 500 characters or fewer."}
 
     weather = _clean_text(_extract_field(payload, "weather"), 120)
     if weather is None:
-        return None, "Weather must be 120 characters or fewer."
+        return None, {"weather": "Weather must be 120 characters or fewer."}
     if weather not in {_UNSET, ""}:
         weather = str(weather).strip().lower()
         if weather not in ALLOWED_CLIMB_WEATHER:
-            return None, "Please choose a valid weather option."
+            return None, {"weather": "Please choose a valid weather option."}
 
     difficulty = _clean_text(_extract_field(payload, "difficulty_rating", "difficulty"), 40)
     if difficulty is None:
-        return None, "Difficulty rating must be 40 characters or fewer."
+        return None, {"difficulty_rating": "Difficulty rating must be 1 to 5."}
     if difficulty not in {_UNSET, ""}:
         difficulty = str(difficulty).strip().lower()
         if difficulty.isdigit():
             difficulty_value = int(difficulty)
             if difficulty_value < 1 or difficulty_value > 5:
-                return None, "Difficulty rating must be between 1 and 5."
+                return None, {"difficulty_rating": "Difficulty rating must be between 1 and 5."}
             difficulty = str(difficulty_value)
-        elif difficulty not in ALLOWED_DIFFICULTY_VALUES:
-            return None, "Please choose a valid difficulty rating."
+        else:
+            return None, {"difficulty_rating": "Difficulty rating must be between 1 and 5."}
 
     return {
         "date_climbed": normalized_date,
@@ -567,7 +589,11 @@ def api_log_climb():
 
     fields, field_error = _normalize_climb_fields(payload, require_date=True)
     if field_error:
-        return _json_error(field_error, 400)
+        return _json_error(
+            next(iter(field_error.values()), "Please correct the highlighted fields."),
+            400,
+            fields=field_error,
+        )
 
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
     existing_climb = get_user_has_climbed(user_id, peak_id)
@@ -587,7 +613,7 @@ def api_log_climb():
 
     uploaded_photos, photo_error = _validate_climb_photo_uploads()
     if photo_error:
-        return _json_error(photo_error, 400)
+        return _json_error(photo_error, 400, fields={"photos": photo_error})
 
     warning_messages = []
     uploaded_photo_urls = []
@@ -754,7 +780,11 @@ def api_climb(climb_id: int):
     payload = _get_request_data()
     fields, field_error = _normalize_climb_fields(payload, require_date=False)
     if field_error:
-        return _json_error(field_error, 400)
+        return _json_error(
+            next(iter(field_error.values()), "Please correct the highlighted fields."),
+            400,
+            fields=field_error,
+        )
 
     if all(value is _UNSET for value in fields.values()):
         return _json_error("Provide at least one climb field to update.", 400)
@@ -788,9 +818,18 @@ def api_peak_comment_create():
     if get_peak_by_id(peak_id) is None:
         return _json_error("That peak could not be found.", 400)
 
-    comment_text = _clean_text(_extract_field(payload, "comment_text", "text"), 2000, allow_empty=False)
+    comment_text = _clean_text(
+        _extract_field(payload, "comment_text", "text"),
+        2000,
+        allow_empty=False,
+        strip_html=True,
+    )
     if comment_text is None:
-        return _json_error("Comment text is required and must be 2000 characters or fewer.", 400)
+        return _json_error(
+            "Comment text is required and must be 2000 characters or fewer.",
+            400,
+            fields={"comment_text": "Comment text is required and must be 2000 characters or fewer."},
+        )
 
     comment = add_comment(user_id, peak_id, comment_text)
     if comment is None:

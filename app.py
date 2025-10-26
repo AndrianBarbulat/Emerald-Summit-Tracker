@@ -28,6 +28,7 @@ app.secret_key = "dev-secret-key"
 app.register_blueprint(api)
 
 FEET_PER_METER = 3.28084
+EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 def get_session_context() -> dict:
@@ -42,7 +43,56 @@ def _is_api_request() -> bool:
 
 
 def _json_api_error(status_code: int, message: str):
-    return jsonify({"success": False, "ok": False, "error": message}), status_code
+    return jsonify({"success": False, "ok": False, "error": True, "message": message, "fields": {}}), status_code
+
+
+def _request_wants_json() -> bool:
+    accept_header = str(request.headers.get("Accept") or "").lower()
+    requested_with = str(request.headers.get("X-Requested-With") or "").lower()
+    return request.is_json or "application/json" in accept_header or requested_with == "xmlhttprequest"
+
+
+def _form_json_error(message: str, status_code: int = 400, fields: dict | None = None):
+    normalized_fields = {
+        str(field_name): str(field_message).strip()
+        for field_name, field_message in (fields or {}).items()
+        if str(field_name or "").strip() and str(field_message or "").strip()
+    }
+    return jsonify(
+        {
+            "success": False,
+            "ok": False,
+            "error": True,
+            "message": message,
+            "fields": normalized_fields,
+        }
+    ), status_code
+
+
+def _form_error_response(message: str, status_code: int = 400, fields: dict | None = None):
+    if _request_wants_json():
+        return _form_json_error(message, status_code, fields=fields)
+    return message, status_code
+
+
+def _form_success_response(redirect_url: str):
+    if _request_wants_json():
+        return jsonify({"success": True, "ok": True, "redirect_to": redirect_url}), 200
+    return redirect(redirect_url)
+
+
+def _looks_like_email(value: str) -> bool:
+    return bool(EMAIL_PATTERN.fullmatch(str(value or "").strip()))
+
+
+def _is_email_registered_error(error_message: str) -> bool:
+    normalized_message = str(error_message or "").strip().lower()
+    return "already registered" in normalized_message or "user already exists" in normalized_message
+
+
+def _is_invalid_login_error(error_message: str) -> bool:
+    normalized_message = str(error_message or "").strip().lower()
+    return "invalid login credentials" in normalized_message or "invalid email or password" in normalized_message
 
 
 def _error_home_url() -> str:
@@ -1032,31 +1082,64 @@ def index():
 @app.route("/signup", methods=["POST"])
 def signup():
     if supabase is None:
-        return "Supabase is not configured", 500
+        return _form_error_response("Account service is unavailable right now.", 500)
 
+    display_name = (request.form.get("display_name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
     password = request.form.get("password") or ""
-    if not email or not password:
-        return "Email and password are required", 400
+    confirm_password = request.form.get("confirm_password") or ""
+    field_errors = {}
+
+    if not display_name:
+        field_errors["display_name"] = "Full name is required."
+    elif len(display_name) > 120:
+        field_errors["display_name"] = "Full name must be 120 characters or fewer."
+
+    if not email:
+        field_errors["email"] = "Email is required."
+    elif not _looks_like_email(email):
+        field_errors["email"] = "Please enter a valid email address."
+
+    if not password:
+        field_errors["password"] = "Password is required."
+
+    if not confirm_password:
+        field_errors["confirm_password"] = "Please confirm your password."
+    elif password and confirm_password != password:
+        field_errors["confirm_password"] = "Passwords must match."
+
+    if field_errors:
+        return _form_error_response(
+            next(iter(field_errors.values())),
+            400,
+            fields=field_errors,
+        )
 
     try:
         result = supabase.auth.sign_up({"email": email, "password": password})
     except Exception as exc:
         error_message = str(exc)
+        if _is_email_registered_error(error_message):
+            return _form_error_response(
+                "Email already registered",
+                409,
+                fields={"email": "Email already registered"},
+            )
         if _is_display_name_conflict(error_message):
-            return (
+            return _form_error_response(
                 "Signup failed: your email prefix conflicts with an existing display name. "
                 "Try an email with a different prefix before '@'.",
                 409,
+                fields={"email": "Try an email with a different prefix before '@'."},
             )
-        return f"Signup failed: {exc}", 400
+        return _form_error_response("We could not create your account right now.", 400)
 
     if not result or not result.user:
-        return "Signup failed", 400
+        return _form_error_response("We could not create your account right now.", 400)
 
     session["user"] = result.user.model_dump()
     session["profile"] = _fetch_profile_for_session(result.user.id, result.user.email or email)
-    return redirect("/home")
+    return _form_success_response("/home")
 
 
 # login
@@ -1064,24 +1147,55 @@ def signup():
 @app.route("/login", methods=["POST"])
 def login():
     if supabase is None:
-        return "Supabase is not configured", 500
+        return _form_error_response("Account service is unavailable right now.", 500)
 
     email = (request.form.get("email") or "").strip().lower()
     password = request.form.get("password") or ""
-    if not email or not password:
-        return "Email and password are required", 400
+    field_errors = {}
+
+    if not email:
+        field_errors["email"] = "Email is required."
+    elif not _looks_like_email(email):
+        field_errors["email"] = "Please enter a valid email address."
+
+    if not password:
+        field_errors["password"] = "Password is required."
+
+    if field_errors:
+        return _form_error_response(
+            next(iter(field_errors.values())),
+            400,
+            fields=field_errors,
+        )
 
     try:
         result = supabase.auth.sign_in_with_password({"email": email, "password": password})
     except Exception as exc:
-        return f"Login failed: {exc}", 401
+        error_message = str(exc)
+        if _is_invalid_login_error(error_message):
+            return _form_error_response(
+                "Invalid email or password",
+                401,
+                fields={
+                    "email": "Invalid email or password",
+                    "password": "Invalid email or password",
+                },
+            )
+        return _form_error_response("We could not log you in right now.", 401)
 
     if not result or not result.user:
-        return "Login failed", 401
+        return _form_error_response(
+            "Invalid email or password",
+            401,
+            fields={
+                "email": "Invalid email or password",
+                "password": "Invalid email or password",
+            },
+        )
 
     session["user"] = result.user.model_dump()
     session["profile"] = _fetch_profile_for_session(result.user.id, result.user.email or email)
-    return redirect("/home")
+    return _form_success_response("/home")
 
 
 @app.route("/home")

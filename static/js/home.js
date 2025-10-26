@@ -29,6 +29,10 @@ function initDashboardClimbModal() {
     const notesInput = modal.querySelector('[data-peak-log-notes]');
     const photoInput = modal.querySelector('[data-peak-log-photos]');
 
+    if (form && typeof window.initializeClimbFormValidation === 'function') {
+        window.initializeClimbFormValidation(form);
+    }
+
     document.querySelectorAll('[data-dashboard-open-climb-modal]').forEach(function(button) {
         button.addEventListener('click', function() {
             openDashboardClimbModal(state);
@@ -111,15 +115,19 @@ function initDashboardClimbModal() {
     if (notesInput) {
         notesInput.addEventListener('input', function() {
             syncDashboardNotesCounter(form);
+            clearDashboardFieldError(notesInput);
+            setDashboardClimbError(errorElement, '');
         });
     }
 
     if (photoInput) {
         photoInput.addEventListener('change', function() {
             const validationMessage = validateDashboardPhotos(photoInput.files);
+            clearDashboardFieldError(photoInput);
             if (validationMessage) {
                 photoInput.value = '';
                 syncDashboardPhotoSummary(form);
+                setDashboardFieldError(photoInput, validationMessage);
                 setDashboardClimbError(errorElement, validationMessage);
                 return;
             }
@@ -153,17 +161,9 @@ function initDashboardClimbModal() {
 
             const dateInput = modal.querySelector('[data-dashboard-climb-date]');
             const submitButton = modal.querySelector('[data-dashboard-climb-submit]');
-            const validationMessage = validateDashboardPhotos(photoInput ? photoInput.files : []);
-            if (!dateInput || !String(dateInput.value || '').trim()) {
-                setDashboardClimbError(errorElement, 'Please choose a climb date.');
-                if (dateInput) {
-                    dateInput.focus();
-                }
-                return;
-            }
-
-            if (validationMessage) {
-                setDashboardClimbError(errorElement, validationMessage);
+            const validation = validateDashboardClimbForm(form);
+            if (!validation.isValid) {
+                setDashboardClimbError(errorElement, getDashboardFirstFieldMessage(validation.fieldErrors));
                 return;
             }
 
@@ -209,6 +209,7 @@ function initDashboardClimbModal() {
 
                 closeDashboardClimbModal(state);
             } catch (error) {
+                applyDashboardFieldErrors(form, error && error.fields ? error.fields : {});
                 setDashboardClimbError(errorElement, error.message || 'We could not save that climb right now.');
                 showDashboardToast(error.message || 'We could not save that climb right now.', 'error');
             } finally {
@@ -305,6 +306,9 @@ function resetDashboardClimbModal(state) {
     }
     if (form) {
         form.reset();
+        if (typeof window.clearFormFieldErrors === 'function') {
+            window.clearFormFieldErrors(form);
+        }
         form.hidden = true;
         form.classList.add('is-hidden');
         toggleDashboardFormBusy(form, false);
@@ -423,6 +427,9 @@ function clearSelectedDashboardPeak(state, shouldClearSearch) {
 
     if (form) {
         form.reset();
+        if (typeof window.clearFormFieldErrors === 'function') {
+            window.clearFormFieldErrors(form);
+        }
         setDashboardStarRating(form, 0);
         syncDashboardNotesCounter(form);
         syncDashboardPhotoSummary(form);
@@ -645,10 +652,51 @@ function validateDashboardPhotos(fileList) {
     return '';
 }
 
+function validateDashboardClimbForm(form) {
+    if (typeof window.validateClimbFormClient === 'function') {
+        return window.validateClimbFormClient(form);
+    }
+    return { fieldErrors: {}, isValid: true };
+}
+
 function setDashboardStarRating(form, value) {
     if (typeof window.setPeakLogStarRating === 'function') {
         window.setPeakLogStarRating(form, value);
     }
+}
+
+function applyDashboardFieldErrors(form, fieldErrors) {
+    if (typeof window.applyFieldErrors === 'function') {
+        window.applyFieldErrors(form, fieldErrors, {
+            date_climbed: '[data-dashboard-climb-date]',
+            notes: '[data-peak-log-notes]',
+            difficulty_rating: '[data-peak-star-rating-input]',
+            photos: '[data-peak-log-photos]'
+        });
+    }
+}
+
+function clearDashboardFieldError(control) {
+    if (typeof window.clearFieldError === 'function') {
+        window.clearFieldError(control);
+    }
+}
+
+function setDashboardFieldError(control, message) {
+    if (typeof window.setFieldError === 'function') {
+        window.setFieldError(control, message);
+    }
+}
+
+function getDashboardFirstFieldMessage(fieldErrors) {
+    if (!fieldErrors || typeof fieldErrors !== 'object') {
+        return '';
+    }
+
+    const firstMessage = Object.values(fieldErrors).find(function(message) {
+        return String(message || '').trim();
+    });
+    return String(firstMessage || '').trim();
 }
 
 async function postDashboardFormData(url, formData) {
@@ -670,7 +718,10 @@ async function postDashboardFormData(url, formData) {
     });
 
     if (!response.ok) {
-        throw new Error(result.error || 'Something went wrong.');
+        if (typeof window.buildRequestError === 'function') {
+            throw window.buildRequestError(result, 'Something went wrong.');
+        }
+        throw new Error(result.message || result.error || 'Something went wrong.');
     }
 
     return result;

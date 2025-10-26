@@ -71,24 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.querySelectorAll('form[data-auth-form]').forEach(function(authForm) {
-        authForm.addEventListener('submit', function(event) {
-            if (!validateAuthForm(authForm)) {
-                event.preventDefault();
-            }
-        });
+        initializeAuthForm(authForm);
+    });
 
-        authForm.querySelectorAll('.input').forEach(function(input) {
-            input.addEventListener('input', function() {
-                clearAuthFieldError(input);
-
-                if (input.name === 'password') {
-                    const confirmInput = authForm.querySelector('[data-auth-confirm]');
-                    if (confirmInput && confirmInput.value.trim() && confirmInput.value === input.value) {
-                        clearAuthFieldError(confirmInput);
-                    }
-                }
-            });
-        });
+    document.querySelectorAll('[data-peak-log-form], [data-user-climb-edit-form]').forEach(function(form) {
+        initializeClimbFormValidation(form);
     });
 
     const mapElement = document.getElementById('peak-map');
@@ -207,34 +194,319 @@ function authModalElements() {
     };
 }
 
-function clearAuthFieldError(input) {
-    if (!input) {
+function ensureFieldErrorMessage(field, messageSelector) {
+    if (!field) {
+        return null;
+    }
+
+    let errorMessage = messageSelector ? field.querySelector(messageSelector) : null;
+    if (!errorMessage) {
+        errorMessage = field.querySelector('.field-error-message');
+    }
+    if (!errorMessage) {
+        errorMessage = document.createElement('p');
+        errorMessage.className = 'field-error-message';
+        errorMessage.setAttribute('aria-live', 'polite');
+        field.appendChild(errorMessage);
+    }
+
+    errorMessage.classList.add('field-error-message');
+    return errorMessage;
+}
+
+function resolveFieldErrorTarget(control) {
+    if (!control) {
+        return null;
+    }
+
+    if (control.matches('[data-peak-star-rating-input]')) {
+        return control.closest('[data-peak-star-rating]') || control;
+    }
+
+    return control;
+}
+
+function clearFieldError(control, options) {
+    if (!control) {
         return;
     }
 
-    input.classList.remove('is-danger');
-    input.removeAttribute('aria-invalid');
+    const target = resolveFieldErrorTarget(control);
+    const field = control.closest('.field') || (target ? target.closest('.field') : null);
+    if (target) {
+        target.classList.remove('field-error');
+        target.classList.remove('is-danger');
+        target.removeAttribute('aria-invalid');
+    }
+    if (control !== target) {
+        control.classList.remove('field-error');
+        control.classList.remove('is-danger');
+        control.removeAttribute('aria-invalid');
+    }
 
-    const field = input.closest('.field');
-    const errorMessage = field ? field.querySelector('.auth-modal__error') : null;
+    const errorMessage = field
+        ? (options && options.messageSelector ? field.querySelector(options.messageSelector) : field.querySelector('.field-error-message'))
+        : null;
     if (errorMessage) {
         errorMessage.textContent = '';
     }
 }
 
-function setAuthFieldError(input, message) {
-    if (!input) {
+function setFieldError(control, message, options) {
+    if (!control) {
         return;
     }
 
-    input.classList.add('is-danger');
-    input.setAttribute('aria-invalid', 'true');
-
-    const field = input.closest('.field');
-    const errorMessage = field ? field.querySelector('.auth-modal__error') : null;
-    if (errorMessage) {
-        errorMessage.textContent = message;
+    const target = resolveFieldErrorTarget(control);
+    const field = control.closest('.field') || (target ? target.closest('.field') : null);
+    const normalizedMessage = String(message || '').trim();
+    if (target) {
+        target.classList.add('field-error');
+        target.classList.add('is-danger');
+        target.setAttribute('aria-invalid', 'true');
     }
+    if (control !== target) {
+        control.classList.add('field-error');
+        control.classList.add('is-danger');
+        control.setAttribute('aria-invalid', 'true');
+    }
+
+    const errorMessage = ensureFieldErrorMessage(field, options && options.messageSelector);
+    if (errorMessage) {
+        errorMessage.textContent = normalizedMessage;
+    }
+}
+
+function clearFormFieldErrors(scope, options) {
+    if (!scope) {
+        return;
+    }
+
+    scope.querySelectorAll('.field .input, .field .textarea, .field .select select, [data-peak-star-rating]').forEach(function(control) {
+        clearFieldError(control, options);
+    });
+}
+
+function applyFieldErrors(scope, fieldErrors, selectorMap, options) {
+    const normalizedErrors = fieldErrors && typeof fieldErrors === 'object' ? fieldErrors : {};
+    let firstInvalidControl = null;
+
+    Object.keys(normalizedErrors).forEach(function(fieldName) {
+        const message = String(normalizedErrors[fieldName] || '').trim();
+        if (!message || !scope) {
+            return;
+        }
+
+        const selector = selectorMap && selectorMap[fieldName];
+        const control = selector ? scope.querySelector(selector) : null;
+        if (!control) {
+            return;
+        }
+
+        setFieldError(control, message, options);
+        if (!firstInvalidControl) {
+            firstInvalidControl = control;
+        }
+    });
+
+    return firstInvalidControl;
+}
+
+function isValidEmailAddress(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function getTodayDateComparable() {
+    return getTodayDateValueLocal();
+}
+
+function getDateValidationMessage(value) {
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) {
+        return 'Please choose a climb date.';
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+        return 'Please choose a valid date.';
+    }
+
+    const dateParts = normalizedValue.split('-');
+    const year = Number(dateParts[0]);
+    const month = Number(dateParts[1]);
+    const day = Number(dateParts[2]);
+    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    if (
+        !Number.isFinite(year) ||
+        !Number.isFinite(month) ||
+        !Number.isFinite(day) ||
+        parsedDate.getUTCFullYear() !== year ||
+        (parsedDate.getUTCMonth() + 1) !== month ||
+        parsedDate.getUTCDate() !== day
+    ) {
+        return 'Please choose a valid date.';
+    }
+
+    if (normalizedValue > getTodayDateComparable()) {
+        return 'Climb date cannot be in the future.';
+    }
+
+    return '';
+}
+
+function getNotesValidationMessage(value, maxLength) {
+    const textValue = String(value || '');
+    const limit = Number(maxLength || 500);
+    if (textValue.length > limit) {
+        return 'Notes must be ' + limit + ' characters or fewer.';
+    }
+    return '';
+}
+
+function getDifficultyValidationMessage(value) {
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) {
+        return '';
+    }
+
+    const numericValue = Number(normalizedValue);
+    if (!Number.isFinite(numericValue) || numericValue < 1 || numericValue > 5) {
+        return 'Difficulty rating must be between 1 and 5.';
+    }
+
+    return '';
+}
+
+function getClimbFieldSelectorMap(overrides) {
+    return Object.assign(
+        {
+            date_climbed: '[data-peak-log-date], [data-user-climb-date], [data-my-climb-date], [data-dashboard-climb-date], [data-bucket-log-date], input[name="date_climbed"]',
+            notes: '[data-peak-log-notes], textarea[name="notes"]',
+            difficulty_rating: '[data-peak-star-rating-input], select[name="difficulty_rating"]',
+            photos: '[data-peak-log-photos], input[type="file"][name="photos"]'
+        },
+        overrides || {}
+    );
+}
+
+function getFirstFieldErrorMessage(fieldErrors) {
+    if (!fieldErrors || typeof fieldErrors !== 'object') {
+        return '';
+    }
+
+    const firstMessage = Object.values(fieldErrors).find(function(message) {
+        return String(message || '').trim();
+    });
+    return String(firstMessage || '').trim();
+}
+
+function validateClimbFormClient(form, selectorOverrides) {
+    if (!form) {
+        return { fieldErrors: {}, firstInvalidControl: null, isValid: true };
+    }
+
+    const selectorMap = getClimbFieldSelectorMap(selectorOverrides);
+    const dateInput = form.querySelector(selectorMap.date_climbed);
+    const notesInput = form.querySelector(selectorMap.notes);
+    const difficultyInput = form.querySelector(selectorMap.difficulty_rating);
+    const photoInput = form.querySelector(selectorMap.photos);
+    const fieldErrors = {};
+
+    clearFormFieldErrors(form);
+
+    if (dateInput) {
+        const dateMessage = getDateValidationMessage(dateInput.value);
+        if (dateMessage) {
+            fieldErrors.date_climbed = dateMessage;
+        }
+    }
+
+    if (notesInput) {
+        const notesMessage = getNotesValidationMessage(
+            notesInput.value,
+            Number(notesInput.getAttribute('maxlength') || 500)
+        );
+        if (notesMessage) {
+            fieldErrors.notes = notesMessage;
+        }
+    }
+
+    if (difficultyInput) {
+        const difficultyMessage = getDifficultyValidationMessage(difficultyInput.value);
+        if (difficultyMessage) {
+            fieldErrors.difficulty_rating = difficultyMessage;
+        }
+    }
+
+    if (photoInput) {
+        const photoMessage = validatePeakLogPhotos(photoInput.files);
+        if (photoMessage) {
+            fieldErrors.photos = photoMessage;
+        }
+    }
+
+    const firstInvalidControl = applyFieldErrors(form, fieldErrors, selectorMap);
+    if (firstInvalidControl && typeof firstInvalidControl.focus === 'function') {
+        firstInvalidControl.focus();
+    }
+
+    return {
+        fieldErrors: fieldErrors,
+        firstInvalidControl: firstInvalidControl,
+        isValid: !Object.keys(fieldErrors).length
+    };
+}
+
+function initializeClimbFormValidation(form, selectorOverrides) {
+    if (!form || form.dataset.validationReady === 'true') {
+        return;
+    }
+
+    form.dataset.validationReady = 'true';
+    const selectorMap = getClimbFieldSelectorMap(selectorOverrides);
+    const dateInput = form.querySelector(selectorMap.date_climbed);
+    const notesInput = form.querySelector(selectorMap.notes);
+    const difficultyInput = form.querySelector(selectorMap.difficulty_rating);
+    const photoInput = form.querySelector(selectorMap.photos);
+
+    if (dateInput) {
+        dateInput.setAttribute('max', getTodayDateComparable());
+        dateInput.addEventListener('input', function() {
+            clearFieldError(dateInput);
+        });
+        dateInput.addEventListener('change', function() {
+            clearFieldError(dateInput);
+        });
+    }
+
+    if (notesInput) {
+        notesInput.addEventListener('input', function() {
+            syncPeakLogNotesCounter(form);
+            clearFieldError(notesInput);
+        });
+        syncPeakLogNotesCounter(form);
+    }
+
+    if (difficultyInput && difficultyInput.matches('select')) {
+        difficultyInput.addEventListener('change', function() {
+            clearFieldError(difficultyInput);
+        });
+    }
+
+    if (photoInput) {
+        photoInput.addEventListener('change', function() {
+            clearFieldError(photoInput);
+            syncPeakLogPhotoSummary(form);
+        });
+        syncPeakLogPhotoSummary(form);
+    }
+}
+
+function clearAuthFieldError(input) {
+    clearFieldError(input, { messageSelector: '.auth-modal__error' });
+}
+
+function setAuthFieldError(input, message) {
+    setFieldError(input, message, { messageSelector: '.auth-modal__error' });
 }
 
 function clearAuthValidation(scope) {
@@ -243,52 +515,149 @@ function clearAuthValidation(scope) {
         return;
     }
 
-    root.querySelectorAll('.input').forEach(function(input) {
-        clearAuthFieldError(input);
+    clearFormFieldErrors(root, { messageSelector: '.auth-modal__error' });
+    root.querySelectorAll('[data-auth-form-error]').forEach(function(errorElement) {
+        errorElement.textContent = '';
     });
+}
+
+function setAuthFormError(form, message) {
+    const errorElement = form ? form.querySelector('[data-auth-form-error]') : null;
+    if (!errorElement) {
+        return;
+    }
+
+    errorElement.textContent = String(message || '').trim();
 }
 
 function validateAuthForm(form) {
     if (!form) {
-        return true;
+        return { fieldErrors: {}, firstInvalidInput: null, isValid: true };
     }
 
     clearAuthValidation(form);
 
-    let isValid = true;
-    let firstInvalidInput = null;
+    const fieldErrors = {};
     form.querySelectorAll('[data-auth-required]').forEach(function(input) {
         const label = input.dataset.fieldLabel || 'This field';
-        if (!input.value.trim()) {
-            setAuthFieldError(input, label + ' is required.');
-            if (!firstInvalidInput) {
-                firstInvalidInput = input;
-            }
-            isValid = false;
+        if (!String(input.value || '').trim()) {
+            fieldErrors[input.name] = label + ' is required.';
         }
     });
+
+    const emailInput = form.querySelector('input[type="email"][name="email"]');
+    if (emailInput && String(emailInput.value || '').trim() && !isValidEmailAddress(emailInput.value)) {
+        fieldErrors.email = 'Please enter a valid email address.';
+    }
 
     const passwordInput = form.querySelector('input[name="password"]');
     const confirmInput = form.querySelector('[data-auth-confirm]');
     if (
-        isValid &&
         passwordInput &&
         confirmInput &&
-        confirmInput.value.trim() &&
+        String(confirmInput.value || '').trim() &&
         passwordInput.value !== confirmInput.value
     ) {
-        setAuthFieldError(confirmInput, 'Passwords must match.');
-        if (!firstInvalidInput) {
-            firstInvalidInput = confirmInput;
-        }
-        isValid = false;
+        fieldErrors.confirm_password = 'Passwords must match.';
     }
 
-    if (firstInvalidInput) {
+    const selectorMap = {
+        confirm_password: '[data-auth-confirm]',
+        display_name: 'input[name="display_name"]',
+        email: 'input[name="email"]',
+        password: 'input[name="password"]'
+    };
+    const firstInvalidInput = applyFieldErrors(form, fieldErrors, selectorMap, { messageSelector: '.auth-modal__error' });
+    if (firstInvalidInput && typeof firstInvalidInput.focus === 'function') {
         firstInvalidInput.focus();
     }
 
-    return isValid;
+    return {
+        fieldErrors: fieldErrors,
+        firstInvalidInput: firstInvalidInput,
+        isValid: !Object.keys(fieldErrors).length
+    };
+}
+
+function initializeAuthForm(form) {
+    if (!form || form.dataset.authReady === 'true') {
+        return;
+    }
+
+    form.dataset.authReady = 'true';
+    form.querySelectorAll('.input').forEach(function(input) {
+        input.addEventListener('input', function() {
+            clearAuthFieldError(input);
+            setAuthFormError(form, '');
+
+            if (input.name === 'password') {
+                const confirmInput = form.querySelector('[data-auth-confirm]');
+                if (confirmInput) {
+                    clearAuthFieldError(confirmInput);
+                }
+            }
+        });
+    });
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+
+        const validation = validateAuthForm(form);
+        if (!validation.isValid) {
+            return;
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.classList.add('is-loading');
+            submitButton.disabled = true;
+        }
+        setAuthFormError(form, '');
+
+        try {
+            const response = await fetch(form.action, {
+                body: new FormData(form),
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                method: 'POST'
+            });
+            const result = await response.json().catch(function() {
+                return {};
+            });
+
+            if (!response.ok) {
+                const requestError = buildRequestError(result, 'We could not complete that request.');
+                applyFieldErrors(
+                    form,
+                    requestError.fields,
+                    {
+                        confirm_password: '[data-auth-confirm]',
+                        display_name: 'input[name="display_name"]',
+                        email: 'input[name="email"]',
+                        password: 'input[name="password"]'
+                    },
+                    { messageSelector: '.auth-modal__error' }
+                );
+                setAuthFormError(form, Object.keys(requestError.fields || {}).length ? '' : requestError.message);
+                requestError.handledByAuthForm = true;
+                throw requestError;
+            }
+
+            window.location.assign(result.redirect_to || '/home');
+        } catch (error) {
+            if (!error || !error.handledByAuthForm) {
+                setAuthFormError(form, error && error.message ? error.message : 'We could not complete that request.');
+            }
+        } finally {
+            if (submitButton) {
+                submitButton.classList.remove('is-loading');
+                submitButton.disabled = false;
+            }
+        }
+    });
 }
 
 function normalizePeakStatusValue(value) {
@@ -364,6 +733,30 @@ async function deleteJsonRequest(url, payload) {
     return jsonRequest(url, 'DELETE', payload);
 }
 
+function extractRequestErrorMessage(result, fallbackMessage) {
+    if (result && typeof result.message === 'string' && result.message.trim()) {
+        return result.message.trim();
+    }
+
+    if (result && typeof result.error === 'string' && result.error.trim()) {
+        return result.error.trim();
+    }
+
+    const firstFieldMessage = getFirstFieldErrorMessage(result && result.fields);
+    if (firstFieldMessage) {
+        return firstFieldMessage;
+    }
+
+    return String(fallbackMessage || 'Something went wrong.');
+}
+
+function buildRequestError(result, fallbackMessage) {
+    const requestError = new Error(extractRequestErrorMessage(result, fallbackMessage));
+    requestError.fields = result && typeof result.fields === 'object' && result.fields ? result.fields : {};
+    requestError.result = result || {};
+    return requestError;
+}
+
 async function jsonRequest(url, method, payload) {
     const headers = {
         'Accept': 'application/json'
@@ -391,7 +784,7 @@ async function jsonRequest(url, method, payload) {
     });
 
     if (!response.ok) {
-        throw new Error(result.error || 'Something went wrong.');
+        throw buildRequestError(result, 'Something went wrong.');
     }
 
     return result;
@@ -412,7 +805,7 @@ async function postFormDataRequest(url, formData) {
     });
 
     if (!response.ok) {
-        throw new Error(result.error || 'Something went wrong.');
+        throw buildRequestError(result, 'Something went wrong.');
     }
 
     return result;
@@ -492,6 +885,7 @@ function initPeakTrackingPanel(panel) {
     updatePeakTrackingPanel(panel, panel.dataset.initialStatus);
     if (form) {
         resetPeakLogForm(form);
+        initializeClimbFormValidation(form);
     }
 
     panel.addEventListener('click', async function(event) {
@@ -564,6 +958,8 @@ function initPeakTrackingPanel(panel) {
     if (notesInput) {
         notesInput.addEventListener('input', function() {
             syncPeakLogNotesCounter(form);
+            clearFieldError(notesInput);
+            setPeakLogFormError(panel, '');
         });
         syncPeakLogNotesCounter(form);
     }
@@ -571,9 +967,11 @@ function initPeakTrackingPanel(panel) {
     if (photoInput) {
         photoInput.addEventListener('change', function() {
             const validationMessage = validatePeakLogPhotos(photoInput.files);
+            clearFieldError(photoInput);
             if (validationMessage) {
                 photoInput.value = '';
                 syncPeakLogPhotoSummary(form);
+                setFieldError(photoInput, validationMessage);
                 setPeakLogFormError(panel, validationMessage);
                 return;
             }
@@ -595,19 +993,9 @@ function initPeakTrackingPanel(panel) {
             const dateInput = form.querySelector('[data-peak-log-date]');
             const submitButton = form.querySelector('[data-peak-log-submit]');
             const formData = new FormData(form);
-            const photoFiles = photoInput ? photoInput.files : [];
-            const validationMessage = validatePeakLogPhotos(photoFiles);
-
-            if (!dateInput || !String(dateInput.value || '').trim()) {
-                setPeakLogFormError(panel, 'Please choose a climb date.');
-                if (dateInput) {
-                    dateInput.focus();
-                }
-                return;
-            }
-
-            if (validationMessage) {
-                setPeakLogFormError(panel, validationMessage);
+            const validation = validateClimbFormClient(form);
+            if (!validation.isValid) {
+                setPeakLogFormError(panel, getFirstFieldErrorMessage(validation.fieldErrors));
                 return;
             }
 
@@ -634,6 +1022,7 @@ function initPeakTrackingPanel(panel) {
                     }, 320);
                 }
             } catch (error) {
+                applyFieldErrors(form, error.fields, getClimbFieldSelectorMap());
                 setPeakLogFormError(panel, error.message || 'We could not save this summit right now.');
                 showToast(error.message || 'We could not save this summit right now.', 'error');
             } finally {
@@ -654,7 +1043,7 @@ function initUserClimbLogSection(section) {
     initializeUserClimbEditForms(section);
     syncUserClimbSectionVisibility(section);
 
-    section.addEventListener('input', function(event) {
+    const clearUserClimbValidationState = function(event) {
         const form = event.target.closest('[data-user-climb-edit-form]');
         if (!form) {
             return;
@@ -663,8 +1052,17 @@ function initUserClimbLogSection(section) {
         if (event.target.matches('[data-peak-log-notes]')) {
             syncPeakLogNotesCounter(form);
             setUserClimbFormError(form.closest('[data-user-climb-item]'), '');
+            clearFieldError(event.target);
+            return;
         }
-    });
+
+        if (event.target.matches('[data-user-climb-date], [data-user-climb-weather]')) {
+            clearFieldError(event.target);
+        }
+    };
+
+    section.addEventListener('input', clearUserClimbValidationState);
+    section.addEventListener('change', clearUserClimbValidationState);
 
     section.addEventListener('click', async function(event) {
         const starButton = event.target.closest('[data-peak-star-value]');
@@ -751,11 +1149,9 @@ function initUserClimbLogSection(section) {
             return;
         }
 
-        if (!dateInput || !String(dateInput.value || '').trim()) {
-            setUserClimbFormError(item, 'Please choose a climb date.');
-            if (dateInput) {
-                dateInput.focus();
-            }
+        const validation = validateClimbFormClient(form);
+        if (!validation.isValid) {
+            setUserClimbFormError(item, getFirstFieldErrorMessage(validation.fieldErrors));
             return;
         }
 
@@ -779,6 +1175,7 @@ function initUserClimbLogSection(section) {
             }
             showToast('Climb log updated.', 'success');
         } catch (error) {
+            applyFieldErrors(form, error.fields, getClimbFieldSelectorMap());
             setUserClimbFormError(item, error.message || 'We could not save that climb log right now.');
             showToast(error.message || 'We could not save that climb log right now.', 'error');
         } finally {
@@ -800,6 +1197,7 @@ function initializeUserClimbEditForms(scope) {
         : Array.from(scope.querySelectorAll('[data-user-climb-edit-form]'));
 
     forms.forEach(function(form) {
+        initializeClimbFormValidation(form);
         syncPeakLogNotesCounter(form);
         const difficultyInput = form.querySelector('[data-peak-star-rating-input]');
         setPeakLogStarRating(form, Number(difficultyInput ? difficultyInput.value || 0 : 0));
@@ -850,6 +1248,7 @@ function closeUserClimbEdit(item, shouldReset) {
     const form = item.querySelector('[data-user-climb-edit-form]');
     if (shouldReset && form) {
         form.reset();
+        clearFormFieldErrors(form);
         initializeUserClimbEditForms(form);
     }
 
@@ -1218,6 +1617,7 @@ function initPeakCommunitySection(section) {
 
     if (commentInput) {
         commentInput.addEventListener('input', function() {
+            clearFieldError(commentInput);
             setPeakCommentError(section, '');
         });
     }
@@ -1235,6 +1635,8 @@ function initPeakCommunitySection(section) {
             }
 
             if (!commentText) {
+                clearFieldError(commentInput);
+                setFieldError(commentInput, 'Please write a trail note before posting.');
                 setPeakCommentError(section, 'Please write a trail note before posting.');
                 if (commentInput) {
                     commentInput.focus();
@@ -1242,6 +1644,7 @@ function initPeakCommunitySection(section) {
                 return;
             }
 
+            clearFieldError(commentInput);
             setPeakCommentError(section, '');
             if (submitButton) {
                 submitButton.classList.add('is-loading');
@@ -1259,6 +1662,7 @@ function initPeakCommunitySection(section) {
                 }
                 showToast('Trail note posted.', 'success');
             } catch (error) {
+                applyFieldErrors(commentForm, error.fields, { comment_text: '[data-peak-comment-input]' });
                 setPeakCommentError(section, error.message || 'We could not post that trail note right now.');
                 showToast(error.message || 'We could not post that trail note right now.', 'error');
             } finally {
@@ -1394,6 +1798,7 @@ function openPeakLogForm(panel, form) {
 
     panel.classList.add('is-log-form-open');
     setPeakLogFormError(panel, '');
+    initializeClimbFormValidation(form);
 
     const dateInput = form.querySelector('[data-peak-log-date]');
     if (dateInput && !dateInput.value) {
@@ -1426,9 +1831,11 @@ function resetPeakLogForm(form) {
     }
 
     form.reset();
+    clearFormFieldErrors(form);
     const dateInput = form.querySelector('[data-peak-log-date]');
     if (dateInput) {
         dateInput.value = getTodayDateValueLocal();
+        dateInput.setAttribute('max', getTodayDateComparable());
     }
 
     setPeakLogStarRating(form, 0);
@@ -1470,6 +1877,7 @@ function syncPeakLogNotesCounter(form) {
     const currentLength = String(notesInput.value || '').length;
     const maxLength = Number(notesInput.getAttribute('maxlength') || 500);
     counter.textContent = currentLength + ' / ' + maxLength;
+    counter.classList.toggle('is-near-limit', currentLength >= 480);
 }
 
 function syncPeakLogPhotoSummary(form) {
@@ -1523,6 +1931,7 @@ function setPeakLogStarRating(form, value) {
 
     if (ratingInput) {
         ratingInput.value = normalizedValue ? String(normalizedValue) : '';
+        clearFieldError(ratingInput);
     }
 
     starButtons.forEach(function(starButton) {
@@ -1631,7 +2040,24 @@ function showSiteToast(message, type) {
     return showToast(message, type || 'success');
 }
 
+window.applyFieldErrors = applyFieldErrors;
+window.buildRequestError = buildRequestError;
+window.clearFieldError = clearFieldError;
+window.clearFormFieldErrors = clearFormFieldErrors;
+window.deleteJsonRequest = deleteJsonRequest;
+window.getTodayDateValueLocal = getTodayDateValueLocal;
+window.initializeClimbFormValidation = initializeClimbFormValidation;
+window.postFormDataRequest = postFormDataRequest;
+window.postJsonRequest = postJsonRequest;
+window.putJsonRequest = putJsonRequest;
+window.setFieldError = setFieldError;
 window.showToast = showToast;
+window.syncPeakLogNotesCounter = syncPeakLogNotesCounter;
+window.syncPeakLogPhotoSummary = syncPeakLogPhotoSummary;
+window.togglePeakLogFormBusy = togglePeakLogFormBusy;
+window.validateClimbFormClient = validateClimbFormClient;
+window.validatePeakLogPhotos = validatePeakLogPhotos;
+window.setPeakLogStarRating = setPeakLogStarRating;
 
 function setAuthMode(type) {
     const elements = authModalElements();

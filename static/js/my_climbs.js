@@ -24,15 +24,26 @@ function initMyClimbsTable() {
     const emptyState = document.querySelector('[data-my-climbs-empty-state]');
 
     table.querySelectorAll('[data-my-climb-edit-form]').forEach(function(form) {
+        if (typeof window.initializeClimbFormValidation === 'function') {
+            window.initializeClimbFormValidation(form);
+        }
         captureSavedClimbFormState(form);
         restoreSavedClimbFormState(form);
     });
 
-    table.addEventListener('input', function(event) {
+    const clearMyClimbValidationState = function(event) {
         if (event.target.closest('[data-peak-log-notes]')) {
             syncMyClimbNotesCounter(event.target.closest('form'));
+            clearMyClimbFieldError(event.target);
         }
-    });
+
+        if (event.target.matches('[data-my-climb-date], [data-my-climb-weather]')) {
+            clearMyClimbFieldError(event.target);
+        }
+    };
+
+    table.addEventListener('input', clearMyClimbValidationState);
+    table.addEventListener('change', clearMyClimbValidationState);
 
     table.addEventListener('click', function(event) {
         const starButton = event.target.closest('[data-peak-star-value]');
@@ -151,19 +162,9 @@ async function handleMyClimbEditSubmit(table, form, tablePanel, emptyState) {
         difficulty_rating: String(difficultyInput ? difficultyInput.value : '').trim()
     };
 
-    if (!payload.date_climbed) {
-        setMyClimbFormError(form, 'Please choose the date you climbed this peak.');
-        if (dateInput) {
-            dateInput.focus();
-        }
-        return;
-    }
-
-    if (payload.notes.length > 500) {
-        setMyClimbFormError(form, 'Notes must be 500 characters or fewer.');
-        if (notesInput) {
-            notesInput.focus();
-        }
+    const validation = validateMyClimbForm(form);
+    if (!validation.isValid) {
+        setMyClimbFormError(form, getMyClimbFirstFieldMessage(validation.fieldErrors));
         return;
     }
 
@@ -179,6 +180,7 @@ async function handleMyClimbEditSubmit(table, form, tablePanel, emptyState) {
         setClimbDetailMode(detailRow, 'view');
         showMyClimbToast('Climb updated.', 'success');
     } catch (error) {
+        applyMyClimbFieldErrors(form, error && error.fields ? error.fields : {});
         const message = error && error.message ? error.message : 'We could not save that climb.';
         setMyClimbFormError(form, message);
         showMyClimbToast(message, 'error');
@@ -315,6 +317,10 @@ function restoreSavedClimbFormState(form) {
     const dateInput = form.querySelector('[data-my-climb-date]');
     const weatherSelect = form.querySelector('[data-my-climb-weather]');
     const notesInput = form.querySelector('[data-peak-log-notes]');
+
+    if (typeof window.clearFormFieldErrors === 'function') {
+        window.clearFormFieldErrors(form);
+    }
 
     if (dateInput) {
         dateInput.value = String(form.dataset.savedDate || '').trim();
@@ -555,6 +561,40 @@ function setMyClimbFormError(form, message) {
     }
 
     errorElement.textContent = String(message || '').trim();
+}
+
+function validateMyClimbForm(form) {
+    if (typeof window.validateClimbFormClient === 'function') {
+        return window.validateClimbFormClient(form);
+    }
+    return { fieldErrors: {}, isValid: true };
+}
+
+function applyMyClimbFieldErrors(form, fieldErrors) {
+    if (typeof window.applyFieldErrors === 'function') {
+        window.applyFieldErrors(form, fieldErrors, {
+            date_climbed: '[data-my-climb-date]',
+            notes: '[data-peak-log-notes]',
+            difficulty_rating: '[data-peak-star-rating-input]'
+        });
+    }
+}
+
+function clearMyClimbFieldError(control) {
+    if (typeof window.clearFieldError === 'function') {
+        window.clearFieldError(control);
+    }
+}
+
+function getMyClimbFirstFieldMessage(fieldErrors) {
+    if (!fieldErrors || typeof fieldErrors !== 'object') {
+        return '';
+    }
+
+    const firstMessage = Object.values(fieldErrors).find(function(message) {
+        return String(message || '').trim();
+    });
+    return String(firstMessage || '').trim();
 }
 
 function syncMyClimbNotesCounter(form) {
