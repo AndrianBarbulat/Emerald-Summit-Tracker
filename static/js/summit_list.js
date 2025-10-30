@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const filterDebounceDelay = 300;
 
     const elements = {
+        resultsRegion: document.querySelector('[data-summit-results-region]'),
         search: document.getElementById('summit-search'),
         province: document.getElementById('summit-province'),
         county: document.getElementById('summit-county'),
@@ -85,14 +86,14 @@ document.addEventListener('DOMContentLoaded', function() {
         populateCountyOptions(peaks, state.province);
         state.county = elements.county.value;
         state.page = 1;
-        applyFilters();
+        scheduleImmediateFilters();
     });
 
     elements.county.addEventListener('change', function() {
         syncFilterInputs();
         state.county = elements.county.value;
         state.page = 1;
-        applyFilters();
+        scheduleImmediateFilters();
     });
 
     elements.heightMin.addEventListener('input', function() {
@@ -107,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
         syncFilterInputs();
         state.sort = elements.sort.value;
         state.page = 1;
-        applyFilters();
+        scheduleImmediateFilters();
     });
 
     elements.clear.addEventListener('click', function() {
@@ -127,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.heightMin.value = '';
         elements.heightMax.value = '';
         elements.sort.value = 'height-desc';
-        applyFilters();
+        scheduleImmediateFilters();
     });
 
     elements.prev.addEventListener('click', function() {
@@ -152,6 +153,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.addEventListener('keydown', handleActionKeydown);
     }
 
+    toggleResultsLoading(true);
     applyFilters();
 
     function applyFilters() {
@@ -191,6 +193,9 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.emptyState.classList.toggle('is-hidden', filteredPeaks.length > 0);
         elements.tableBody.innerHTML = visiblePeaks.map(renderTableRow).join('');
         elements.cardGrid.innerHTML = visiblePeaks.map(renderCard).join('');
+        window.requestAnimationFrame(function() {
+            toggleResultsLoading(false);
+        });
     }
 
     function renderTableRow(peak) {
@@ -815,11 +820,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function scheduleDebouncedFilters() {
         window.clearTimeout(filterDebounceTimer);
+        toggleResultsLoading(true);
         filterDebounceTimer = window.setTimeout(function() {
             syncFilterInputs();
             state.page = 1;
             applyFilters();
         }, filterDebounceDelay);
+    }
+
+    function scheduleImmediateFilters() {
+        window.clearTimeout(filterDebounceTimer);
+        toggleResultsLoading(true);
+        window.requestAnimationFrame(function() {
+            applyFilters();
+        });
+    }
+
+    function toggleResultsLoading(isLoading) {
+        if (elements.resultsRegion && typeof window.setLoadingRegion === 'function') {
+            window.setLoadingRegion(elements.resultsRegion, isLoading);
+        }
     }
 
     function syncFilterInputs() {

@@ -113,56 +113,96 @@
                 </div>
             </div>
 
-            <div class="summit-list-results">
-                <p id="summit-results-count" class="summit-list-results__count">Showing 0 of 0 peaks</p>
-                {% if not profile %}
-                <div class="box summit-list-status-prompt">
-                    <div>
-                        <p class="summit-list-status-prompt__title">Sign up to track peaks</p>
-                        <p class="summit-list-status-prompt__copy">
-                            Create an account to see climbed and bucket-list status across the summit list, peak pages, and map.
-                        </p>
+            <div class="summit-list-results loading-region" data-summit-results-region>
+                <div class="summit-list-loading-shell" data-loading-shell aria-hidden="true">
+                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-md summit-list-loading-shell__count"></span>
+                    <div class="box summit-list-loading-shell__panel summit-list-loading-shell__panel--table">
+                        <div class="summit-list-loading-shell__table-head">
+                            {% for _ in range(6) %}
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                            {% endfor %}
+                        </div>
+                        <div class="summit-list-loading-shell__table-body">
+                            {% for _ in range(6) %}
+                            <div class="summit-list-loading-shell__table-row">
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-lg"></span>
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-md"></span>
+                                <span class="loading-skeleton loading-skeleton--chip"></span>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
-                    <div class="buttons summit-list-status-prompt__actions">
-                        <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
-                        <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                    <div class="summit-list-loading-shell__cards">
+                        {% for _ in range(4) %}
+                        <div class="box summit-list-loading-shell__card">
+                            <div class="summit-list-loading-shell__card-top">
+                                <span class="loading-skeleton loading-skeleton--title summit-list-loading-shell__card-title"></span>
+                                <span class="loading-skeleton loading-skeleton--circle summit-list-loading-shell__card-status"></span>
+                            </div>
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-md"></span>
+                            <div class="summit-list-loading-shell__card-footer">
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                                <span class="loading-skeleton loading-skeleton--chip"></span>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
-                {% endif %}
 
-                <div class="table-container summit-list-table-wrap">
-                    <table class="table is-fullwidth summit-list-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Peak Name</th>
-                                <th>Height</th>
-                                <th>Prom.</th>
-                                <th>County</th>
-                                <th>Province</th>
-                                {% if status_column_visible %}
-                                <th class="summit-list-table__status-heading">Status</th>
-                                {% endif %}
-                                {% if action_buttons_visible %}
-                                <th class="summit-list-table__actions-heading">Actions</th>
-                                {% endif %}
-                            </tr>
-                        </thead>
-                        <tbody id="summit-table-body"></tbody>
-                    </table>
-                </div>
+                <div data-loading-content>
+                    <p id="summit-results-count" class="summit-list-results__count">Showing 0 of 0 peaks</p>
+                    {% if not profile %}
+                    <div class="box summit-list-status-prompt">
+                        <div>
+                            <p class="summit-list-status-prompt__title">Sign up to track peaks</p>
+                            <p class="summit-list-status-prompt__copy">
+                                Create an account to see climbed and bucket-list status across the summit list, peak pages, and map.
+                            </p>
+                        </div>
+                        <div class="buttons summit-list-status-prompt__actions">
+                            <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                            <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                        </div>
+                    </div>
+                    {% endif %}
 
-                <div id="summit-card-grid" class="summit-card-grid"></div>
+                    <div class="table-container summit-list-table-wrap">
+                        <table class="table is-fullwidth summit-list-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Peak Name</th>
+                                    <th>Height</th>
+                                    <th>Prom.</th>
+                                    <th>County</th>
+                                    <th>Province</th>
+                                    {% if status_column_visible %}
+                                    <th class="summit-list-table__status-heading">Status</th>
+                                    {% endif %}
+                                    {% if action_buttons_visible %}
+                                    <th class="summit-list-table__actions-heading">Actions</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody id="summit-table-body"></tbody>
+                        </table>
+                    </div>
 
-                <div id="summit-empty-state" class="box summit-list-empty is-hidden">
-                    <p class="title is-5">No peaks found</p>
-                    <p class="has-text-grey">Try clearing one or two filters and we'll repopulate the list.</p>
-                </div>
+                    <div id="summit-card-grid" class="summit-card-grid"></div>
 
-                <div class="summit-list-pagination">
-                    <button id="summit-pagination-prev" type="button" class="button is-light">Prev</button>
-                    <p id="summit-pagination-info" class="summit-list-pagination__info">Page 1</p>
-                    <button id="summit-pagination-next" type="button" class="button is-light">Next</button>
+                    <div id="summit-empty-state" class="box summit-list-empty is-hidden">
+                        <p class="title is-5">No peaks found</p>
+                        <p class="has-text-grey">Try clearing one or two filters and we'll repopulate the list.</p>
+                    </div>
+
+                    <div class="summit-list-pagination">
+                        <button id="summit-pagination-prev" type="button" class="button is-light">Prev</button>
+                        <p id="summit-pagination-info" class="summit-list-pagination__info">Page 1</p>
+                        <button id="summit-pagination-next" type="button" class="button is-light">Next</button>
+                    </div>
                 </div>
             </div>
         </div>

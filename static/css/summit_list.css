@@ -77,6 +77,76 @@
     margin-bottom: 0.85rem;
 }
 
+.summit-list-loading-shell {
+    display: grid;
+    gap: 1rem;
+}
+
+.summit-list-loading-shell__count {
+    margin-bottom: 0.1rem;
+    width: min(16rem, 42%);
+}
+
+.summit-list-loading-shell__panel {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: var(--shadow-sm);
+}
+
+.summit-list-loading-shell__panel--table {
+    display: block;
+    overflow: hidden;
+    padding: 1rem 1rem 0.4rem;
+}
+
+.summit-list-loading-shell__table-head,
+.summit-list-loading-shell__table-row {
+    align-items: center;
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: 0.35fr 1.4fr 0.7fr 0.7fr 0.95fr 0.9fr;
+}
+
+.summit-list-loading-shell__table-head {
+    margin-bottom: 0.9rem;
+}
+
+.summit-list-loading-shell__table-body {
+    display: grid;
+}
+
+.summit-list-loading-shell__table-row {
+    border-top: 1px solid rgba(233, 236, 239, 0.85);
+    padding: 0.95rem 0;
+}
+
+.summit-list-loading-shell__cards {
+    display: none;
+    gap: var(--space-md);
+}
+
+.summit-list-loading-shell__card {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem;
+}
+
+.summit-list-loading-shell__card-top,
+.summit-list-loading-shell__card-footer {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.summit-list-loading-shell__card-title {
+    width: min(17rem, 72%);
+}
+
+.summit-list-loading-shell__card-status {
+    flex: 0 0 auto;
+}
+
 .summit-list-status-prompt {
     align-items: center;
     display: flex;
@@ -472,6 +542,14 @@
 }
 
 @media screen and (max-width: 768px) {
+    .summit-list-loading-shell__panel--table {
+        display: none;
+    }
+
+    .summit-list-loading-shell__cards {
+        display: grid;
+    }
+
     .summit-list-status-prompt {
         align-items: stretch;
         flex-direction: column;

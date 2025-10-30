@@ -168,9 +168,16 @@ function initDashboardClimbModal() {
             }
 
             setDashboardClimbError(errorElement, '');
-            toggleDashboardFormBusy(form, true);
             if (submitButton) {
-                submitButton.classList.add('is-loading');
+                if (typeof window.setButtonLoading === 'function') {
+                    window.setButtonLoading(submitButton, true);
+                } else {
+                    submitButton.classList.add('is-loading');
+                }
+            }
+            toggleDashboardFormBusy(form, true);
+            if (typeof window.setLoadingRegion === 'function') {
+                window.setLoadingRegion(form, true, { message: 'Logging your summit...' });
             }
 
             try {
@@ -214,8 +221,15 @@ function initDashboardClimbModal() {
                 showDashboardToast(error.message || 'We could not save that climb right now.', 'error');
             } finally {
                 toggleDashboardFormBusy(form, false);
+                if (typeof window.setLoadingRegion === 'function') {
+                    window.setLoadingRegion(form, false);
+                }
                 if (submitButton) {
-                    submitButton.classList.remove('is-loading');
+                    if (typeof window.setButtonLoading === 'function') {
+                        window.setButtonLoading(submitButton, false);
+                    } else {
+                        submitButton.classList.remove('is-loading');
+                    }
                 }
             }
         });

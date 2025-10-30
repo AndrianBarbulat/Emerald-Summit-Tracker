@@ -81,8 +81,12 @@ function initBucketListPage() {
             }
 
             clearBucketFeedback(item);
-            setBucketItemBusy(item, true);
-            actionButton.classList.add('is-loading');
+            if (typeof window.setButtonLoading === 'function') {
+                window.setButtonLoading(actionButton, true);
+            } else {
+                actionButton.classList.add('is-loading');
+            }
+            setBucketItemBusy(item, true, 'Updating your bucket list...');
 
             try {
                 await postBucketJson('/api/bucket-list/remove', { peak_id: peakId });
@@ -95,7 +99,11 @@ function initBucketListPage() {
                 if (item.isConnected) {
                     setBucketItemBusy(item, false);
                 }
-                actionButton.classList.remove('is-loading');
+                if (typeof window.setButtonLoading === 'function') {
+                    window.setButtonLoading(actionButton, false);
+                } else {
+                    actionButton.classList.remove('is-loading');
+                }
             }
         }
     });
@@ -127,10 +135,14 @@ function initBucketListPage() {
         }
 
         clearBucketFeedback(item);
-        setBucketItemBusy(item, true);
         if (submitButton) {
-            submitButton.classList.add('is-loading');
+            if (typeof window.setButtonLoading === 'function') {
+                window.setButtonLoading(submitButton, true);
+            } else {
+                submitButton.classList.add('is-loading');
+            }
         }
+        setBucketItemBusy(item, true, 'Saving your climb...');
 
         try {
             const result = await postBucketJson('/api/log-climb', {
@@ -158,7 +170,11 @@ function initBucketListPage() {
                 setBucketItemBusy(item, false);
             }
             if (submitButton) {
-                submitButton.classList.remove('is-loading');
+                if (typeof window.setButtonLoading === 'function') {
+                    window.setButtonLoading(submitButton, false);
+                } else {
+                    submitButton.classList.remove('is-loading');
+                }
             }
         }
     });
@@ -239,12 +255,15 @@ function clearBucketFeedback(item) {
     setBucketFeedback(item, '', false);
 }
 
-function setBucketItemBusy(item, isBusy) {
+function setBucketItemBusy(item, isBusy, message) {
     if (!item) {
         return;
     }
 
     item.classList.toggle('is-busy', Boolean(isBusy));
+    if (typeof window.setLoadingRegion === 'function') {
+        window.setLoadingRegion(item, isBusy, { message: message || 'Loading...' });
+    }
     item.querySelectorAll('button, input, select, textarea').forEach(function(control) {
         control.disabled = Boolean(isBusy);
     });

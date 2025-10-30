@@ -118,16 +118,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const peakDetailMapElement = document.getElementById('peak-detail-map');
+    const peakDetailMapRegion = peakDetailMapElement ? peakDetailMapElement.closest('[data-peak-detail-map-region]') : null;
     const rawPeakLat = window.peakLat;
     const rawPeakLng = window.peakLng;
     const peakLat = rawPeakLat === null || rawPeakLat === undefined ? NaN : Number(rawPeakLat);
     const peakLng = rawPeakLng === null || rawPeakLng === undefined ? NaN : Number(rawPeakLng);
     if (peakDetailMapElement && window.L && Number.isFinite(peakLat) && Number.isFinite(peakLng)) {
+        if (peakDetailMapRegion) {
+            setLoadingRegion(peakDetailMapRegion, true, { message: 'Loading topo map...' });
+        }
+
         const peakDetailMap = L.map('peak-detail-map').setView([peakLat, peakLng], 13);
 
-        L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
+        const tileLayer = L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
             attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
         }).addTo(peakDetailMap);
+
+        tileLayer.once('load', function() {
+            if (peakDetailMapRegion) {
+                setLoadingRegion(peakDetailMapRegion, false);
+            }
+        });
 
         L.circleMarker([peakLat, peakLng], {
             color: '#FFFFFF',
@@ -136,6 +147,12 @@ document.addEventListener('DOMContentLoaded', function() {
             radius: 9,
             weight: 3
         }).addTo(peakDetailMap);
+
+        window.setTimeout(function() {
+            if (peakDetailMapRegion) {
+                setLoadingRegion(peakDetailMapRegion, false);
+            }
+        }, 1400);
     }
 
     document.querySelectorAll('[data-peak-tracking]').forEach(function(panel) {
@@ -148,6 +165,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelectorAll('[data-peak-community]').forEach(function(section) {
         initPeakCommunitySection(section);
+    });
+
+    window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(function() {
+            releaseInitialPageLoading();
+        });
     });
 });
 
@@ -609,8 +632,7 @@ function initializeAuthForm(form) {
 
         const submitButton = form.querySelector('button[type="submit"]');
         if (submitButton) {
-            submitButton.classList.add('is-loading');
-            submitButton.disabled = true;
+            setButtonLoading(submitButton, true);
         }
         setAuthFormError(form, '');
 
@@ -653,8 +675,7 @@ function initializeAuthForm(form) {
             }
         } finally {
             if (submitButton) {
-                submitButton.classList.remove('is-loading');
-                submitButton.disabled = false;
+                setButtonLoading(submitButton, false);
             }
         }
     });
@@ -719,6 +740,108 @@ function getTodayDateValueLocal() {
     const now = new Date();
     const localTime = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
     return localTime.toISOString().slice(0, 10);
+}
+
+function findDirectLoadingChild(region, attributeName) {
+    if (!region || !attributeName) {
+        return null;
+    }
+
+    return Array.from(region.children || []).find(function(child) {
+        return child && child.hasAttribute(attributeName);
+    }) || null;
+}
+
+function ensureLoadingOverlay(region, message) {
+    if (!region) {
+        return null;
+    }
+
+    let overlay = findDirectLoadingChild(region, 'data-loading-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'loading-region__overlay';
+        overlay.setAttribute('data-loading-overlay', '');
+        overlay.hidden = true;
+
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+
+        const label = document.createElement('span');
+        label.className = 'loading-spinner__label';
+        label.setAttribute('data-loading-overlay-message', '');
+
+        spinner.appendChild(label);
+        overlay.appendChild(spinner);
+        region.appendChild(overlay);
+    }
+
+    const messageElement = overlay.querySelector('[data-loading-overlay-message]');
+    const normalizedMessage = String(message || '').trim();
+    if (messageElement) {
+        messageElement.textContent = normalizedMessage || 'Loading...';
+    }
+
+    return overlay;
+}
+
+function setLoadingRegion(region, isLoading, options) {
+    if (!region) {
+        return;
+    }
+
+    const shouldLoad = Boolean(isLoading);
+    const shell = findDirectLoadingChild(region, 'data-loading-shell');
+    const content = findDirectLoadingChild(region, 'data-loading-content');
+    const hasStructuredShell = Boolean(shell && content);
+
+    region.classList.add('loading-region');
+    region.classList.toggle('is-loading', shouldLoad);
+    region.setAttribute('aria-busy', shouldLoad ? 'true' : 'false');
+
+    if (hasStructuredShell) {
+        shell.setAttribute('aria-hidden', shouldLoad ? 'false' : 'true');
+        content.setAttribute('aria-hidden', shouldLoad ? 'true' : 'false');
+        return;
+    }
+
+    const overlay = ensureLoadingOverlay(region, options && options.message);
+    region.classList.toggle('loading-region--overlay', shouldLoad);
+    if (!overlay) {
+        return;
+    }
+
+    overlay.hidden = !shouldLoad;
+    overlay.setAttribute('aria-hidden', shouldLoad ? 'false' : 'true');
+}
+
+function setButtonLoading(button, isLoading) {
+    if (!button) {
+        return;
+    }
+
+    const shouldLoad = Boolean(isLoading);
+    if (shouldLoad) {
+        if (!button.hasAttribute('data-loading-disabled-state')) {
+            button.setAttribute('data-loading-disabled-state', button.disabled ? 'true' : 'false');
+        }
+        button.disabled = true;
+        button.classList.add('is-loading');
+        button.setAttribute('aria-busy', 'true');
+        return;
+    }
+
+    const wasDisabled = button.getAttribute('data-loading-disabled-state') === 'true';
+    button.classList.remove('is-loading');
+    button.removeAttribute('aria-busy');
+    if (!wasDisabled) {
+        button.disabled = false;
+    }
+    button.removeAttribute('data-loading-disabled-state');
+}
+
+function releaseInitialPageLoading() {
+    document.documentElement.classList.remove('has-initial-page-loading');
 }
 
 async function postJsonRequest(url, payload) {
@@ -923,7 +1046,8 @@ function initPeakTrackingPanel(panel) {
             return;
         }
 
-        button.classList.add('is-loading');
+        setButtonLoading(button, true);
+        setLoadingRegion(panel, true, { message: 'Updating your peak status...' });
 
         try {
             let result = null;
@@ -951,7 +1075,8 @@ function initPeakTrackingPanel(panel) {
             setPeakTrackingMessage(panel, error.message || 'We could not update this peak right now.', true);
             showToast(error.message || 'We could not update this peak right now.', 'error');
         } finally {
-            button.classList.remove('is-loading');
+            setLoadingRegion(panel, false);
+            setButtonLoading(button, false);
         }
     });
 
@@ -1001,10 +1126,11 @@ function initPeakTrackingPanel(panel) {
 
             setPeakLogFormError(panel, '');
             setPeakTrackingMessage(panel, '', false);
-            togglePeakLogFormBusy(form, true);
             if (submitButton) {
-                submitButton.classList.add('is-loading');
+                setButtonLoading(submitButton, true);
             }
+            togglePeakLogFormBusy(form, true);
+            setLoadingRegion(panel, true, { message: 'Logging your summit...' });
 
             try {
                 formData.set('peak_id', String(peakId));
@@ -1027,8 +1153,9 @@ function initPeakTrackingPanel(panel) {
                 showToast(error.message || 'We could not save this summit right now.', 'error');
             } finally {
                 togglePeakLogFormBusy(form, false);
+                setLoadingRegion(panel, false);
                 if (submitButton) {
-                    submitButton.classList.remove('is-loading');
+                    setButtonLoading(submitButton, false);
                 }
             }
         });
@@ -1106,8 +1233,8 @@ function initUserClimbLogSection(section) {
                 return;
             }
 
-            actionButton.classList.add('is-loading');
-            actionButton.disabled = true;
+            setButtonLoading(actionButton, true);
+            setLoadingRegion(item, true, { message: 'Deleting climb log...' });
 
             try {
                 const result = await deleteJsonRequest('/api/climb/' + climbId);
@@ -1121,10 +1248,12 @@ function initUserClimbLogSection(section) {
                 }
                 showToast('Climb log deleted.', 'success');
             } catch (error) {
-                actionButton.disabled = false;
                 showToast(error.message || 'We could not delete that climb log right now.', 'error');
             } finally {
-                actionButton.classList.remove('is-loading');
+                if (item.isConnected) {
+                    setLoadingRegion(item, false);
+                }
+                setButtonLoading(actionButton, false);
             }
         }
     });
@@ -1156,10 +1285,11 @@ function initUserClimbLogSection(section) {
         }
 
         setUserClimbFormError(item, '');
-        togglePeakLogFormBusy(form, true);
         if (submitButton) {
-            submitButton.classList.add('is-loading');
+            setButtonLoading(submitButton, true);
         }
+        togglePeakLogFormBusy(form, true);
+        setLoadingRegion(item, true, { message: 'Saving climb changes...' });
 
         try {
             const result = await putJsonRequest('/api/climb/' + climbId, {
@@ -1180,8 +1310,11 @@ function initUserClimbLogSection(section) {
             showToast(error.message || 'We could not save that climb log right now.', 'error');
         } finally {
             togglePeakLogFormBusy(form, false);
+            if (item.isConnected) {
+                setLoadingRegion(item, false);
+            }
             if (submitButton) {
-                submitButton.classList.remove('is-loading');
+                setButtonLoading(submitButton, false);
             }
         }
     });
@@ -1647,8 +1780,9 @@ function initPeakCommunitySection(section) {
             clearFieldError(commentInput);
             setPeakCommentError(section, '');
             if (submitButton) {
-                submitButton.classList.add('is-loading');
+                setButtonLoading(submitButton, true);
             }
+            setLoadingRegion(commentForm, true, { message: 'Posting trail note...' });
 
             try {
                 const result = await postJsonRequest('/api/peak-comment', {
@@ -1666,8 +1800,9 @@ function initPeakCommunitySection(section) {
                 setPeakCommentError(section, error.message || 'We could not post that trail note right now.');
                 showToast(error.message || 'We could not post that trail note right now.', 'error');
             } finally {
+                setLoadingRegion(commentForm, false);
                 if (submitButton) {
-                    submitButton.classList.remove('is-loading');
+                    setButtonLoading(submitButton, false);
                 }
             }
         });
@@ -1686,22 +1821,26 @@ function initPeakCommunitySection(section) {
             return;
         }
 
-        deleteButton.classList.add('is-loading');
-        deleteButton.disabled = true;
+        const commentItem = section.querySelector('[data-comment-id="' + commentId + '"]');
+        setButtonLoading(deleteButton, true);
+        if (commentItem) {
+            setLoadingRegion(commentItem, true, { message: 'Deleting trail note...' });
+        }
 
         try {
             await postJsonRequest('/api/peak-comment/' + commentId + '/delete', {});
-            const article = section.querySelector('[data-comment-id="' + commentId + '"]');
-            if (article && article.parentNode) {
-                article.parentNode.removeChild(article);
+            if (commentItem && commentItem.parentNode) {
+                commentItem.parentNode.removeChild(commentItem);
             }
             syncPeakCommentEmptyState(section);
             showToast('Trail note deleted.', 'success');
         } catch (error) {
             showToast(error.message || 'We could not delete that trail note right now.', 'error');
-            deleteButton.disabled = false;
         } finally {
-            deleteButton.classList.remove('is-loading');
+            if (commentItem && commentItem.isConnected) {
+                setLoadingRegion(commentItem, false);
+            }
+            setButtonLoading(deleteButton, false);
         }
     });
 }
@@ -2050,7 +2189,9 @@ window.initializeClimbFormValidation = initializeClimbFormValidation;
 window.postFormDataRequest = postFormDataRequest;
 window.postJsonRequest = postJsonRequest;
 window.putJsonRequest = putJsonRequest;
+window.setButtonLoading = setButtonLoading;
 window.setFieldError = setFieldError;
+window.setLoadingRegion = setLoadingRegion;
 window.showToast = showToast;
 window.syncPeakLogNotesCounter = syncPeakLogNotesCounter;
 window.syncPeakLogPhotoSummary = syncPeakLogPhotoSummary;

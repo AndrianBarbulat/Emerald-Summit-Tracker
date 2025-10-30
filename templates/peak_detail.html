@@ -195,7 +195,75 @@
     </div>
 </section>
 
-<section class="section peak-detail-page">
+<script>
+    document.documentElement.classList.add('has-initial-page-loading');
+</script>
+<section class="section peak-detail-page loading-region" data-initial-loading-region>
+    <div class="peak-detail-loading-shell" data-loading-shell aria-hidden="true">
+        <div class="container">
+            <div class="columns is-variable is-6 is-multiline">
+                <div class="column is-12-tablet is-7-desktop">
+                    <div class="box peak-detail-card peak-detail-loading-shell__card">
+                        <div class="peak-detail-loading-shell__stack">
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                            <span class="loading-skeleton loading-skeleton--title peak-detail-loading-shell__hero-title"></span>
+                        </div>
+                        <div class="peak-detail-loading-shell__info-grid">
+                            {% for _ in range(6) %}
+                            <div class="peak-detail-loading-shell__info-row">
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                                <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-md"></span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-12-tablet is-5-desktop">
+                    <div class="box peak-detail-card peak-detail-loading-shell__card">
+                        <div class="peak-detail-loading-shell__stack">
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                        </div>
+                        <div class="loading-skeleton peak-detail-loading-shell__map"></div>
+                    </div>
+                </div>
+                <div class="column is-12">
+                    <div class="box peak-detail-section peak-detail-loading-shell__card">
+                        <div class="peak-detail-loading-shell__stack peak-detail-loading-shell__stack--wide">
+                            <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                            <span class="loading-skeleton loading-skeleton--title peak-detail-loading-shell__section-title"></span>
+                        </div>
+                        <div class="peak-detail-loading-shell__community-grid">
+                            <div class="peak-detail-loading-shell__community-column">
+                                {% for _ in range(3) %}
+                                <div class="peak-detail-loading-shell__list-item">
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-md"></span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="peak-detail-loading-shell__community-column">
+                                <div class="peak-detail-loading-shell__comment-box">
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-lg"></span>
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-lg"></span>
+                                    <span class="loading-skeleton loading-skeleton--button"></span>
+                                </div>
+                                {% for _ in range(2) %}
+                                <div class="peak-detail-loading-shell__list-item">
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-sm"></span>
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-xs"></span>
+                                    <span class="loading-skeleton loading-skeleton--line loading-skeleton--line-lg"></span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div data-loading-content>
     <div class="container">
         {% if not profile %}
         <div class="box status-prompt peak-detail-page__prompt">
@@ -297,7 +365,7 @@
                     </div>
 
                     {% if peak.latitude is not none and peak.longitude is not none %}
-                    <div class="peak-detail-map-frame">
+                    <div class="peak-detail-map-frame loading-region" data-peak-detail-map-region>
                         <div id="peak-detail-map" class="peak-detail-map-canvas"></div>
                     </div>
                     <a
@@ -730,6 +798,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </section>
 {% endblock %}
