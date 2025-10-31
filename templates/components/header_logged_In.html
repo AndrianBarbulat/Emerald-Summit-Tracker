@@ -28,7 +28,7 @@
         <div id="authenticatedNavbarMenu" class="navbar-menu site-navbar__menu">
             <div class="navbar-start site-navbar__center-links">
                 <a href="/home" class="navbar-item {{ 'is-active' if active_page == 'dashboard' else '' }}">Dashboard</a>
-                <a href="/map" class="navbar-item {{ 'is-active' if active_page == 'map' else '' }}">Map</a>
+                <a href="{{ url_for('explore_map') }}" class="navbar-item {{ 'is-active' if active_page == 'map' else '' }}">Map</a>
                 <a href="/summit-list" class="navbar-item {{ 'is-active' if active_page in ['summits', 'summit_list'] else '' }}">Summit List</a>
                 <a href="/leaderboard" class="navbar-item {{ 'is-active' if active_page == 'leaderboard' else '' }}">Leaderboard</a>
             </div>

@@ -826,19 +826,31 @@ def _build_map_peaks(peaks: list[dict], peak_statuses: dict[str, str] | None = N
         if lat is None or lon is None:
             continue
 
+        height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        user_status = _normalize_peak_status(peak_statuses.get(_peak_key(peak.get("id"))))
+
         map_peaks.append(
             {
                 "id": peak.get("id"),
                 "name": peak.get("name"),
                 "county": peak.get("county"),
                 "province": peak.get("province"),
-                "height_m": peak.get("height_m"),
+                "height_m": int(round(height_m)) if height_m is not None else None,
                 "latitude": lat,
                 "longitude": lon,
-                "user_status": _normalize_peak_status(peak_statuses.get(_peak_key(peak.get("id")))),
+                "is_bucket_listed": user_status == "bucket_listed",
+                "is_climbed": user_status == "climbed",
+                "user_status": user_status,
             }
         )
-    return map_peaks
+    return sorted(
+        map_peaks,
+        key=lambda peak: (
+            str(peak.get("province") or "").lower(),
+            str(peak.get("county") or "").lower(),
+            str(peak.get("name") or "").lower(),
+        ),
+    )
 
 
 def _count_distinct_values(peaks: list[dict], field_name: str) -> int:
@@ -1265,6 +1277,29 @@ def home():
         dashboard_recent_activity=dashboard_recent_activity,
         peak_statuses=peak_statuses,
         suggested_peaks=suggested_peaks,
+        **context,
+    )
+
+
+@app.route("/map")
+def explore_map():
+    context = get_session_context()
+    all_peaks = get_all_peaks()
+    user_id = context["profile"].get("id") if context["profile"] else None
+    peak_ids = [peak.get("id") for peak in all_peaks if peak.get("id") is not None]
+    peak_statuses = get_peak_statuses(user_id, peak_ids)
+    map_peaks = _build_map_peaks(all_peaks, peak_statuses)
+    height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
+
+    return render_template(
+        "map.html",
+        active_page="map",
+        county_count=_count_distinct_values(map_peaks, "county"),
+        height_filter_range=_build_height_filter_range(map_peaks, height_unit),
+        height_unit=height_unit,
+        peaks=map_peaks,
+        province_count=_count_distinct_values(map_peaks, "province"),
+        status_tracking_enabled=bool(context["profile"]),
         **context,
     )
 
