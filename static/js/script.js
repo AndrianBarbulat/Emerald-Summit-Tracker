@@ -1141,7 +1141,13 @@ function initPeakTrackingPanel(panel) {
                     upsertUserClimbItem(userClimbSection, result.climb);
                 }
                 closePeakLogForm(panel, form, true);
-                showToast(result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.', 'success');
+                const successMessage = result.removed_from_bucket_list
+                    ? 'Summit logged and removed from your bucket list.'
+                    : (result.already_climbed
+                        ? 'This summit is already logged.'
+                        : 'Summit logged successfully.');
+                setPeakTrackingMessage(panel, successMessage, false);
+                showToast(successMessage, 'success');
                 if (result.warning) {
                     window.setTimeout(function() {
                         showToast(result.warning, 'warning');

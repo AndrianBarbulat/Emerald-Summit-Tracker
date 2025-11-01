@@ -225,10 +225,16 @@
     display: grid;
     gap: 1rem;
     padding: 1.15rem 1.2rem;
+    transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
 .bucket-list-card.is-busy {
     opacity: 0.72;
+}
+
+.bucket-list-card.is-removing {
+    opacity: 0;
+    transform: translateY(-6px);
 }
 
 .bucket-list-card__top {

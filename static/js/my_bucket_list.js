@@ -90,7 +90,7 @@ function initBucketListPage() {
 
             try {
                 await postBucketJson('/api/bucket-list/remove', { peak_id: peakId });
-                removeBucketItem(state, item);
+                await removeBucketItem(state, item);
                 notifyBucketToast('Removed from your bucket list.', 'warning');
             } catch (error) {
                 setBucketFeedback(item, error.message || 'We could not update your bucket list.', true);
@@ -153,11 +153,22 @@ function initBucketListPage() {
                 weather: weatherSelect ? weatherSelect.value : ''
             });
 
-            removeBucketItem(state, item);
-            notifyBucketToast(
-                result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.',
-                'success'
-            );
+            if (result.removed_from_bucket_list) {
+                await removeBucketItem(state, item);
+            }
+
+            const successMessage = result.removed_from_bucket_list
+                ? 'Summit logged and removed from your bucket list.'
+                : (result.already_climbed
+                    ? 'This summit is already logged.'
+                    : 'Summit logged successfully.');
+
+            if (!result.removed_from_bucket_list) {
+                closeBucketLogForm(item);
+                setBucketFeedback(item, 'Your climb was saved, but this peak is still showing in your bucket list.', false);
+            }
+
+            notifyBucketToast(successMessage, result.removed_from_bucket_list ? 'success' : 'warning');
             if (result.warning) {
                 notifyBucketToast(result.warning, 'warning');
             }
@@ -269,12 +280,18 @@ function setBucketItemBusy(item, isBusy, message) {
     });
 }
 
-function removeBucketItem(state, item) {
+async function removeBucketItem(state, item) {
     if (!state || !item) {
         return;
     }
 
     const peakId = String(item.getAttribute('data-peak-id') || '').trim();
+    item.classList.add('is-removing');
+
+    await new Promise(function(resolve) {
+        window.setTimeout(resolve, 220);
+    });
+
     if (item.parentNode) {
         item.parentNode.removeChild(item);
     }

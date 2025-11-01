@@ -595,9 +595,9 @@ def api_log_climb():
             fields=field_error,
         )
 
-    removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
     existing_climb = get_user_has_climbed(user_id, peak_id)
     if existing_climb is not None:
+        removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
         return _json_success(
             {
                 "already_climbed": True,
@@ -641,6 +641,7 @@ def api_log_climb():
     if created_climb is None:
         return _json_error("We couldn't save that climb right now.", 500)
 
+    removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
     success_payload = {
         "climb": created_climb,
         "climb_id": created_climb.get("id"),
