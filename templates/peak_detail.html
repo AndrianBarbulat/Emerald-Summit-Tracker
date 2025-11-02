@@ -670,7 +670,7 @@
                                                 {% else %}
                                                 <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 {% endif %}
-                                                <p class="peak-detail-list-item__meta">{{ climber.date_label }}</p>
+                                                <time class="peak-detail-list-item__meta" data-timestamp="{{ climber.date_climbed or '' }}">{{ climber.date_climbed | timeago }}</time>
                                             </div>
                                             <div class="peak-detail-stars-display peak-detail-stars-display--inline" aria-label="Difficulty {{ climber.difficulty_rating or 'not rated' }}">
                                                 {% for star_number in range(1, 6) %}
@@ -700,7 +700,7 @@
                                                 {% else %}
                                                 <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 {% endif %}
-                                                <p class="peak-detail-list-item__meta">{{ climber.date_label }}</p>
+                                                <time class="peak-detail-list-item__meta" data-timestamp="{{ climber.date_climbed or '' }}">{{ climber.date_climbed | timeago }}</time>
                                             </div>
                                             <div class="peak-detail-stars-display peak-detail-stars-display--inline" aria-label="Difficulty {{ climber.difficulty_rating or 'not rated' }}">
                                                 {% for star_number in range(1, 6) %}
@@ -770,7 +770,7 @@
                                                     {% else %}
                                                     <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
                                                     {% endif %}
-                                                    <p class="peak-detail-list-item__meta">{{ comment.relative_time }}</p>
+                                                    <time class="peak-detail-list-item__meta" data-timestamp="{{ comment.created_at or '' }}">{{ comment.created_at | timeago }}</time>
                                                 </div>
                                                 {% if comment.can_delete %}
                                                 <button

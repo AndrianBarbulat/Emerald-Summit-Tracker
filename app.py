@@ -22,6 +22,7 @@ from supabase_utils import (
     is_bucket_listed as get_bucket_list_entry,
     supabase,
 )
+from time_utils import format_display_date, format_time_ago, parse_datetime_value
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key"
@@ -217,31 +218,11 @@ def _is_display_name_conflict(error_message: str) -> bool:
 
 
 def _parse_datetime(value: str):
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value).replace("z", "+00:00").replace("Z", "+00:00"))
-    except Exception:
-        return None
+    return parse_datetime_value(value)
 
 
 def _relative_time(value: str) -> str:
-    dt = _parse_datetime(value)
-    if dt is None:
-        return "recently"
-
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-
-    delta = datetime.now(tz=timezone.utc) - dt
-    total_seconds = int(delta.total_seconds())
-    if total_seconds < 60:
-        return "just now"
-    if total_seconds < 3600:
-        return f"{total_seconds // 60}m ago"
-    if total_seconds < 86400:
-        return f"{total_seconds // 3600}h ago"
-    return f"{total_seconds // 86400}d ago"
+    return format_time_ago(value)
 
 
 def _to_float(value):
@@ -252,10 +233,12 @@ def _to_float(value):
 
 
 def _format_short_date(value: str) -> str:
-    dt = _parse_datetime(value)
-    if dt is None:
-        return "Recent climb"
-    return dt.strftime("%d %b %Y")
+    return format_display_date(value, fallback="Recent climb")
+
+
+@app.template_filter("timeago")
+def timeago_filter(value) -> str:
+    return format_time_ago(value)
 
 
 def _difficulty_numeric_value(value) -> float | None:
@@ -680,6 +663,7 @@ def _build_bucket_list_map_data(entries: list[dict]) -> dict:
                 "height_m": entry.get("height_m"),
                 "county": entry.get("county"),
                 "province": entry.get("province"),
+                "date_added": entry.get("date_added"),
                 "date_added_label": entry.get("date_added_label"),
                 "date_sort": entry.get("date_sort") or datetime.min.replace(tzinfo=timezone.utc),
                 "latitude": latitude,
@@ -704,6 +688,7 @@ def _build_bucket_list_map_data(entries: list[dict]) -> dict:
                 "height_m": marker.get("height_m"),
                 "county": marker.get("county"),
                 "province": marker.get("province"),
+                "date_added": marker.get("date_added"),
                 "date_added_label": marker.get("date_added_label"),
                 "latitude": marker.get("latitude"),
                 "longitude": marker.get("longitude"),
@@ -967,6 +952,7 @@ def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[
             {
                 "climber_name": climber_name,
                 "peak_name": peak_name,
+                "activity_time": climbed_at,
                 "relative_time": _relative_time(climbed_at),
             }
         )
@@ -997,6 +983,7 @@ def _build_dashboard_activity_items(
                     or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
                 ),
                 "message": "You reached the summit!",
+                "activity_time": activity_date,
                 "relative_time": _relative_time(activity_date),
                 "tag_class": "is-success",
                 "timestamp": _parse_datetime(activity_date) or fallback_date,
@@ -1019,6 +1006,7 @@ def _build_dashboard_activity_items(
                 "peak_id": peak_id,
                 "peak_name": peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
                 "message": "Added to your bucket list",
+                "activity_time": activity_date,
                 "relative_time": _relative_time(activity_date),
                 "tag_class": "is-warning",
                 "timestamp": _parse_datetime(activity_date) or fallback_date,

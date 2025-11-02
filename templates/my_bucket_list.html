@@ -115,7 +115,7 @@
                                 <div class="bucket-list-card__meta">
                                     <span>{% if entry.height_m %}{{ entry.height_m }}m{% else %}Height unknown{% endif %}</span>
                                     <span>{{ entry.county or 'Unknown county' }}</span>
-                                    <span>Added {{ entry.date_added_label }}</span>
+                                    <span>Added <time data-timestamp="{{ entry.date_added or '' }}">{{ entry.date_added | timeago }}</time></span>
                                 </div>
                             </div>
                             <span class="bucket-list-province bucket-list-province--{{ entry.province_key }}">

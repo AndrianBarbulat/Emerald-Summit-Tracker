@@ -379,7 +379,9 @@ function addBucketMapMarker(state, markerData) {
     const peakUrl = '/peak/' + encodeURIComponent(peakId);
     const heightText = markerData.height_m ? String(markerData.height_m) + 'm' : 'Height unknown';
     const countyText = markerData.county ? ' · ' + String(markerData.county) : '';
-    const dateAddedText = markerData.date_added_label ? 'Saved ' + String(markerData.date_added_label) : 'Recently saved';
+    const dateAddedText = markerData.date_added
+        ? 'Saved ' + (typeof window.timeAgo === 'function' ? window.timeAgo(markerData.date_added) : String(markerData.date_added_label || 'recently'))
+        : 'Recently saved';
 
     marker.bindPopup(
         '<div class="bucket-list-map-popup">' +

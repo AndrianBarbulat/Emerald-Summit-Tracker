@@ -121,7 +121,7 @@
                                     </div>
                                     <div class="column dashboard-timeline__content">
                                         <span class="has-text-weight-bold">{{ activity.peak_name }}</span> - {{ activity.message }}
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">{{ activity.relative_time }}</span>
+                                        <time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="{{ activity.activity_time or '' }}">{{ activity.activity_time | timeago }}</time>
                                     </div>
                                 </div>
                                 {% else %}

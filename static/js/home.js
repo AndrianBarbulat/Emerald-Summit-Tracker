@@ -201,7 +201,9 @@ function initDashboardClimbModal() {
                         message: 'You reached the summit!',
                         peakName: selectedPeak.name,
                         tagClass: 'is-success',
-                        relativeTime: 'just now'
+                        timestamp: result && result.climb
+                            ? (result.climb.date_climbed || result.climb.climbed_at || result.climb.created_at || new Date().toISOString())
+                            : new Date().toISOString()
                     });
                     showDashboardToast('Summit logged successfully.', 'success');
                 } else {
@@ -542,6 +544,12 @@ function prependDashboardActivity(activity) {
     }
 
     feed.insertAdjacentHTML('afterbegin', buildDashboardActivityMarkup(activity));
+    if (typeof window.refreshTimeAgo === 'function') {
+        const firstItem = feed.querySelector('[data-dashboard-activity-item]');
+        if (firstItem) {
+            window.refreshTimeAgo(firstItem);
+        }
+    }
     const items = Array.from(feed.querySelectorAll('[data-dashboard-activity-item]'));
     const limit = Number(feed.getAttribute('data-dashboard-activity-limit') || 4);
     items.slice(limit).forEach(function(item) {
@@ -553,6 +561,11 @@ function prependDashboardActivity(activity) {
 }
 
 function buildDashboardActivityMarkup(activity) {
+    const timestamp = activity && activity.timestamp ? String(activity.timestamp) : '';
+    const relativeLabel = typeof window.timeAgo === 'function'
+        ? window.timeAgo(timestamp || new Date().toISOString())
+        : 'just now';
+
     return (
         '<div class="columns is-mobile dashboard-timeline__item" data-dashboard-activity-item>' +
             '<div class="column is-narrow dashboard-timeline__marker">' +
@@ -563,9 +576,9 @@ function buildDashboardActivityMarkup(activity) {
             '<div class="column dashboard-timeline__content">' +
                 '<span class="has-text-weight-bold">' + escapeDashboardHtml(activity.peakName || 'Peak') + '</span> - ' +
                 escapeDashboardHtml(activity.message || 'You reached the summit!') +
-                '<span class="has-text-grey is-size-7 ml-2 dashboard-timeline__time">' +
-                    escapeDashboardHtml(activity.relativeTime || 'just now') +
-                '</span>' +
+                '<time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="' + escapeDashboardHtml(timestamp || new Date().toISOString()) + '">' +
+                    escapeDashboardHtml(relativeLabel) +
+                '</time>' +
             '</div>' +
         '</div>'
     );

@@ -162,7 +162,7 @@
                                             <span class="landing-recent-submissions__dot"></span>
                                             <span>{{ climb.peak_name }}</span>
                                         </span>
-                                        <span class="has-text-grey">by {{ climb.climber_name }} {{ climb.relative_time }}</span>
+                                        <span class="has-text-grey">by {{ climb.climber_name }} <time data-timestamp="{{ climb.activity_time or '' }}">{{ climb.activity_time | timeago }}</time></span>
                                     </div>
                                     {% endfor %}
                                 {% else %}

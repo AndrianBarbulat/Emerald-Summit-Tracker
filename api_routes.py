@@ -3,6 +3,7 @@ import re
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, jsonify, request, session, url_for
+from time_utils import format_time_ago, parse_datetime_value
 
 from supabase_utils import (
     TABLE_BUCKET_LIST,
@@ -238,30 +239,11 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
 
 
 def _parse_datetime_value(value):
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(str(value).replace("z", "+00:00").replace("Z", "+00:00"))
-    except Exception:
-        return None
+    return parse_datetime_value(value)
 
 
 def _relative_time_label(value) -> str:
-    dt = _parse_datetime_value(value)
-    if dt is None:
-        return "recently"
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-
-    delta = datetime.now(tz=timezone.utc) - dt
-    total_seconds = int(delta.total_seconds())
-    if total_seconds < 60:
-        return "just now"
-    if total_seconds < 3600:
-        return f"{total_seconds // 60}m ago"
-    if total_seconds < 86400:
-        return f"{total_seconds // 3600}h ago"
-    return f"{total_seconds // 86400}d ago"
+    return format_time_ago(value)
 
 
 def _profile_visibility_value(profile: dict | None) -> str:

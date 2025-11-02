@@ -167,6 +167,9 @@ document.addEventListener('DOMContentLoaded', function() {
         initPeakCommunitySection(section);
     });
 
+    refreshTimeAgo(document);
+    startTimeAgoUpdates();
+
     window.requestAnimationFrame(function() {
         window.requestAnimationFrame(function() {
             releaseInitialPageLoading();
@@ -201,6 +204,143 @@ const AUTH_MODAL_COPY = {
         subtitle: 'Create your account and start logging peaks across Ireland.'
     }
 };
+
+let timeAgoIntervalId = null;
+const timeAgoDateFormatter = new Intl.DateTimeFormat('en-IE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+});
+
+function parseTimestampValue(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    const rawValue = String(value).trim();
+    if (!rawValue) {
+        return null;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+        const dateOnly = new Date(rawValue + 'T00:00:00');
+        return Number.isNaN(dateOnly.getTime()) ? null : dateOnly;
+    }
+
+    const parsedDate = new Date(rawValue);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function formatAbsoluteTimestamp(dateInput) {
+    const parsedDate = dateInput instanceof Date ? dateInput : parseTimestampValue(dateInput);
+    if (!parsedDate) {
+        return 'recently';
+    }
+
+    return timeAgoDateFormatter.format(parsedDate);
+}
+
+function timeAgo(dateString) {
+    const rawValue = dateString === null || dateString === undefined ? '' : String(dateString).trim();
+    const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(rawValue);
+    const parsedDate = parseTimestampValue(rawValue);
+    if (!parsedDate) {
+        return 'recently';
+    }
+
+    if (isDateOnly) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const targetDate = new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+        const deltaDays = Math.floor((today.getTime() - targetDate.getTime()) / 86400000);
+
+        if (deltaDays <= 0) {
+            return 'just now';
+        }
+        if (deltaDays === 1) {
+            return 'yesterday';
+        }
+        if (deltaDays < 14) {
+            return deltaDays + ' days ago';
+        }
+        if (deltaDays < 30) {
+            const weeks = Math.max(Math.floor(deltaDays / 7), 1);
+            return weeks + ' ' + (weeks === 1 ? 'week' : 'weeks') + ' ago';
+        }
+
+        return formatAbsoluteTimestamp(parsedDate);
+    }
+
+    const deltaMilliseconds = Date.now() - parsedDate.getTime();
+    if (deltaMilliseconds <= 0) {
+        return 'just now';
+    }
+
+    const deltaSeconds = Math.floor(deltaMilliseconds / 1000);
+    if (deltaSeconds < 60) {
+        return 'just now';
+    }
+    if (deltaSeconds < 3600) {
+        return Math.floor(deltaSeconds / 60) + 'm ago';
+    }
+    if (deltaSeconds < 86400) {
+        return Math.floor(deltaSeconds / 3600) + 'h ago';
+    }
+
+    const deltaDays = Math.floor(deltaSeconds / 86400);
+    if (deltaDays === 1) {
+        return 'yesterday';
+    }
+    if (deltaDays < 14) {
+        return deltaDays + ' days ago';
+    }
+    if (deltaDays < 30) {
+        const weeks = Math.max(Math.floor(deltaDays / 7), 1);
+        return weeks + ' ' + (weeks === 1 ? 'week' : 'weeks') + ' ago';
+    }
+
+    return formatAbsoluteTimestamp(parsedDate);
+}
+
+function refreshTimeAgo(scope) {
+    const root = scope && typeof scope.querySelectorAll === 'function' ? scope : document;
+    const elements = [];
+
+    if (root && typeof root.matches === 'function' && root.matches('[data-timestamp]')) {
+        elements.push(root);
+    }
+
+    root.querySelectorAll('[data-timestamp]').forEach(function(element) {
+        elements.push(element);
+    });
+
+    elements.forEach(function(element) {
+        const timestamp = element.getAttribute('data-timestamp');
+        if (!timestamp) {
+            return;
+        }
+
+        const label = timeAgo(timestamp);
+        element.textContent = label;
+
+        if (!element.getAttribute('title')) {
+            element.setAttribute('title', formatAbsoluteTimestamp(timestamp));
+        }
+    });
+}
+
+function startTimeAgoUpdates() {
+    if (timeAgoIntervalId !== null) {
+        return;
+    }
+
+    timeAgoIntervalId = window.setInterval(function() {
+        refreshTimeAgo(document);
+    }, 60000);
+}
+
+window.timeAgo = timeAgo;
+window.refreshTimeAgo = refreshTimeAgo;
 
 function authModalElements() {
     const modal = document.getElementById('auth-modal');
@@ -1909,9 +2049,10 @@ function prependPeakComment(section, comment) {
         heading.appendChild(title);
     }
 
-    const meta = document.createElement('p');
+    const meta = document.createElement('time');
     meta.className = 'peak-detail-list-item__meta';
-    meta.textContent = String(comment.relative_time || 'just now');
+    meta.setAttribute('data-timestamp', String(comment.created_at || new Date().toISOString()));
+    meta.textContent = timeAgo(comment.created_at || new Date().toISOString());
     heading.appendChild(meta);
     header.appendChild(heading);
 
@@ -1933,6 +2074,7 @@ function prependPeakComment(section, comment) {
     body.appendChild(copy);
     article.appendChild(body);
     list.insertBefore(article, list.firstChild);
+    refreshTimeAgo(article);
     syncPeakCommentEmptyState(section);
 }
 
