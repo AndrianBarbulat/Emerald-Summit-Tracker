@@ -113,7 +113,7 @@
                                     {{ entry.name }}
                                 </a>
                                 <div class="bucket-list-card__meta">
-                                    <span>{% if entry.height_m %}{{ entry.height_m }}m{% else %}Height unknown{% endif %}</span>
+                                    <span>{% if entry.height_m or entry.height_ft %}{{ entry.height_m | format_height(current_height_unit, entry.height_ft) }}{% else %}Height unknown{% endif %}</span>
                                     <span>{{ entry.county or 'Unknown county' }}</span>
                                     <span>Added <time data-timestamp="{{ entry.date_added or '' }}">{{ entry.date_added | timeago }}</time></span>
                                 </div>

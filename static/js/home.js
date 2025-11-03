@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', function() {
     initDashboardClimbModal();
 });
 
+const DASHBOARD_HEIGHT_UNIT = document.body && document.body.dataset.heightUnit === 'ft' ? 'ft' : 'm';
+const DASHBOARD_FEET_PER_METER = 3.28084;
+
 function initDashboardClimbModal() {
     const modal = document.querySelector('[data-dashboard-climb-modal]');
     const activityFeed = document.querySelector('[data-dashboard-activity-feed]');
@@ -385,7 +388,7 @@ function renderDashboardPeakResults(state, query) {
     feedback.hidden = true;
     feedback.classList.add('is-hidden');
     results.innerHTML = matchingPeaks.map(function(peak) {
-        const heightLabel = peak.height_m ? peak.height_m + 'm' : 'Height unknown';
+        const heightLabel = formatDashboardHeight(peak);
         const countyLabel = peak.county ? ' · ' + peak.county : '';
         return (
             '<button type="button" class="dashboard-add-climb-modal__result" data-dashboard-result-peak-id="' + escapeDashboardHtml(peak.id) + '">' +
@@ -772,8 +775,9 @@ function showDashboardToast(message, type) {
 
 function buildDashboardPeakMeta(peak) {
     const parts = [];
-    if (peak && peak.height_m) {
-        parts.push(String(peak.height_m) + 'm');
+    const heightLabel = formatDashboardHeight(peak);
+    if (heightLabel !== 'Height unknown') {
+        parts.push(heightLabel);
     }
     if (peak && peak.county) {
         parts.push(String(peak.county));
@@ -782,6 +786,34 @@ function buildDashboardPeakMeta(peak) {
         parts.push(String(peak.province));
     }
     return parts.join(' · ');
+}
+
+function formatDashboardHeight(peak) {
+    if (!peak) {
+        return 'Height unknown';
+    }
+
+    const rawHeight = peak.height_m === null || peak.height_m === undefined ? peak.height : peak.height_m;
+    const metricValue = rawHeight === null || rawHeight === undefined ? null : Number(rawHeight);
+    const imperialValue = peak.height_ft === null || peak.height_ft === undefined ? null : Number(peak.height_ft);
+
+    if (DASHBOARD_HEIGHT_UNIT === 'ft') {
+        if (Number.isFinite(imperialValue)) {
+            return String(Math.round(imperialValue)) + 'ft';
+        }
+        if (Number.isFinite(metricValue)) {
+            return String(Math.round(metricValue * DASHBOARD_FEET_PER_METER)) + 'ft';
+        }
+        return 'Height unknown';
+    }
+
+    if (Number.isFinite(metricValue)) {
+        return String(Math.round(metricValue)) + 'm';
+    }
+    if (Number.isFinite(imperialValue)) {
+        return String(Math.round(imperialValue / DASHBOARD_FEET_PER_METER)) + 'm';
+    }
+    return 'Height unknown';
 }
 
 function findDashboardPeakById(state, peakId) {

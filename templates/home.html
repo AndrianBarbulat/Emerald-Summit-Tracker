@@ -82,7 +82,7 @@
                                                 <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">HIGHEST PEAK</p>
                                                 <p class="has-text-weight-bold dashboard-progress-card__stat-value">
                                                     {% if dashboard_progress.highest_peak %}
-                                                    {{ dashboard_progress.highest_peak.name }} <span class="has-text-grey">({{ dashboard_progress.highest_peak.height_m or dashboard_progress.highest_peak.height }}m)</span>
+                                                    {{ dashboard_progress.highest_peak.name }} <span class="has-text-grey">({{ (dashboard_progress.highest_peak.height_m or dashboard_progress.highest_peak.height) | format_height(current_height_unit, dashboard_progress.highest_peak.height_ft) }})</span>
                                                     {% else %}
                                                     No climbs yet
                                                     {% endif %}
@@ -94,7 +94,7 @@
                                                 <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">LAST PEAK</p>
                                                 <p class="has-text-weight-bold dashboard-progress-card__stat-value">
                                                     {% if dashboard_progress.latest_peak %}
-                                                    {{ dashboard_progress.latest_peak.name }} <span class="has-text-grey">({{ dashboard_progress.latest_peak.height_m or dashboard_progress.latest_peak.height }}m)</span>
+                                                    {{ dashboard_progress.latest_peak.name }} <span class="has-text-grey">({{ (dashboard_progress.latest_peak.height_m or dashboard_progress.latest_peak.height) | format_height(current_height_unit, dashboard_progress.latest_peak.height_ft) }})</span>
                                                     {% else %}
                                                     No climbs yet
                                                     {% endif %}
@@ -263,7 +263,7 @@
                             {% for peak in suggested_peaks %}
                             <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-peak-list__item">
                                 <div class="column dashboard-peak-list__details">
-                                    <p class="has-text-weight-bold dashboard-peak-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ peak.height_m or peak.height }}m)</span></p>
+                                    <p class="has-text-weight-bold dashboard-peak-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
                                     <p class="is-size-7 has-text-grey dashboard-peak-list__meta">{{ peak.county or 'Unknown county' }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-peak-list__status">
@@ -294,7 +294,7 @@
                             {% for peak in bucket_list_peaks %}
                             <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-bucket-list__item" data-dashboard-bucket-item data-peak-id="{{ peak.id }}">
                                 <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ peak.height_m or peak.height }}m)</span></p>
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
                                     <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">{{ peak.county or 'Unknown county' }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-bucket-list__status">

@@ -103,7 +103,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const popupCounty = peak.county ? `<br>${peak.county}` : '';
             const popupProvince = peak.province ? `<br>${peak.province}` : '';
-            const popupHeight = peak.height_m ? `<br>${peak.height_m}m` : '';
+            const heightUnit = document.body && document.body.dataset.heightUnit === 'ft' ? 'ft' : 'm';
+            const rawHeight = peak.height_m === null || peak.height_m === undefined ? peak.height : peak.height_m;
+            const metricHeight = rawHeight === null || rawHeight === undefined ? null : Number(rawHeight);
+            const imperialHeight = peak.height_ft === null || peak.height_ft === undefined ? null : Number(peak.height_ft);
+            let popupHeightLabel = '';
+            if (heightUnit === 'ft') {
+                if (Number.isFinite(imperialHeight)) {
+                    popupHeightLabel = Math.round(imperialHeight) + 'ft';
+                } else if (Number.isFinite(metricHeight)) {
+                    popupHeightLabel = Math.round(metricHeight * 3.28084) + 'ft';
+                }
+            } else if (Number.isFinite(metricHeight)) {
+                popupHeightLabel = Math.round(metricHeight) + 'm';
+            } else if (Number.isFinite(imperialHeight)) {
+                popupHeightLabel = Math.round(imperialHeight / 3.28084) + 'm';
+            }
+            const popupHeight = popupHeightLabel ? `<br>${popupHeightLabel}` : '';
             const provinceKey = String(peak.province || '').trim().toLowerCase();
             const markerColor = provinceColors[provinceKey] || '#74C69D';
             const peakStatus = normalizePeakStatusValue(peak.user_status);

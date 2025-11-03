@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', function() {
             nameKey: normalizeValue(peak.name),
             heightRank: toNumber(peak.height_rank),
             heightM: toNumber(peak.height_m || peak.height),
+            heightFt: toNumber(peak.height_ft),
             isBucketListed: Boolean(peak.is_bucket_listed || initialStatus === 'bucket_listed'),
             isClimbed: Boolean(peak.is_climbed || initialStatus === 'climbed'),
             prominenceM: toNumber(peak.prominence_m),
@@ -203,8 +204,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const cells = [
             '<td class="summit-list-table__rank-cell">' + renderRank(peak.heightRank) + '</td>',
             '<td><a class="summit-list-table__link" href="/peak/' + encodeURIComponent(peak.id) + '">' + escapeHtml(peak.name) + '</a></td>',
-            '<td class="summit-list-table__metric-cell">' + formatElevation(peak.heightM) + '</td>',
-            '<td class="summit-list-table__metric-cell">' + formatElevation(peak.prominenceM) + '</td>',
+            '<td class="summit-list-table__metric-cell">' + formatHeight(peak.heightM, peak.heightFt) + '</td>',
+            '<td class="summit-list-table__metric-cell">' + formatProminence(peak.prominenceM) + '</td>',
             '<td>' + escapeHtml(peak.county || '-') + '</td>',
             '<td>' + renderProvincePill(peak.province, 'summit-list-table__province-pill') + '</td>'
         ];
@@ -501,23 +502,40 @@ document.addEventListener('DOMContentLoaded', function() {
         return comparison || leftName.localeCompare(rightName);
     }
 
-    function formatElevation(value) {
+    function formatHeight(heightM, heightFt) {
+        if (heightUnit === 'ft') {
+            if (Number.isFinite(heightFt)) {
+                return Math.round(heightFt) + 'ft';
+            }
+            if (Number.isFinite(heightM)) {
+                return Math.round(heightM * feetPerMeter) + 'ft';
+            }
+            return '-';
+        }
+
+        if (Number.isFinite(heightM)) {
+            return Math.round(heightM) + 'm';
+        }
+        if (Number.isFinite(heightFt)) {
+            return Math.round(heightFt / feetPerMeter) + 'm';
+        }
+        return '-';
+    }
+
+    function formatProminence(value) {
         if (!Number.isFinite(value)) {
             return '-';
         }
 
-        const displayValue = heightUnit === 'ft'
-            ? Math.round(value * feetPerMeter)
-            : Math.round(value);
-        return displayValue + heightUnit;
+        return Math.round(value) + 'm';
     }
 
     function formatInlineMetrics(peak) {
         return [
             'Height ',
-            formatElevation(peak.heightM),
+            formatHeight(peak.heightM, peak.heightFt),
             ' \u00b7 Prom. ',
-            formatElevation(peak.prominenceM)
+            formatProminence(peak.prominenceM)
         ].join('');
     }
 
@@ -863,10 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return '';
         }
 
-        const convertedHeight = heightUnit === 'ft'
-            ? Math.round(heightM * feetPerMeter)
-            : Math.round(heightM);
-        return convertedHeight + ' ' + heightUnit;
+        return formatHeight(heightM, null).replace(/(m|ft)$/, ' $1');
     }
 
     function toNumber(value) {

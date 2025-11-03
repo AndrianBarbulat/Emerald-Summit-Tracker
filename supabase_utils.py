@@ -338,6 +338,7 @@ def get_user_climb_history(user_id: str) -> List[Dict[str, Any]]:
             or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
         )
         current_climb["peak_height_m"] = peak.get("height_m") or peak.get("height")
+        current_climb["peak_height_ft"] = peak.get("height_ft")
         current_climb["peak_county"] = peak.get("county")
         current_climb["peak_province"] = peak.get("province")
         current_climb["peak_range_area"] = peak.get("range_area")

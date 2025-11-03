@@ -9,6 +9,9 @@ const MY_CLIMB_WEATHER_ICONS = {
     mixed: 'fa-cloud-sun-rain'
 };
 
+const MY_CLIMBS_HEIGHT_UNIT = document.body && document.body.dataset.heightUnit === 'ft' ? 'ft' : 'm';
+const MY_CLIMBS_FEET_PER_METER = 3.28084;
+
 document.addEventListener('DOMContentLoaded', function() {
     initMyClimbsTable();
     initMyClimbsMap();
@@ -455,14 +458,23 @@ function updateMyClimbStats(table, tablePanel, emptyState) {
 
     climbRows.forEach(function(summaryRow) {
         const peakId = String(summaryRow.getAttribute('data-peak-id') || '').trim();
-        const heightValue = Number(summaryRow.getAttribute('data-height-m') || 0);
+        const heightMetricValue = Number(summaryRow.getAttribute('data-height-m') || 0);
+        const heightImperialValue = Number(summaryRow.getAttribute('data-height-ft') || 0);
         const rawDifficultyValue = String(summaryRow.getAttribute('data-difficulty-value') || '').trim();
 
         if (peakId) {
             uniquePeakIds.add(peakId);
         }
-        if (Number.isFinite(heightValue)) {
-            totalElevation += heightValue;
+        if (MY_CLIMBS_HEIGHT_UNIT === 'ft') {
+            if (Number.isFinite(heightImperialValue) && heightImperialValue > 0) {
+                totalElevation += heightImperialValue;
+            } else if (Number.isFinite(heightMetricValue) && heightMetricValue > 0) {
+                totalElevation += heightMetricValue * MY_CLIMBS_FEET_PER_METER;
+            }
+        } else if (Number.isFinite(heightMetricValue) && heightMetricValue > 0) {
+            totalElevation += heightMetricValue;
+        } else if (Number.isFinite(heightImperialValue) && heightImperialValue > 0) {
+            totalElevation += heightImperialValue / MY_CLIMBS_FEET_PER_METER;
         }
         if (rawDifficultyValue) {
             const difficultyValue = Number(rawDifficultyValue);
@@ -476,7 +488,7 @@ function updateMyClimbStats(table, tablePanel, emptyState) {
     const avgDifficulty = difficultyCount ? (difficultyTotal / difficultyCount) : null;
     updateMyClimbStatValue('total-climbs', String(totalClimbs));
     updateMyClimbStatValue('unique-peaks', String(uniquePeakIds.size));
-    updateMyClimbStatValue('total-elevation', formatInteger(totalElevation) + 'm');
+    updateMyClimbStatValue('total-elevation', formatInteger(totalElevation) + MY_CLIMBS_HEIGHT_UNIT);
     updateMyClimbDifficultyStat(avgDifficulty);
 
     const hasRows = totalClimbs > 0;

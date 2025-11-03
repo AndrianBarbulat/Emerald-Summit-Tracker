@@ -46,10 +46,13 @@ function initExploreMapPage() {
                 return null;
             }
 
-            const heightM = peak.height_m === null || peak.height_m === undefined ? null : Number(peak.height_m);
+            const rawHeightM = peak.height_m === null || peak.height_m === undefined ? peak.height : peak.height_m;
+            const heightM = rawHeightM === null || rawHeightM === undefined ? null : Number(rawHeightM);
+            const heightFt = peak.height_ft === null || peak.height_ft === undefined ? null : Number(peak.height_ft);
             const userStatus = normalizeMapStatus(peak.user_status);
             return {
                 county: String(peak.county || '').trim(),
+                heightFt: Number.isFinite(heightFt) ? heightFt : null,
                 heightM: Number.isFinite(heightM) ? heightM : null,
                 id: peak.id,
                 isBucketListed: userStatus === 'bucket_listed',
@@ -333,7 +336,7 @@ function initExploreMapPage() {
             : '<p class="explore-map-popup__status">Sign up to track this peak.</p>';
         const countyCopy = peak.county ? escapeMapHtml(peak.county) : 'Unknown county';
         const provinceCopy = peak.province ? escapeMapHtml(peak.province) : 'Unknown province';
-        const heightCopy = peak.heightM !== null ? String(Math.round(peak.heightM)) + 'm' : 'Height unknown';
+        const heightCopy = formatExploreMapHeight(peak.heightM, peak.heightFt);
 
         return ''
             + '<div class="explore-map-popup">'
@@ -342,6 +345,26 @@ function initExploreMapPage() {
             +     statusCopy
             + '  <a class="explore-map-popup__link" href="/peak/' + encodeURIComponent(peak.id) + '">View Details</a>'
             + '</div>';
+    }
+
+    function formatExploreMapHeight(heightM, heightFt) {
+        if (heightUnit === 'ft') {
+            if (heightFt !== null) {
+                return String(Math.round(heightFt)) + 'ft';
+            }
+            if (heightM !== null) {
+                return String(Math.round(heightM * feetPerMeter)) + 'ft';
+            }
+            return 'Height unknown';
+        }
+
+        if (heightM !== null) {
+            return String(Math.round(heightM)) + 'm';
+        }
+        if (heightFt !== null) {
+            return String(Math.round(heightFt / feetPerMeter)) + 'm';
+        }
+        return 'Height unknown';
     }
 
     function buildClusterIcon(cluster) {

@@ -9,7 +9,7 @@
 
 {% block content %}
 {% set peak_height_m = peak.height_m or peak.height %}
-{% set peak_height_ft = ((peak_height_m | float) * 3.28084) | round | int if peak_height_m else none %}
+{% set peak_height_ft = peak.height_ft %}
 {% set peak_prominence_ft = ((peak.prominence_m | float) * 3.28084) | round | int if peak.prominence_m else none %}
 {% set peak_rank = peak.height_rank | int if peak.height_rank else none %}
 {% set province_key = (peak.province or '') | lower | replace(' ', '-') %}
@@ -17,7 +17,6 @@
 {% set peak_lng_display = '%.6f'|format(peak.longitude) if peak.longitude is not none else '-' %}
 {% set peak_isolation = peak.isolation_km or peak.isolation or peak.isolation_m %}
 {% set peak_topo_map = peak.topo_map or peak.topographic_map or peak.topo_map_sheet or peak.map_sheet or 'OpenTopoMap' %}
-{% set default_height_unit = 'm' %}
 {% set weather_icons = {
     'sunny': 'fa-sun',
     'cloudy': 'fa-cloud-sun',
@@ -182,8 +181,7 @@
                         Height Rank Unknown
                         {% endif %}
                     </span>
-                    <span class="peak-detail-pill">Height {{ peak_height_m or '-' }}{% if peak_height_m %}m{% endif %}</span>
-                    <span class="peak-detail-pill">Height {{ peak_height_ft or '-' }}{% if peak_height_ft %}ft{% endif %}</span>
+                    <span class="peak-detail-pill">Height {{ peak_height_m | format_height(current_height_unit, peak_height_ft) }}</span>
                     <span class="peak-detail-pill">Prominence {{ peak.prominence_m or '-' }}{% if peak.prominence_m %}m{% endif %}</span>
                     <span class="peak-detail-pill">County {{ peak.county or '-' }}</span>
                     <span class="peak-detail-pill peak-detail-pill--province peak-detail-pill--province-{{ province_key if province_key else 'default' }}">
@@ -304,7 +302,7 @@
                             </div>
                             <div class="peak-detail-info-row">
                                 <span class="peak-detail-info-row__label">Height</span>
-                                <span class="peak-detail-info-row__value">{{ peak_height_m or '-' }}{% if peak_height_m %}m{% endif %} / {{ peak_height_ft or '-' }}{% if peak_height_ft %}ft{% endif %}</span>
+                                <span class="peak-detail-info-row__value">{{ peak_height_m | format_height(current_height_unit, peak_height_ft) }}</span>
                             </div>
                             <div class="peak-detail-info-row">
                                 <span class="peak-detail-info-row__label">Prominence</span>
@@ -565,7 +563,7 @@
                                 <div class="peak-detail-related-card__copy">
                                     <p class="peak-detail-related-card__title">{{ related_peak.name or 'Unnamed Peak' }}</p>
                                     <p class="peak-detail-related-card__meta">
-                                        {% if related_height_m %}{{ related_height_m }}{{ default_height_unit }}{% else %}Height unknown{% endif %}
+                                        {% if related_height_m or related_peak.height_ft %}{{ related_height_m | format_height(current_height_unit, related_peak.height_ft) }}{% else %}Height unknown{% endif %}
                                         <span aria-hidden="true">&bull;</span>
                                         <span>{{ related_peak.county or 'Unknown county' }}</span>
                                     </p>

@@ -377,7 +377,16 @@ function addBucketMapMarker(state, markerData) {
         weight: 3
     });
     const peakUrl = '/peak/' + encodeURIComponent(peakId);
-    const heightText = markerData.height_m ? String(markerData.height_m) + 'm' : 'Height unknown';
+    const heightUnit = document.body && document.body.dataset.heightUnit === 'ft' ? 'ft' : 'm';
+    const metricValue = markerData.height_m === null || markerData.height_m === undefined ? null : Number(markerData.height_m);
+    const imperialValue = markerData.height_ft === null || markerData.height_ft === undefined ? null : Number(markerData.height_ft);
+    const heightText = heightUnit === 'ft'
+        ? (Number.isFinite(imperialValue)
+            ? String(Math.round(imperialValue)) + 'ft'
+            : (Number.isFinite(metricValue) ? String(Math.round(metricValue * 3.28084)) + 'ft' : 'Height unknown'))
+        : (Number.isFinite(metricValue)
+            ? String(Math.round(metricValue)) + 'm'
+            : (Number.isFinite(imperialValue) ? String(Math.round(imperialValue / 3.28084)) + 'm' : 'Height unknown'));
     const countyText = markerData.county ? ' · ' + String(markerData.county) : '';
     const dateAddedText = markerData.date_added
         ? 'Saved ' + (typeof window.timeAgo === 'function' ? window.timeAgo(markerData.date_added) : String(markerData.date_added_label || 'recently'))

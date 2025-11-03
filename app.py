@@ -241,6 +241,55 @@ def timeago_filter(value) -> str:
     return format_time_ago(value)
 
 
+def _current_height_unit_for_preference(unit_preference=None) -> str:
+    if isinstance(unit_preference, str):
+        normalized = unit_preference.strip().lower()
+        if normalized in {"imperial", "feet", "foot", "ft"}:
+            return "ft"
+        if normalized in {"metric", "meters", "metres", "m"}:
+            return "m"
+
+    if _prefers_imperial_units(unit_preference):
+        return "ft"
+
+    return "m"
+
+
+def _height_display_value(height_m, unit_preference=None, height_ft=None):
+    preferred_unit = _current_height_unit_for_preference(unit_preference)
+    metric_value = _to_float(height_m)
+    imperial_value = _to_float(height_ft)
+
+    if preferred_unit == "ft":
+        if imperial_value is not None:
+            return int(round(imperial_value)), "ft"
+        if metric_value is not None:
+            return int(round(metric_value * FEET_PER_METER)), "ft"
+        return None, "ft"
+
+    if metric_value is not None:
+        return int(round(metric_value)), "m"
+    if imperial_value is not None:
+        return int(round(imperial_value / FEET_PER_METER)), "m"
+    return None, "m"
+
+
+@app.template_filter("format_height")
+def format_height_filter(height_m, unit_preference=None, height_ft=None) -> str:
+    value, unit = _height_display_value(height_m, unit_preference, height_ft)
+    if value is None:
+        return "-"
+    return f"{value}{unit}"
+
+
+@app.context_processor
+def inject_display_preferences() -> dict:
+    profile = session.get("profile")
+    return {
+        "current_height_unit": _current_height_unit_for_preference(profile),
+    }
+
+
 def _difficulty_numeric_value(value) -> float | None:
     if value is None or str(value).strip() == "":
         return None
@@ -430,6 +479,7 @@ def _build_my_climb_entries(climbs: list[dict]) -> list[dict]:
         weather = str(current_climb.get("weather") or "").strip().lower()
         notes = str(current_climb.get("notes") or "").strip()
         peak_height = _to_float(current_climb.get("peak_height_m") or current_climb.get("height_m") or current_climb.get("height"))
+        peak_height_ft = _to_float(current_climb.get("peak_height_ft") or current_climb.get("height_ft"))
         photo_urls = current_climb.get("photo_urls") if isinstance(current_climb.get("photo_urls"), list) else []
 
         climb_entries.append(
@@ -444,6 +494,7 @@ def _build_my_climb_entries(climbs: list[dict]) -> list[dict]:
                 "difficulty_stars": _difficulty_star_count(difficulty_rating),
                 "difficulty_value": _difficulty_numeric_value(difficulty_rating),
                 "height_m": int(round(peak_height)) if peak_height is not None else None,
+                "height_ft": int(round(peak_height_ft)) if peak_height_ft is not None else None,
                 "weather": weather,
                 "notes": notes,
                 "notes_preview": _notes_preview(notes, 50),
@@ -470,11 +521,22 @@ def _build_my_climb_stats(climbs: list[dict]) -> dict:
             )
         )
     )
+    total_elevation_ft = int(
+        round(
+            sum(
+                climb.get("height_ft")
+                if climb.get("height_ft") is not None
+                else ((climb.get("height_m") or 0) * FEET_PER_METER)
+                for climb in climbs
+            )
+        )
+    )
 
     return {
         "total_climbs": len(climbs),
         "unique_peaks": len({climb.get("peak_id") for climb in climbs if climb.get("peak_id") is not None}),
         "total_elevation_m": total_elevation_m,
+        "total_elevation_ft": total_elevation_ft,
         "avg_difficulty": avg_difficulty,
         "avg_difficulty_stars": _difficulty_star_count(avg_difficulty),
     }
@@ -577,6 +639,7 @@ def _build_bucket_list_entries(
         )
         parsed_date_added = _parse_datetime(raw_date_added)
         height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        height_ft = _to_float(peak.get("height_ft"))
         latitude = _to_float(peak.get("latitude") or peak.get("lat"))
         longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
         province = peak.get("province") or current_item.get("province")
@@ -589,6 +652,7 @@ def _build_bucket_list_entries(
                 "peak_id": peak_id,
                 "name": current_item.get("peak_name") or peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
                 "height_m": int(round(height_m)) if height_m is not None else None,
+                "height_ft": int(round(height_ft)) if height_ft is not None else None,
                 "county": peak.get("county") or current_item.get("county"),
                 "province": province,
                 "province_key": province_key,
@@ -661,6 +725,7 @@ def _build_bucket_list_map_data(entries: list[dict]) -> dict:
                 "peak_id": entry.get("peak_id"),
                 "name": entry.get("name"),
                 "height_m": entry.get("height_m"),
+                "height_ft": entry.get("height_ft"),
                 "county": entry.get("county"),
                 "province": entry.get("province"),
                 "date_added": entry.get("date_added"),
@@ -686,6 +751,7 @@ def _build_bucket_list_map_data(entries: list[dict]) -> dict:
                 "peak_id": marker.get("peak_id"),
                 "name": marker.get("name"),
                 "height_m": marker.get("height_m"),
+                "height_ft": marker.get("height_ft"),
                 "county": marker.get("county"),
                 "province": marker.get("province"),
                 "date_added": marker.get("date_added"),
@@ -1031,11 +1097,13 @@ def _build_dashboard_peak_search_data(peaks: list[dict]) -> list[dict]:
             continue
 
         height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        height_ft = _to_float(peak.get("height_ft"))
         search_data.append(
             {
                 "id": peak_id,
                 "name": peak.get("name") or f"Peak #{peak_id}",
                 "height_m": int(round(height_m)) if height_m is not None else None,
+                "height_ft": int(round(height_ft)) if height_ft is not None else None,
                 "county": peak.get("county"),
                 "province": peak.get("province"),
             }
@@ -1277,7 +1345,7 @@ def explore_map():
     peak_ids = [peak.get("id") for peak in all_peaks if peak.get("id") is not None]
     peak_statuses = get_peak_statuses(user_id, peak_ids)
     map_peaks = _build_map_peaks(all_peaks, peak_statuses)
-    height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
+    height_unit = _current_height_unit_for_preference(context["profile"])
 
     return render_template(
         "map.html",
@@ -1427,7 +1495,7 @@ def summit_list():
         user_id,
         [peak.get("id") for peak in peaks if peak.get("id") is not None],
     )
-    height_unit = "ft" if _prefers_imperial_units(context["profile"]) else "m"
+    height_unit = _current_height_unit_for_preference(context["profile"])
     summit_peaks = _decorate_peaks_with_statuses(peaks, peak_statuses)
 
     return render_template(

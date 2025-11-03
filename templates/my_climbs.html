@@ -69,7 +69,7 @@
                 </article>
                 <article class="box my-climbs-stat">
                     <p class="my-climbs-stat__label">Total Elevation</p>
-                    <p class="my-climbs-stat__value" data-my-climbs-stat="total-elevation">{{ "{:,}".format(climb_stats.total_elevation_m) }}m</p>
+                    <p class="my-climbs-stat__value" data-my-climbs-stat="total-elevation">{% if current_height_unit == 'ft' %}{{ "{:,}".format(climb_stats.total_elevation_ft) }}ft{% else %}{{ "{:,}".format(climb_stats.total_elevation_m) }}m{% endif %}</p>
                 </article>
                 <article class="box my-climbs-stat">
                     <p class="my-climbs-stat__label">Avg Difficulty</p>
@@ -211,6 +211,7 @@
                                     data-date-sort="{{ climb.date_sort.isoformat() if climb.date_sort else '' }}"
                                     data-difficulty-value="{{ climb.difficulty_value if climb.difficulty_value is not none else '' }}"
                                     data-height-m="{{ climb.height_m or '' }}"
+                                    data-height-ft="{{ climb.height_ft or '' }}"
                                     data-peak-id="{{ climb.peak_id }}"
                                 >
                                     <td class="my-climbs-table__date" data-climb-cell="date">{{ climb.date_label }}</td>
@@ -218,8 +219,8 @@
                                         <a href="{{ url_for('peak_detail', peak_id=climb.peak_id) }}" class="my-climbs-table__peak-link">{{ climb.peak_name }}</a>
                                     </td>
                                     <td data-climb-cell="height">
-                                        {% if climb.height_m %}
-                                        {{ climb.height_m }}m
+                                        {% if climb.height_m or climb.height_ft %}
+                                        {{ climb.height_m | format_height(current_height_unit, climb.height_ft) }}
                                         {% else %}
                                         <span class="has-text-grey">-</span>
                                         {% endif %}
