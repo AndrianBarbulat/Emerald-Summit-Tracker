@@ -1,13 +1,14 @@
 import re
 from datetime import datetime, timezone
 
-from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for
+from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for, g
 from werkzeug.exceptions import HTTPException
 
 from api_routes import api
 from supabase_utils import (
     get_all_peaks,
     get_peak_average_difficulty,
+    get_peak_count,
     get_community_recent_climbs,
     get_peak_by_id,
     get_peak_climbers_with_profiles,
@@ -37,6 +38,20 @@ def get_session_context() -> dict:
         "user": session.get("user"),
         "profile": session.get("profile"),
     }
+
+
+def _prime_total_peak_count_cache() -> None:
+    cached_count = get_peak_count()
+    if cached_count is None:
+        cached_count = len(get_all_peaks())
+    app.config["TOTAL_PEAK_COUNT"] = max(int(cached_count or 0), 0)
+
+
+def _set_active_page(page_name: str | None) -> None:
+    g.active_page = page_name or ""
+
+
+_prime_total_peak_count_cache()
 
 
 def _is_api_request() -> bool:
@@ -104,11 +119,10 @@ def _error_home_url() -> str:
 
 
 def _render_site_error(template_name: str, status_code: int):
+    _set_active_page("error")
     return render_template(
         template_name,
         home_url=_error_home_url(),
-        active_page="error",
-        **get_session_context(),
     ), status_code
 
 
@@ -283,10 +297,18 @@ def format_height_filter(height_m, unit_preference=None, height_ft=None) -> str:
 
 
 @app.context_processor
-def inject_display_preferences() -> dict:
+def inject_common_data() -> dict:
     profile = session.get("profile")
+    user = session.get("user")
+    unit_preference = "imperial" if _prefers_imperial_units(profile) else "metric"
+
     return {
-        "current_height_unit": _current_height_unit_for_preference(profile),
+        "active_page": getattr(g, "active_page", ""),
+        "current_height_unit": "ft" if unit_preference == "imperial" else "m",
+        "profile": profile,
+        "total_peak_count": int(app.config.get("TOTAL_PEAK_COUNT") or 0),
+        "unit_preference": unit_preference,
+        "user": user,
     }
 
 
@@ -1135,6 +1157,7 @@ def index():
         peaks_by_id,
     )
 
+    _set_active_page("index")
     return render_template(
         "index.html",
         peaks=map_peaks,
@@ -1142,8 +1165,6 @@ def index():
         peak_statuses=peak_statuses,
         recent_climbs=recent_climbs,
         status_tracking_enabled=bool(context["profile"]),
-        active_page="index",
-        **context,
     )
 
 
@@ -1324,16 +1345,15 @@ def home():
         "total_peaks": total_peaks,
     }
 
+    _set_active_page("dashboard")
     return render_template(
         "home.html",
-        active_page="dashboard",
         bucket_list_peaks=bucket_list_peaks,
         dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
         dashboard_recent_activity=dashboard_recent_activity,
         peak_statuses=peak_statuses,
         suggested_peaks=suggested_peaks,
-        **context,
     )
 
 
@@ -1347,16 +1367,15 @@ def explore_map():
     map_peaks = _build_map_peaks(all_peaks, peak_statuses)
     height_unit = _current_height_unit_for_preference(context["profile"])
 
+    _set_active_page("map")
     return render_template(
         "map.html",
-        active_page="map",
         county_count=_count_distinct_values(map_peaks, "county"),
         height_filter_range=_build_height_filter_range(map_peaks, height_unit),
         height_unit=height_unit,
         peaks=map_peaks,
         province_count=_count_distinct_values(map_peaks, "province"),
         status_tracking_enabled=bool(context["profile"]),
-        **context,
     )
 
 
@@ -1393,12 +1412,12 @@ def my_climbs():
             continue
         filtered_climbs.append(climb)
 
-    total_peaks = len(get_all_peaks())
+    total_peaks = int(app.config.get("TOTAL_PEAK_COUNT") or 0)
     my_climb_map = _build_my_climb_map_data(filtered_climbs, total_peaks)
 
+    _set_active_page("my_climbs")
     return render_template(
         "my_climbs.html",
-        active_page="my_climbs",
         available_years=available_years,
         climb_stats=_build_my_climb_stats(filtered_climbs),
         current_view=view_mode,
@@ -1408,7 +1427,6 @@ def my_climbs():
         search_query=search_query,
         selected_month=selected_month,
         selected_year=selected_year,
-        **context,
     )
 
 
@@ -1446,16 +1464,15 @@ def my_bucket_list():
     )
     bucket_map = _build_bucket_list_map_data(bucket_entries)
 
+    _set_active_page("my_bucket_list")
     return render_template(
         "my_bucket_list.html",
-        active_page="my_bucket_list",
         bucket_count=len(bucket_entries),
         bucket_entries=bucket_entries,
         bucket_map=bucket_map,
         current_sort=current_sort,
         current_view=current_view,
         sort_options=sort_options,
-        **context,
     )
 
 
@@ -1498,6 +1515,7 @@ def summit_list():
     height_unit = _current_height_unit_for_preference(context["profile"])
     summit_peaks = _decorate_peaks_with_statuses(peaks, peak_statuses)
 
+    _set_active_page("summits")
     return render_template(
         "summit_list.html",
         peaks=summit_peaks,
@@ -1506,8 +1524,6 @@ def summit_list():
         height_unit=height_unit,
         peak_statuses=peak_statuses,
         status_column_visible=bool(context["profile"]),
-        active_page="summits",
-        **context,
     )
 
 
@@ -1538,6 +1554,7 @@ def peak_detail(peak_id: int):
     total_climbers = len(climbers)
     related_peaks_data = _build_related_peaks(peak, user_id)
 
+    _set_active_page("summit_list")
     return render_template(
         "peak_detail.html",
         peak={
@@ -1559,8 +1576,6 @@ def peak_detail(peak_id: int):
         related_peaks=related_peaks_data["peaks"],
         related_peaks_title=related_peaks_data["title"],
         user_climbs=user_climbs,
-        active_page="summit_list",
-        **context,
     )
 
 
@@ -1589,12 +1604,11 @@ def public_profile(display_name: str):
     if not is_owner and not _is_profile_public(profile_record):
         abort(404)
 
+    _set_active_page("profile")
     return render_template(
         "profile_public.html",
         public_profile=profile_record,
         is_profile_owner=is_owner,
-        active_page="profile",
-        **context,
     )
 
 
@@ -1605,7 +1619,8 @@ def account_settings():
     if not context["profile"]:
         return redirect("/")
 
-    return render_template("account_settings.html", active_page="account", **context)
+    _set_active_page("account")
+    return render_template("account_settings.html")
 
 
 @app.errorhandler(404)
