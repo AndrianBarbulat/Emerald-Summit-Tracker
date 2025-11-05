@@ -281,12 +281,39 @@
     margin-bottom: 0;
 }
 
+.dashboard-progress-card__content {
+    align-items: stretch;
+}
+
+.dashboard-progress-card__totals {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-bottom: 0.5rem;
+}
+
+.dashboard-progress-card__subcaption {
+    color: var(--color-slate);
+    line-height: 1.6;
+    margin: 0.6rem 0 0;
+}
+
 .dashboard-progress-card__bar {
     height: 0.9rem;
 }
 
 .dashboard-progress-card__bar::-webkit-progress-value {
     transition: width 0.3s ease;
+}
+
+.dashboard-progress-card__stats {
+    height: 100%;
+    margin: -0.35rem;
+}
+
+.dashboard-progress-card__stats > .column {
+    padding: 0.35rem;
 }
 
 .dashboard-progress-card__stat {
@@ -300,6 +327,98 @@
 .dashboard-progress-card__stat-label {
     letter-spacing: 0.08em;
     margin-bottom: 0.35rem;
+}
+
+.dashboard-progress-card__stat-value {
+    color: var(--color-forest);
+    line-height: 1.4;
+    margin-bottom: 0;
+}
+
+.dashboard-progress-card__stat-link {
+    color: inherit;
+}
+
+.dashboard-progress-card__stat-link:hover {
+    color: var(--color-sage);
+    text-decoration: underline;
+}
+
+.dashboard-progress-card__stat-meta {
+    color: var(--color-slate);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0.45rem 0 0;
+}
+
+.dashboard-province-card__summary {
+    color: var(--color-slate);
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+.dashboard-province-pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.dashboard-province-pill {
+    align-items: center;
+    background: rgba(245, 241, 235, 0.68);
+    border: 1px solid rgba(27, 67, 50, 0.1);
+    border-radius: 999px;
+    color: var(--color-forest);
+    display: inline-flex;
+    font-weight: 600;
+    gap: 0.65rem;
+    min-height: 44px;
+    padding: 0.55rem 0.95rem;
+}
+
+.dashboard-province-pill__count {
+    background: rgba(255, 255, 255, 0.86);
+    border-radius: 999px;
+    color: inherit;
+    display: inline-flex;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.12rem 0.5rem;
+}
+
+.dashboard-province-pill--munster {
+    background: rgba(116, 198, 157, 0.16);
+    border-color: rgba(116, 198, 157, 0.4);
+    color: #2d6a4f;
+}
+
+.dashboard-province-pill--leinster {
+    background: rgba(91, 143, 185, 0.14);
+    border-color: rgba(91, 143, 185, 0.38);
+    color: #315c7e;
+}
+
+.dashboard-province-pill--ulster {
+    background: rgba(230, 126, 34, 0.14);
+    border-color: rgba(230, 126, 34, 0.35);
+    color: #a44f12;
+}
+
+.dashboard-province-pill--connacht {
+    background: rgba(142, 107, 181, 0.14);
+    border-color: rgba(142, 107, 181, 0.34);
+    color: #6f4a98;
+}
+
+.dashboard-province-pill--default {
+    background: rgba(82, 121, 111, 0.12);
+    border-color: rgba(82, 121, 111, 0.28);
+    color: var(--color-slate);
+}
+
+.dashboard-province-card__caption {
+    color: var(--color-grey);
+    margin: 1rem 0 0;
 }
 
 .dashboard-timeline {
@@ -491,6 +610,15 @@
         align-items: stretch;
         flex-direction: column;
     }
+
+    .dashboard-progress-card__totals {
+        align-items: flex-start;
+    }
+
+    .dashboard-province-pill {
+        justify-content: space-between;
+        width: 100%;
+    }
 }
 
 @media screen and (max-width: 480px) {
@@ -510,7 +638,9 @@
     .dashboard-achievement-grid__label,
     .dashboard-peak-list__meta,
     .dashboard-bucket-list__meta,
-    .dashboard-progress-card__stat-label {
+    .dashboard-progress-card__stat-label,
+    .dashboard-progress-card__stat-meta,
+    .dashboard-province-card__caption {
         font-size: 0.875rem !important;
     }
 
@@ -581,5 +711,14 @@
     .dashboard-peak-list__actions .button {
         justify-content: center;
         width: 100%;
+    }
+
+    .dashboard-progress-card__totals {
+        gap: 0.4rem;
+    }
+
+    .dashboard-province-pill {
+        font-size: 0.95rem;
+        padding: 0.55rem 0.8rem;
     }
 }

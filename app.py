@@ -564,6 +564,128 @@ def _build_my_climb_stats(climbs: list[dict]) -> dict:
     }
 
 
+def _build_dashboard_progress_data(climbs: list[dict], peaks_by_id: dict, total_peaks: int) -> dict:
+    province_order = ("Munster", "Leinster", "Ulster", "Connacht")
+    province_lookup = {province.lower(): province for province in province_order}
+    province_counts = {province: 0 for province in province_order}
+    extra_province_counts: dict[str, int] = {}
+    distinct_peak_entries: dict[str, dict] = {}
+    fallback_date = datetime.min.replace(tzinfo=timezone.utc)
+    most_recent_climb = None
+
+    for climb in climbs:
+        peak_id = climb.get("peak_id")
+        peak = dict(peaks_by_id.get(peak_id) or peaks_by_id.get(_peak_key(peak_id)) or {})
+        if peak_id is None and not peak:
+            continue
+
+        raw_date = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+        date_sort = _parse_datetime(raw_date) or fallback_date
+        height_m = _to_float(
+            peak.get("height_m")
+            or peak.get("height")
+            or climb.get("peak_height_m")
+            or climb.get("height_m")
+            or climb.get("height")
+        )
+        height_ft = _to_float(
+            peak.get("height_ft")
+            or climb.get("peak_height_ft")
+            or climb.get("height_ft")
+        )
+        province_name = str(peak.get("province") or climb.get("peak_province") or "").strip()
+        county_name = str(peak.get("county") or climb.get("peak_county") or "").strip()
+        peak_name = (
+            climb.get("peak_name")
+            or peak.get("name")
+            or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
+        )
+
+        snapshot = {
+            "peak_id": peak_id,
+            "name": peak_name,
+            "height_m": int(round(height_m)) if height_m is not None else None,
+            "height_ft": int(round(height_ft)) if height_ft is not None else None,
+            "province": province_name,
+            "province_key": re.sub(r"[^a-z0-9]+", "-", province_name.lower()).strip("-") or "default",
+            "county": county_name,
+            "date_climbed": raw_date,
+            "date_label": _format_short_date(raw_date),
+            "relative_time": _relative_time(raw_date),
+            "date_sort": date_sort,
+        }
+
+        if most_recent_climb is None or snapshot["date_sort"] > most_recent_climb["date_sort"]:
+            most_recent_climb = snapshot
+
+        if peak_id is None:
+            continue
+
+        peak_key = _peak_key(peak_id)
+        existing_snapshot = distinct_peak_entries.get(peak_key)
+        if existing_snapshot is None or snapshot["date_sort"] > existing_snapshot["date_sort"]:
+            distinct_peak_entries[peak_key] = snapshot
+
+    climbed_peaks = list(distinct_peak_entries.values())
+    completed_count = len(climbed_peaks)
+    total_peaks = max(int(total_peaks or 0), 0)
+    completion_percent = int(round((completed_count / total_peaks) * 100)) if total_peaks else 0
+    total_elevation_m = int(round(sum(peak.get("height_m") or 0 for peak in climbed_peaks)))
+    total_elevation_ft = int(
+        round(
+            sum(
+                peak.get("height_ft")
+                if peak.get("height_ft") is not None
+                else ((peak.get("height_m") or 0) * FEET_PER_METER)
+                for peak in climbed_peaks
+            )
+        )
+    )
+    highest_peak = max(climbed_peaks, key=lambda peak: peak.get("height_m") or 0, default=None)
+
+    for peak in climbed_peaks:
+        normalized_province = str(peak.get("province") or "").strip().lower()
+        if not normalized_province:
+            continue
+        province_name = province_lookup.get(normalized_province)
+        if province_name:
+            province_counts[province_name] += 1
+            continue
+        fallback_name = str(peak.get("province") or "").strip()
+        extra_province_counts[fallback_name] = extra_province_counts.get(fallback_name, 0) + 1
+
+    province_breakdown = [
+        {
+            "name": province_name,
+            "count": province_counts.get(province_name, 0),
+            "key": province_name.lower(),
+        }
+        for province_name in province_order
+    ]
+    province_breakdown.extend(
+        {
+            "name": province_name,
+            "count": count,
+            "key": re.sub(r"[^a-z0-9]+", "-", province_name.lower()).strip("-") or "default",
+        }
+        for province_name, count in extra_province_counts.items()
+    )
+
+    return {
+        "completed_count": completed_count,
+        "completion_percent": completion_percent,
+        "highest_peak": highest_peak,
+        "most_recent_climb": most_recent_climb,
+        "remaining_count": max(total_peaks - completed_count, 0),
+        "total_elevation_ft": total_elevation_ft,
+        "total_elevation_m": total_elevation_m,
+        "total_peaks": total_peaks,
+        "province_counts": {province["name"]: province["count"] for province in province_breakdown},
+        "province_breakdown": province_breakdown,
+        "active_province_count": sum(1 for province in province_breakdown if province["count"] > 0),
+    }
+
+
 def _build_my_climb_map_data(climbs: list[dict], total_peaks: int) -> dict:
     markers_by_peak: dict[str, dict] = {}
     fallback_sort_date = datetime.min.replace(tzinfo=timezone.utc)
@@ -1296,6 +1418,7 @@ def home():
     user_id = context["profile"].get("id")
     all_peaks = get_all_peaks()
     peaks_by_id = {peak.get("id"): peak for peak in all_peaks if peak.get("id") is not None}
+    total_peaks = app.config.get("TOTAL_PEAK_COUNT") or len(all_peaks)
     peak_statuses = get_peak_statuses(
         user_id,
         [peak.get("id") for peak in all_peaks if peak.get("id") is not None],
@@ -1322,28 +1445,7 @@ def home():
         peak for peak in decorated_peaks
         if peak.get("user_status") == "bucket_listed"
     ][:4]
-
-    climbed_peaks = [
-        peak for peak in decorated_peaks
-        if peak.get("user_status") == "climbed"
-    ]
-    highest_climbed_peak = max(
-        climbed_peaks,
-        key=lambda peak: _to_float(peak.get("height_m") or peak.get("height")) or 0,
-        default=None,
-    )
-    latest_climb_peak = peaks_by_id.get(climbs[0].get("peak_id")) if climbs else None
-    total_peaks = len(all_peaks)
-    completed_count = len(climbed_peaks)
-    completion_percent = int(round((completed_count / total_peaks) * 100)) if total_peaks else 0
-
-    dashboard_progress = {
-        "completed_count": completed_count,
-        "completion_percent": completion_percent,
-        "highest_peak": highest_climbed_peak,
-        "latest_peak": latest_climb_peak,
-        "total_peaks": total_peaks,
-    }
+    dashboard_progress = _build_dashboard_progress_data(climbs, peaks_by_id, total_peaks)
 
     _set_active_page("dashboard")
     return render_template(

@@ -64,41 +64,86 @@
                             </h2>
                             
                             <div class="columns is-multiline dashboard-progress-card__content">
-                                <div class="column is-6">
+                                <div class="column is-12-tablet is-4-desktop">
                                     <div class="mb-3 dashboard-progress-card__summary">
-                                        <span class="is-size-5">{{ dashboard_progress.completed_count }} <span class="has-text-grey-light">/ {{ dashboard_progress.total_peaks }}</span></span>
-                                        <span class="tag is-success ml-2 dashboard-progress-card__status">{{ dashboard_progress.completion_percent }}%</span>
-                                        <p class="has-text-grey dashboard-progress-card__caption">Peaks Completed</p>
+                                        <div class="dashboard-progress-card__totals">
+                                            <span class="is-size-4 has-text-weight-semibold">{{ dashboard_progress.completed_count }} <span class="has-text-grey-light">/ {{ dashboard_progress.total_peaks }}</span></span>
+                                        </div>
+                                        <span class="tag is-success dashboard-progress-card__status">{{ dashboard_progress.completion_percent }}%</span>
+                                        <p class="has-text-grey dashboard-progress-card__caption">Distinct peaks climbed</p>
+                                        <p class="dashboard-progress-card__subcaption">{{ dashboard_progress.remaining_count }} summits left on the full Irish list.</p>
                                     </div>
                                     
                                     <!-- Progress Bar -->
                                     <progress class="progress is-success dashboard-progress-card__bar" value="{{ dashboard_progress.completed_count }}" max="{{ dashboard_progress.total_peaks or 1 }}">{{ dashboard_progress.completion_percent }}%</progress>
                                 </div>
                                 
-                                <div class="column is-6">
+                                <div class="column is-12-tablet is-8-desktop">
                                     <div class="columns is-multiline dashboard-progress-card__stats">
                                         <div class="column is-6 mb-3">
                                             <div class="dashboard-progress-card__stat">
-                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">HIGHEST PEAK</p>
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">DISTINCT PEAKS</p>
                                                 <p class="has-text-weight-bold dashboard-progress-card__stat-value">
-                                                    {% if dashboard_progress.highest_peak %}
-                                                    {{ dashboard_progress.highest_peak.name }} <span class="has-text-grey">({{ (dashboard_progress.highest_peak.height_m or dashboard_progress.highest_peak.height) | format_height(current_height_unit, dashboard_progress.highest_peak.height_ft) }})</span>
-                                                    {% else %}
-                                                    No climbs yet
-                                                    {% endif %}
+                                                    {{ dashboard_progress.completed_count }}
+                                                </p>
+                                                <p class="dashboard-progress-card__stat-meta">
+                                                    {{ dashboard_progress.total_peaks }} total peaks in Ireland
                                                 </p>
                                             </div>
                                         </div>
                                         <div class="column is-6 mb-3">
                                             <div class="dashboard-progress-card__stat">
-                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">LAST PEAK</p>
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">TOTAL ELEVATION</p>
                                                 <p class="has-text-weight-bold dashboard-progress-card__stat-value">
-                                                    {% if dashboard_progress.latest_peak %}
-                                                    {{ dashboard_progress.latest_peak.name }} <span class="has-text-grey">({{ (dashboard_progress.latest_peak.height_m or dashboard_progress.latest_peak.height) | format_height(current_height_unit, dashboard_progress.latest_peak.height_ft) }})</span>
+                                                    {{ dashboard_progress.total_elevation_m | format_height(current_height_unit, dashboard_progress.total_elevation_ft) }}
+                                                </p>
+                                                <p class="dashboard-progress-card__stat-meta">
+                                                    Unique summits only
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="column is-6 mb-3">
+                                            <div class="dashboard-progress-card__stat">
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">HIGHEST PEAK</p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">
+                                                    {% if dashboard_progress.highest_peak %}
+                                                    <a class="dashboard-progress-card__stat-link" href="{{ url_for('peak_detail', peak_id=dashboard_progress.highest_peak.peak_id) }}">{{ dashboard_progress.highest_peak.name }}</a>
                                                     {% else %}
                                                     No climbs yet
                                                     {% endif %}
                                                 </p>
+                                                {% if dashboard_progress.highest_peak %}
+                                                <p class="dashboard-progress-card__stat-meta">
+                                                    {{ dashboard_progress.highest_peak.height_m | format_height(current_height_unit, dashboard_progress.highest_peak.height_ft) }}
+                                                    {% if dashboard_progress.highest_peak.county or dashboard_progress.highest_peak.province %}
+                                                    <span>&middot;</span>
+                                                    {{ dashboard_progress.highest_peak.county or 'County unknown' }}{% if dashboard_progress.highest_peak.province %}, {{ dashboard_progress.highest_peak.province }}{% endif %}
+                                                    {% endif %}
+                                                </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="column is-6 mb-3">
+                                            <div class="dashboard-progress-card__stat">
+                                                <p class="has-text-grey is-size-7 dashboard-progress-card__stat-label">MOST RECENT CLIMB</p>
+                                                <p class="has-text-weight-bold dashboard-progress-card__stat-value">
+                                                    {% if dashboard_progress.most_recent_climb %}
+                                                    {% if dashboard_progress.most_recent_climb.peak_id %}
+                                                    <a class="dashboard-progress-card__stat-link" href="{{ url_for('peak_detail', peak_id=dashboard_progress.most_recent_climb.peak_id) }}">{{ dashboard_progress.most_recent_climb.name }}</a>
+                                                    {% else %}
+                                                    {{ dashboard_progress.most_recent_climb.name }}
+                                                    {% endif %}
+                                                    {% else %}
+                                                    No climbs yet
+                                                    {% endif %}
+                                                </p>
+                                                {% if dashboard_progress.most_recent_climb %}
+                                                <p class="dashboard-progress-card__stat-meta">
+                                                    {{ dashboard_progress.most_recent_climb.date_label }}
+                                                    <span>&middot;</span>
+                                                    <time data-timestamp="{{ dashboard_progress.most_recent_climb.date_climbed or '' }}">{{ dashboard_progress.most_recent_climb.date_climbed | timeago }}</time>
+                                                </p>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -202,55 +247,31 @@
                     <!-- Right Column -->
                     <div class="column is-12-tablet is-4-desktop dashboard-grid__secondary">
                         
-                        <!-- Achievements Card -->
-                        <div class="box mb-5 dashboard-card dashboard-achievements-card">
+                        <!-- Province Progress Card -->
+                        <div class="box mb-5 dashboard-card dashboard-province-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
-                                <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
-                                Achievements
+                                <span class="icon has-text-warning"><i class="fas fa-map-marked-alt"></i></span>
+                                Climbed by Province
                             </h2>
-                            
-                            <div class="columns is-multiline dashboard-achievement-grid">
-                                <div class="column is-6">
-                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
-                                        <span class="icon is-large has-text-success dashboard-achievement-grid__icon">
-                                            <i class="fas fa-flag fa-2x"></i>
-                                        </span>
-                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">First Summit</p>
-                                        <span class="tag is-success is-light is-small dashboard-achievement-grid__status">Earned</span>
-                                    </div>
-                                </div>
-                                <div class="column is-6">
-                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
-                                        <span class="icon is-large has-text-warning dashboard-achievement-grid__icon">
-                                            <i class="fas fa-mountain fa-2x"></i>
-                                        </span>
-                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">5 Peaks</p>
-                                        <span class="tag is-success is-light is-small dashboard-achievement-grid__status">Earned</span>
-                                    </div>
-                                </div>
-                                <div class="column is-6">
-                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
-                                        <span class="icon is-large has-text-grey-light dashboard-achievement-grid__icon">
-                                            <i class="fas fa-cloud fa-2x"></i>
-                                        </span>
-                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">1000m Club</p>
-                                        <span class="tag is-light is-small dashboard-achievement-grid__status">Locked</span>
-                                    </div>
-                                </div>
-                                <div class="column is-6">
-                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item">
-                                        <span class="icon is-large has-text-grey-light dashboard-achievement-grid__icon">
-                                            <i class="fas fa-crown fa-2x"></i>
-                                        </span>
-                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">10 Peaks</p>
-                                        <span class="tag is-light is-small dashboard-achievement-grid__status">Locked</span>
-                                    </div>
-                                </div>
+
+                            <p class="dashboard-province-card__summary">
+                                {% if dashboard_progress.completed_count %}
+                                {{ dashboard_progress.completed_count }} unique peaks across {{ dashboard_progress.active_province_count }} province{% if dashboard_progress.active_province_count != 1 %}s{% endif %}.
+                                {% else %}
+                                Start logging climbs and your province breakdown will appear here.
+                                {% endif %}
+                            </p>
+
+                            <div class="dashboard-province-pill-list">
+                                {% for province in dashboard_progress.province_breakdown %}
+                                <span class="dashboard-province-pill dashboard-province-pill--{{ province.key }}">
+                                    <span class="dashboard-province-pill__name">{{ province.name }}</span>
+                                    <span class="dashboard-province-pill__count">{{ province.count }}</span>
+                                </span>
+                                {% endfor %}
                             </div>
-                            
-                            <div class="has-text-centered mt-2 dashboard-card__footer-link">
-                                <a href="#" class="is-size-7 has-text-success">View All Badges <i class="fas fa-arrow-right ml-1"></i></a>
-                            </div>
+
+                            <p class="dashboard-province-card__caption">Distinct climbed peaks grouped by province.</p>
                         </div>
 
                         <!-- Suggested Peaks Card -->
