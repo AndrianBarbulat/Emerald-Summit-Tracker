@@ -1,11 +1,12 @@
 import json
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote, urlparse
 
 from dotenv import load_dotenv
 from supabase import Client, create_client
+from time_utils import parse_datetime_value
 from werkzeug.utils import secure_filename
 
 load_dotenv()
@@ -345,6 +346,68 @@ def get_user_climb_history(user_id: str) -> List[Dict[str, Any]]:
         enriched_climbs.append(current_climb)
 
     return enriched_climbs
+
+
+def calculate_climb_streak(climbs: List[Dict[str, Any]], reference_date: Optional[date] = None) -> Dict[str, Any]:
+    today = reference_date or datetime.now(tz=timezone.utc).date()
+    current_week_start = today - timedelta(days=today.isoweekday() - 1)
+    previous_week_start = current_week_start - timedelta(days=7)
+    climbed_week_starts = set()
+    latest_climb_dt = None
+    latest_climb_value = None
+
+    for climb in climbs or []:
+        raw_date = (
+            climb.get("date_climbed")
+            or climb.get("climbed_at")
+            or climb.get("created_at")
+        )
+        parsed_date = parse_datetime_value(raw_date)
+        if parsed_date is None:
+            continue
+
+        climb_date = parsed_date.astimezone(timezone.utc).date()
+        week_start = climb_date - timedelta(days=climb_date.isoweekday() - 1)
+        climbed_week_starts.add(week_start)
+        if latest_climb_dt is None or parsed_date > latest_climb_dt:
+            latest_climb_dt = parsed_date
+            latest_climb_value = raw_date or parsed_date.isoformat()
+
+    def _count_consecutive_weeks(start_week: date) -> int:
+        count = 0
+        cursor = start_week
+        while cursor in climbed_week_starts:
+            count += 1
+            cursor -= timedelta(days=7)
+        return count
+
+    active_weeks = _count_consecutive_weeks(current_week_start) if current_week_start in climbed_week_starts else 0
+    at_risk_weeks = (
+        _count_consecutive_weeks(previous_week_start)
+        if active_weeks == 0 and previous_week_start in climbed_week_starts
+        else 0
+    )
+    display_weeks = active_weeks or at_risk_weeks
+    status = "active" if active_weeks else "at_risk" if at_risk_weeks else "inactive"
+
+    return {
+        "active_weeks": active_weeks,
+        "at_risk": status == "at_risk",
+        "current_streak": display_weeks,
+        "display_weeks": display_weeks,
+        "has_climb_this_week": active_weeks > 0,
+        "last_climb_at": latest_climb_value,
+        "status": status,
+    }
+
+
+def sync_user_current_streak(user_id: str, climbs: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    streak_data = calculate_climb_streak(climbs if climbs is not None else get_user_climbs(user_id))
+    update_user_profile(user_id, {"current_streak": int(streak_data.get("current_streak") or 0)})
+    refreshed_profile = get_user_profile(user_id)
+    if refreshed_profile is not None:
+        streak_data["profile"] = refreshed_profile
+    return streak_data
 
 
 def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

@@ -6,6 +6,7 @@ from werkzeug.exceptions import HTTPException
 
 from api_routes import api
 from supabase_utils import (
+    calculate_climb_streak,
     get_all_peaks,
     get_peak_average_difficulty,
     get_peak_count,
@@ -14,6 +15,7 @@ from supabase_utils import (
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
     get_profile_by_display_name,
+    get_user_badges,
     get_user_bucket_list,
     get_user_climb_history,
     get_user_climbs,
@@ -31,6 +33,11 @@ app.register_blueprint(api)
 
 FEET_PER_METER = 3.28084
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+BADGE_LABELS = {
+    "first_climb": "First Climb",
+    "five_climbs": "Five Summits",
+    "ten_climbs": "Ten Summits",
+}
 
 
 def get_session_context() -> dict:
@@ -248,6 +255,11 @@ def _to_float(value):
 
 def _format_short_date(value: str) -> str:
     return format_display_date(value, fallback="Recent climb")
+
+
+def _pluralize_weeks(value: int) -> str:
+    weeks = max(int(value or 0), 0)
+    return f"{weeks} week" if weeks == 1 else f"{weeks} weeks"
 
 
 @app.template_filter("timeago")
@@ -1172,8 +1184,9 @@ def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[
 def _build_dashboard_activity_items(
     climbs: list[dict],
     bucket_items: list[dict],
+    badges: list[dict],
     peaks_by_id: dict[int, dict],
-    limit: int = 4,
+    limit: int = 10,
 ) -> list[dict]:
     activity_items = []
     fallback_date = datetime.min.replace(tzinfo=timezone.utc)
@@ -1185,14 +1198,16 @@ def _build_dashboard_activity_items(
         activity_items.append(
             {
                 "type": "climbed",
+                "action_type": "climbed",
                 "label": "Climbed",
+                "href": url_for("peak_detail", peak_id=peak_id) if peak_id is not None else None,
                 "peak_id": peak_id,
-                "peak_name": (
+                "name": (
                     climb.get("peak_name")
                     or peak.get("name")
                     or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
                 ),
-                "message": "You reached the summit!",
+                "description": "You reached the summit.",
                 "activity_time": activity_date,
                 "relative_time": _relative_time(activity_date),
                 "tag_class": "is-success",
@@ -1212,13 +1227,44 @@ def _build_dashboard_activity_items(
         activity_items.append(
             {
                 "type": "bucket_listed",
+                "action_type": "bucket_listed",
                 "label": "Bucket List",
+                "href": url_for("peak_detail", peak_id=peak_id) if peak_id is not None else None,
                 "peak_id": peak_id,
-                "peak_name": peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
-                "message": "Added to your bucket list",
+                "name": peak.get("name") or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak"),
+                "description": "Added to your bucket list.",
                 "activity_time": activity_date,
                 "relative_time": _relative_time(activity_date),
                 "tag_class": "is-warning",
+                "timestamp": _parse_datetime(activity_date) or fallback_date,
+            }
+        )
+
+    for badge in badges:
+        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        badge_label = (
+            str(badge.get("label") or badge.get("badge_label") or "").strip()
+            or BADGE_LABELS.get(badge_key)
+            or badge_key.replace("_", " ").title()
+            or "New Badge"
+        )
+        activity_date = (
+            badge.get("created_at")
+            or badge.get("awarded_at")
+            or badge.get("inserted_at")
+            or badge.get("updated_at")
+        )
+        activity_items.append(
+            {
+                "type": "badge",
+                "action_type": "badge",
+                "label": "Badge",
+                "href": url_for("my_climbs"),
+                "name": badge_label,
+                "description": "Badge unlocked from your climbing progress.",
+                "activity_time": activity_date,
+                "relative_time": _relative_time(activity_date),
+                "tag_class": "is-info",
                 "timestamp": _parse_datetime(activity_date) or fallback_date,
             }
         )
@@ -1228,6 +1274,40 @@ def _build_dashboard_activity_items(
         key=lambda activity: activity.get("timestamp") or fallback_date,
         reverse=True,
     )[:limit]
+
+
+def _build_dashboard_streak(climbs: list[dict]) -> dict:
+    streak = calculate_climb_streak(climbs)
+    weeks = int(streak.get("display_weeks") or 0)
+    last_climb_at = streak.get("last_climb_at")
+    status = streak.get("status") or "inactive"
+
+    if status == "active":
+        return {
+            **streak,
+            "heading": f"Current streak: {_pluralize_weeks(weeks)}",
+            "caption": "You have already logged a climb this week. Keep the momentum going.",
+            "tone_class": "is-success",
+        }
+
+    if status == "at_risk":
+        return {
+            **streak,
+            "heading": f"Streak at risk! Climb this week to keep your {_pluralize_weeks(weeks)} alive.",
+            "caption": (
+                f"Last climb {format_time_ago(last_climb_at)}."
+                if last_climb_at
+                else "Your last climb was last week."
+            ),
+            "tone_class": "is-warning",
+        }
+
+    return {
+        **streak,
+        "heading": "Current streak: 0 weeks",
+        "caption": "Log a climb this week to start a new streak.",
+        "tone_class": "is-light",
+    }
 
 
 def _build_dashboard_peak_search_data(peaks: list[dict]) -> list[dict]:
@@ -1426,8 +1506,10 @@ def home():
     decorated_peaks = _decorate_peaks_with_statuses(all_peaks, peak_statuses)
     climbs = get_user_climbs(user_id)
     bucket_items = get_user_bucket_list(user_id)
-    dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, peaks_by_id)
+    badges = get_user_badges(user_id)
+    dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, badges, peaks_by_id)
     dashboard_peak_search_data = _build_dashboard_peak_search_data(decorated_peaks)
+    dashboard_streak = _build_dashboard_streak(climbs)
 
     suggested_peaks = sorted(
         [
@@ -1454,6 +1536,7 @@ def home():
         dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
         dashboard_recent_activity=dashboard_recent_activity,
+        dashboard_streak=dashboard_streak,
         peak_statuses=peak_statuses,
         suggested_peaks=suggested_peaks,
     )

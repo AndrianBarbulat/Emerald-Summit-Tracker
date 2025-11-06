@@ -198,16 +198,35 @@ function initDashboardClimbModal() {
                     removeDashboardBucketPreviewItem(selectedPeak.id);
                 }
 
+                if (result && result.streak) {
+                    updateDashboardStreak(result.streak);
+                }
+
                 if (!result.already_climbed) {
                     prependDashboardActivity({
+                        actionType: 'climbed',
+                        href: '/peak/' + encodeURIComponent(String(selectedPeak.id || '')),
                         label: 'Climbed',
-                        message: 'You reached the summit!',
-                        peakName: selectedPeak.name,
+                        description: 'You reached the summit.',
+                        name: selectedPeak.name,
                         tagClass: 'is-success',
                         timestamp: result && result.climb
                             ? (result.climb.date_climbed || result.climb.climbed_at || result.climb.created_at || new Date().toISOString())
                             : new Date().toISOString()
                     });
+                    if (result && Array.isArray(result.new_badges) && result.new_badges.length) {
+                        result.new_badges.slice().reverse().forEach(function(badge) {
+                            prependDashboardActivity({
+                                actionType: 'badge',
+                                href: '/my-climbs',
+                                label: 'Badge',
+                                description: 'Badge unlocked from your climbing progress.',
+                                name: badge && badge.label ? badge.label : 'New Badge',
+                                tagClass: 'is-info',
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                    }
                     showDashboardToast('Summit logged successfully.', 'success');
                 } else {
                     showDashboardToast('This summit is already logged.', 'warning');
@@ -565,9 +584,15 @@ function prependDashboardActivity(activity) {
 
 function buildDashboardActivityMarkup(activity) {
     const timestamp = activity && activity.timestamp ? String(activity.timestamp) : '';
+    const href = activity && activity.href ? String(activity.href) : '';
+    const nameLabel = activity && (activity.name || activity.peakName) ? String(activity.name || activity.peakName) : 'Activity';
+    const description = activity && (activity.description || activity.message) ? String(activity.description || activity.message) : 'Updated your activity.';
     const relativeLabel = typeof window.timeAgo === 'function'
         ? window.timeAgo(timestamp || new Date().toISOString())
         : 'just now';
+    const linkedName = href
+        ? '<a class="has-text-weight-bold dashboard-timeline__link" href="' + escapeDashboardHtml(href) + '">' + escapeDashboardHtml(nameLabel) + '</a>'
+        : '<span class="has-text-weight-bold">' + escapeDashboardHtml(nameLabel) + '</span>';
 
     return (
         '<div class="columns is-mobile dashboard-timeline__item" data-dashboard-activity-item>' +
@@ -577,8 +602,8 @@ function buildDashboardActivityMarkup(activity) {
                 '</span>' +
             '</div>' +
             '<div class="column dashboard-timeline__content">' +
-                '<span class="has-text-weight-bold">' + escapeDashboardHtml(activity.peakName || 'Peak') + '</span> - ' +
-                escapeDashboardHtml(activity.message || 'You reached the summit!') +
+                linkedName + ' - ' +
+                escapeDashboardHtml(description) +
                 '<time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="' + escapeDashboardHtml(timestamp || new Date().toISOString()) + '">' +
                     escapeDashboardHtml(relativeLabel) +
                 '</time>' +
@@ -596,6 +621,31 @@ function syncDashboardActivitySpacing(feed) {
     items.forEach(function(item, index) {
         item.classList.toggle('mb-3', index < items.length - 1);
     });
+}
+
+function updateDashboardStreak(streak) {
+    const streakElement = document.querySelector('[data-dashboard-streak]');
+    if (!streakElement || !streak) {
+        return;
+    }
+
+    const status = String(streak.status || 'inactive');
+    const heading = String(streak.heading || 'Current streak: 0 weeks');
+    const caption = String(streak.caption || 'Log a climb this week to start a new streak.');
+    const headingElement = streakElement.querySelector('[data-dashboard-streak-heading]');
+    const captionElement = streakElement.querySelector('[data-dashboard-streak-caption]');
+
+    streakElement.setAttribute('data-streak-status', status);
+    streakElement.setAttribute('data-streak-weeks', String(streak.display_weeks || streak.current_streak || 0));
+    streakElement.classList.remove('dashboard-streak-banner--active', 'dashboard-streak-banner--at_risk', 'dashboard-streak-banner--at-risk', 'dashboard-streak-banner--inactive');
+    streakElement.classList.add('dashboard-streak-banner--' + status);
+
+    if (headingElement) {
+        headingElement.textContent = heading;
+    }
+    if (captionElement) {
+        captionElement.textContent = caption;
+    }
 }
 
 function removeDashboardPeakFromSearch(state, peakId) {

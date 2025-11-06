@@ -157,28 +157,50 @@
                                 <span class="icon has-text-info"><i class="fas fa-history"></i></span>
                                 Recent Activity
                             </h2>
+
+                            <div
+                                class="dashboard-streak-banner dashboard-streak-banner--{{ dashboard_streak.status }}"
+                                data-dashboard-streak
+                                data-streak-caption="{{ dashboard_streak.caption }}"
+                                data-streak-heading="{{ dashboard_streak.heading }}"
+                                data-streak-status="{{ dashboard_streak.status }}"
+                                data-streak-weeks="{{ dashboard_streak.display_weeks }}"
+                            >
+                                <span class="icon dashboard-streak-banner__icon">
+                                    <i class="fas fa-fire"></i>
+                                </span>
+                                <div class="dashboard-streak-banner__content">
+                                    <p class="dashboard-streak-banner__heading" data-dashboard-streak-heading>{{ dashboard_streak.heading }}</p>
+                                    <p class="dashboard-streak-banner__caption" data-dashboard-streak-caption>{{ dashboard_streak.caption }}</p>
+                                </div>
+                            </div>
                             
-                            <div class="timeline dashboard-timeline" data-dashboard-activity-feed data-dashboard-activity-limit="4">
+                            <div class="timeline dashboard-timeline" data-dashboard-activity-feed data-dashboard-activity-limit="10">
                                 {% for activity in dashboard_recent_activity %}
                                 <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-timeline__item" data-dashboard-activity-item>
                                     <div class="column is-narrow dashboard-timeline__marker">
                                         <span class="tag {{ activity.tag_class }} dashboard-timeline__tag">{{ activity.label }}</span>
                                     </div>
                                     <div class="column dashboard-timeline__content">
-                                        <span class="has-text-weight-bold">{{ activity.peak_name }}</span> - {{ activity.message }}
+                                        {% if activity.href %}
+                                        <a class="has-text-weight-bold dashboard-timeline__link" href="{{ activity.href }}">{{ activity.name }}</a>
+                                        {% else %}
+                                        <span class="has-text-weight-bold">{{ activity.name }}</span>
+                                        {% endif %}
+                                        - {{ activity.description }}
                                         <time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="{{ activity.activity_time or '' }}">{{ activity.activity_time | timeago }}</time>
                                     </div>
                                 </div>
                                 {% else %}
                                 <div class="dashboard-empty-state" data-dashboard-activity-empty>
-                                    Log your first climb to start building your activity feed.
+                                    Log your first climb, save a bucket-list peak, or earn a badge to start building your activity feed.
                                 </div>
                                 {% endfor %}
                             </div>
                             
-                            <div class="has-text-centered mt-4 dashboard-card__footer-link">
-                                <a href="#" class="has-text-success">View All Activity <i class="fas fa-arrow-right ml-1"></i></a>
-                            </div>
+                            <p class="has-text-centered has-text-grey is-size-7 mt-4 dashboard-activity-card__footer">
+                                Showing your latest 10 actions.
+                            </p>
                         </div>
 
                         <!-- Latest Community Activity Card -->

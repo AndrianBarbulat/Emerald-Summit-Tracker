@@ -14,6 +14,7 @@ from supabase_utils import (
     add_comment,
     add_to_bucket_list,
     award_badge,
+    calculate_climb_streak,
     delete_climb,
     delete_comment,
     extract_climb_photo_storage_paths,
@@ -33,6 +34,7 @@ from supabase_utils import (
     log_climb,
     remove_from_bucket_list,
     supabase,
+    sync_user_current_streak,
     upload_climb_photos,
     update_climb,
     update_user_profile,
@@ -128,6 +130,40 @@ def _get_current_user_id() -> str | None:
         return str(user["id"])
 
     return None
+
+
+def _sync_session_profile(user_id: str):
+    refreshed_profile = get_user_profile(user_id)
+    if refreshed_profile is not None:
+        session["profile"] = refreshed_profile
+    return refreshed_profile
+
+
+def _serialize_streak(streak_data: dict | None) -> dict:
+    streak_data = streak_data or {}
+    display_weeks = int(streak_data.get("display_weeks") or streak_data.get("current_streak") or 0)
+    status = str(streak_data.get("status") or "inactive")
+    last_climb_at = streak_data.get("last_climb_at")
+
+    if status == "active":
+        heading = f"Current streak: {display_weeks} week" if display_weeks == 1 else f"Current streak: {display_weeks} weeks"
+        caption = "You have already logged a climb this week. Keep going."
+    elif status == "at_risk":
+        streak_label = f"{display_weeks} week" if display_weeks == 1 else f"{display_weeks} weeks"
+        heading = f"Streak at risk! Climb this week to keep your {streak_label} alive."
+        caption = f"Last climb {format_time_ago(last_climb_at)}." if last_climb_at else "Your last climb was last week."
+    else:
+        heading = "Current streak: 0 weeks"
+        caption = "Log a climb this week to start a new streak."
+
+    return {
+        "caption": caption,
+        "current_streak": display_weeks,
+        "display_weeks": display_weeks,
+        "heading": heading,
+        "last_climb_at": last_climb_at,
+        "status": status,
+    }
 
 
 def _get_request_data() -> dict:
@@ -580,6 +616,7 @@ def api_log_climb():
     existing_climb = get_user_has_climbed(user_id, peak_id)
     if existing_climb is not None:
         removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
+        streak = _serialize_streak(calculate_climb_streak(get_user_climbs(user_id)))
         return _json_success(
             {
                 "already_climbed": True,
@@ -589,6 +626,7 @@ def api_log_climb():
                 "photo_count_received": 0,
                 "peak_id": peak_id,
                 "removed_from_bucket_list": removed_from_bucket_list,
+                "streak": streak,
                 **_current_user_status(user_id, peak_id),
             }
         )
@@ -624,6 +662,11 @@ def api_log_climb():
         return _json_error("We couldn't save that climb right now.", 500)
 
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
+    streak_data = sync_user_current_streak(user_id)
+    if streak_data.get("profile") is not None:
+        session["profile"] = streak_data["profile"]
+    else:
+        _sync_session_profile(user_id)
     success_payload = {
         "climb": created_climb,
         "climb_id": created_climb.get("id"),
@@ -633,6 +676,7 @@ def api_log_climb():
         "peak_id": peak_id,
         "removed_from_bucket_list": removed_from_bucket_list,
         "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
+        "streak": _serialize_streak(streak_data),
         **_current_user_status(user_id, peak_id),
     }
     if warning_messages:
@@ -744,9 +788,15 @@ def api_climb(climb_id: int):
             return _json_error("We couldn't delete that climb right now.", 500)
 
         photos_deleted = delete_climb_photo_uploads(photo_storage_paths)
+        streak_data = sync_user_current_streak(user_id)
+        if streak_data.get("profile") is not None:
+            session["profile"] = streak_data["profile"]
+        else:
+            _sync_session_profile(user_id)
         payload = {
             "climb_id": climb_id,
             "deleted_photo_count": len(photo_storage_paths) if photos_deleted else 0,
+            "streak": _serialize_streak(streak_data),
         }
         if photo_storage_paths and not photos_deleted:
             payload["warning"] = "Climb removed, but we couldn't delete one or more uploaded photos."
@@ -776,12 +826,19 @@ def api_climb(climb_id: int):
     if updated_climb is None:
         return _json_error("We couldn't update that climb right now.", 500)
 
+    streak_data = sync_user_current_streak(user_id)
+    if streak_data.get("profile") is not None:
+        session["profile"] = streak_data["profile"]
+    else:
+        _sync_session_profile(user_id)
+
     return _json_success(
         {
             "climb": updated_climb,
             "climb_id": updated_climb.get("id", climb_id),
             "peak_id": peak_id,
             "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
+            "streak": _serialize_streak(streak_data),
             **(_current_user_status(user_id, peak_id) if peak_id is not None else {}),
         }
     )
