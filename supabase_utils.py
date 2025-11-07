@@ -665,6 +665,25 @@ def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
         return []
 
 
+def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str, Any]]:
+    try:
+        query = _table(TABLE_CLIMBS)
+        if query is None:
+            return []
+        response = query.select("*, profiles(*)").order("climbed_at", desc=True).limit(limit).execute()
+        enriched_climbs = _enrich_user_records(response.data or [])
+        normalized_climbs = []
+        for climb in enriched_climbs:
+            current_climb = _normalize_climb_record(climb)
+            current_climb["profile"] = dict(climb.get("profile") or {})
+            current_climb["display_name"] = climb.get("display_name") or current_climb.get("display_name")
+            current_climb["avatar_url"] = climb.get("avatar_url") or current_climb.get("avatar_url")
+            normalized_climbs.append(current_climb)
+        return normalized_climbs
+    except Exception:
+        return []
+
+
 def get_peak_statuses(user_id: str, peak_ids: List[Any]) -> Dict[str, str]:
     normalized_ids: List[tuple[str, Any]] = []
     seen_ids = set()

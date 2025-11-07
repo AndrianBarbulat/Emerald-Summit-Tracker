@@ -11,6 +11,7 @@ from supabase_utils import (
     get_peak_average_difficulty,
     get_peak_count,
     get_community_recent_climbs,
+    get_community_recent_climbs_with_profiles,
     get_peak_by_id,
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
@@ -38,6 +39,14 @@ BADGE_LABELS = {
     "five_climbs": "Five Summits",
     "ten_climbs": "Ten Summits",
 }
+DASHBOARD_BADGE_RULES = [
+    {"key": "first_climb", "label": "First Climb", "threshold": 1, "icon": "fa-flag-checkered"},
+    {"key": "five_climbs", "label": "Five Summits", "threshold": 5, "icon": "fa-mountain"},
+    {"key": "ten_climbs", "label": "Ten Summits", "threshold": 10, "icon": "fa-compass"},
+    {"key": "twenty_five_climbs", "label": "25 Summits", "threshold": 25, "icon": "fa-map"},
+    {"key": "fifty_climbs", "label": "50 Summits", "threshold": 50, "icon": "fa-fire"},
+    {"key": "hundred_climbs", "label": "100 Summits", "threshold": 100, "icon": "fa-crown"},
+]
 
 
 def get_session_context() -> dict:
@@ -1310,6 +1319,258 @@ def _build_dashboard_streak(climbs: list[dict]) -> dict:
     }
 
 
+def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
+    earned_badges = {}
+    for badge in badges:
+        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        if badge_key:
+            earned_badges[badge_key] = badge
+
+    achievement_cards = []
+    next_badge = None
+    for rule in DASHBOARD_BADGE_RULES:
+        earned_badge = earned_badges.get(rule["key"])
+        is_earned = earned_badge is not None or climb_count >= rule["threshold"]
+        progress_count = min(climb_count, rule["threshold"])
+        progress_percent = int(round((progress_count / rule["threshold"]) * 100)) if rule["threshold"] else 100
+        is_next = False
+        if not is_earned and next_badge is None:
+            is_next = True
+
+        achievement = {
+            "key": rule["key"],
+            "label": rule["label"],
+            "threshold": rule["threshold"],
+            "icon": rule["icon"],
+            "is_earned": is_earned,
+            "is_next": is_next,
+            "progress_count": progress_count,
+            "progress_percent": progress_percent,
+            "progress_label": f"{progress_count} / {rule['threshold']} climbs",
+            "earned_label": "Earned" if is_earned else "Up next" if is_next else "Locked",
+            "earned_at": (
+                earned_badge.get("created_at")
+                or earned_badge.get("awarded_at")
+                or earned_badge.get("inserted_at")
+                if isinstance(earned_badge, dict)
+                else None
+            ),
+        }
+        achievement_cards.append(achievement)
+        if is_next and next_badge is None:
+            next_badge = achievement
+
+    return {
+        "badges": achievement_cards,
+        "earned_count": sum(1 for achievement in achievement_cards if achievement["is_earned"]),
+        "next_badge": next_badge,
+    }
+
+
+def _build_dashboard_bucket_preview(bucket_items: list[dict], decorated_peaks: list[dict], limit: int = 5) -> list[dict]:
+    peaks_by_id = {
+        _peak_key(peak.get("id")): peak
+        for peak in decorated_peaks
+        if peak.get("id") is not None
+    }
+    fallback_date = datetime.min.replace(tzinfo=timezone.utc)
+    preview_items = []
+
+    sorted_bucket_items = sorted(
+        bucket_items,
+        key=lambda item: _parse_datetime(
+            item.get("created_at")
+            or item.get("added_at")
+            or item.get("date_added")
+            or item.get("inserted_at")
+        ) or fallback_date,
+        reverse=True,
+    )
+
+    for item in sorted_bucket_items:
+        peak = dict(peaks_by_id.get(_peak_key(item.get("peak_id"))) or {})
+        if not peak:
+            continue
+
+        added_at = (
+            item.get("created_at")
+            or item.get("added_at")
+            or item.get("date_added")
+            or item.get("inserted_at")
+        )
+        province_name = str(peak.get("province") or "").strip()
+        preview_items.append(
+            {
+                **peak,
+                "added_at": added_at,
+                "added_label": _format_short_date(added_at),
+                "added_relative": _relative_time(added_at),
+                "province_key": re.sub(r"[^a-z0-9]+", "-", province_name.lower()).strip("-") or "default",
+            }
+        )
+        if len(preview_items) >= limit:
+            break
+
+    return preview_items
+
+
+def _dashboard_peak_sort_key(peak: dict) -> tuple:
+    return (
+        _to_float(peak.get("height_rank")) if _to_float(peak.get("height_rank")) is not None else float("inf"),
+        -(_to_float(peak.get("height_m") or peak.get("height")) or 0),
+        str(peak.get("name") or "").lower(),
+    )
+
+
+def _build_dashboard_suggestions(
+    decorated_peaks: list[dict],
+    bucket_items: list[dict],
+    climbs: list[dict],
+    community_climbs: list[dict],
+    limit: int = 5,
+) -> list[dict]:
+    decorated_by_id = {
+        _peak_key(peak.get("id")): peak
+        for peak in decorated_peaks
+        if peak.get("id") is not None
+    }
+    selected_peak_ids = set()
+    suggestions = []
+    fallback_date = datetime.min.replace(tzinfo=timezone.utc)
+
+    def add_suggestion(peak: dict | None, reason: str, source: str):
+        if not isinstance(peak, dict):
+            return False
+        peak_id = peak.get("id")
+        peak_key = _peak_key(peak_id)
+        if not peak_key or peak_key in selected_peak_ids:
+            return False
+        if _normalize_peak_status(peak.get("user_status")) == "climbed":
+            return False
+
+        suggestions.append(
+            {
+                **peak,
+                "suggestion_reason": reason,
+                "suggestion_source": source,
+            }
+        )
+        selected_peak_ids.add(peak_key)
+        return True
+
+    sorted_bucket_items = sorted(
+        bucket_items,
+        key=lambda item: _parse_datetime(
+            item.get("created_at")
+            or item.get("added_at")
+            or item.get("date_added")
+            or item.get("inserted_at")
+        ) or fallback_date,
+        reverse=True,
+    )
+    for item in sorted_bucket_items:
+        peak = decorated_by_id.get(_peak_key(item.get("peak_id")))
+        if add_suggestion(peak, "Already on your bucket list", "bucket_listed") and len(suggestions) >= limit:
+            return suggestions[:limit]
+
+    popular_counts: dict[str, int] = {}
+    for climb in community_climbs:
+        peak_id = climb.get("peak_id")
+        peak_key = _peak_key(peak_id)
+        if peak_key:
+            popular_counts[peak_key] = popular_counts.get(peak_key, 0) + 1
+
+    popular_candidates = sorted(
+        [
+            peak for peak in decorated_peaks
+            if _peak_key(peak.get("id")) in popular_counts and _normalize_peak_status(peak.get("user_status")) != "climbed"
+        ],
+        key=lambda peak: (
+            -popular_counts.get(_peak_key(peak.get("id")), 0),
+            *_dashboard_peak_sort_key(peak),
+        ),
+    )
+    for peak in popular_candidates:
+        climb_total = popular_counts.get(_peak_key(peak.get("id")), 0)
+        reason = f"Popular with the community ({climb_total} recent climb{'s' if climb_total != 1 else ''})"
+        if add_suggestion(peak, reason, "popular") and len(suggestions) >= limit:
+            return suggestions[:limit]
+
+    latest_climb = climbs[0] if climbs else None
+    latest_county = ""
+    if latest_climb:
+        latest_peak = decorated_by_id.get(_peak_key(latest_climb.get("peak_id"))) or {}
+        latest_county = str(latest_peak.get("county") or latest_climb.get("peak_county") or "").strip()
+
+    if latest_county:
+        county_candidates = sorted(
+            [
+                peak for peak in decorated_peaks
+                if str(peak.get("county") or "").strip().lower() == latest_county.lower()
+                and _normalize_peak_status(peak.get("user_status")) != "climbed"
+            ],
+            key=_dashboard_peak_sort_key,
+        )
+        for peak in county_candidates:
+            if add_suggestion(peak, f"More to explore in {latest_county}", "same_county") and len(suggestions) >= limit:
+                return suggestions[:limit]
+
+    fallback_candidates = sorted(
+        [
+            peak for peak in decorated_peaks
+            if _normalize_peak_status(peak.get("user_status")) != "climbed"
+        ],
+        key=_dashboard_peak_sort_key,
+    )
+    for peak in fallback_candidates:
+        if add_suggestion(peak, "A strong next summit pick", "curated") and len(suggestions) >= limit:
+            break
+
+    return suggestions[:limit]
+
+
+def _build_dashboard_community_feed(climbs: list[dict], peaks_by_id: dict[int, dict], current_user_id: str, limit: int = 6) -> list[dict]:
+    community_items = []
+    peak_lookup = {
+        _peak_key(peak_id): peak
+        for peak_id, peak in (peaks_by_id or {}).items()
+    }
+    for climb in climbs:
+        profile = dict(climb.get("profile") or {})
+        if not _is_profile_public(profile):
+            continue
+
+        peak_id = climb.get("peak_id")
+        peak = dict(peak_lookup.get(_peak_key(peak_id)) or {})
+        display_name = str(
+            climb.get("display_name")
+            or profile.get("display_name")
+            or "Climber"
+        ).strip() or "Climber"
+        peak_name = str(
+            climb.get("peak_name")
+            or peak.get("name")
+            or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
+        ).strip() or "Unknown peak"
+        initials = "".join(part[:1].upper() for part in display_name.split()[:2]) or "C"
+        activity_time = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+        community_items.append(
+            {
+                "display_name": display_name,
+                "initials": initials,
+                "peak_name": peak_name,
+                "peak_url": url_for("peak_detail", peak_id=peak_id) if peak_id is not None else None,
+                "profile_url": _profile_url_for(profile, current_user_id),
+                "activity_time": activity_time,
+                "relative_time": _relative_time(activity_time),
+            }
+        )
+        if len(community_items) >= limit:
+            break
+
+    return community_items
+
+
 def _build_dashboard_peak_search_data(peaks: list[dict]) -> list[dict]:
     search_data = []
     for peak in peaks:
@@ -1507,32 +1768,33 @@ def home():
     climbs = get_user_climbs(user_id)
     bucket_items = get_user_bucket_list(user_id)
     badges = get_user_badges(user_id)
+    popular_community_climbs = get_community_recent_climbs(limit=250)
+    dashboard_community_activity = _build_dashboard_community_feed(
+        get_community_recent_climbs_with_profiles(limit=20),
+        peaks_by_id,
+        user_id,
+        limit=6,
+    )
+    dashboard_achievements = _build_dashboard_achievements(badges, len(climbs))
     dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, badges, peaks_by_id)
     dashboard_peak_search_data = _build_dashboard_peak_search_data(decorated_peaks)
     dashboard_streak = _build_dashboard_streak(climbs)
-
-    suggested_peaks = sorted(
-        [
-            peak for peak in decorated_peaks
-            if peak.get("user_status") != "climbed"
-        ],
-        key=lambda peak: (
-            0 if peak.get("user_status") == "bucket_listed" else 1,
-            _to_float(peak.get("height_rank")) if _to_float(peak.get("height_rank")) is not None else float("inf"),
-            -(_to_float(peak.get("height_m") or peak.get("height")) or 0),
-            str(peak.get("name") or ""),
-        ),
-    )[:3]
-    bucket_list_peaks = [
-        peak for peak in decorated_peaks
-        if peak.get("user_status") == "bucket_listed"
-    ][:4]
+    suggested_peaks = _build_dashboard_suggestions(
+        decorated_peaks,
+        bucket_items,
+        climbs,
+        popular_community_climbs,
+        limit=5,
+    )
+    bucket_list_peaks = _build_dashboard_bucket_preview(bucket_items, decorated_peaks, limit=5)
     dashboard_progress = _build_dashboard_progress_data(climbs, peaks_by_id, total_peaks)
 
     _set_active_page("dashboard")
     return render_template(
         "home.html",
         bucket_list_peaks=bucket_list_peaks,
+        dashboard_achievements=dashboard_achievements,
+        dashboard_community_activity=dashboard_community_activity,
         dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
         dashboard_recent_activity=dashboard_recent_activity,

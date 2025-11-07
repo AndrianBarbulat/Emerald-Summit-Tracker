@@ -211,32 +211,30 @@
                             </h2>
                             
                             <div class="community-list dashboard-community-feed">
-                                <!-- Community Item 1 -->
-                                <div class="columns is-mobile mb-3 dashboard-community-feed__item">
+                                {% for climb in dashboard_community_activity %}
+                                <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-community-feed__item">
                                     <div class="column is-narrow">
                                         <div class="dashboard-community-feed__avatar">
-                                            <i class="fas fa-user-circle"></i>
+                                            {{ climb.initials }}
                                         </div>
                                     </div>
                                     <div class="column dashboard-community-feed__content">
-                                        <span class="has-text-weight-bold">Maeve</span> climbed <span class="has-text-weight-bold">Carrauntoohil</span>
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">1h ago</span>
+                                        {% if climb.profile_url %}
+                                        <a class="has-text-weight-bold dashboard-community-feed__link" href="{{ climb.profile_url }}">{{ climb.display_name }}</a>
+                                        {% else %}
+                                        <span class="has-text-weight-bold">{{ climb.display_name }}</span>
+                                        {% endif %}
+                                        climbed
+                                        {% if climb.peak_url %}
+                                        <a class="has-text-weight-bold dashboard-community-feed__link" href="{{ climb.peak_url }}">{{ climb.peak_name }}</a>
+                                        {% else %}
+                                        <span class="has-text-weight-bold">{{ climb.peak_name }}</span>
+                                        {% endif %}
+                                        <time class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time" data-timestamp="{{ climb.activity_time or '' }}">{{ climb.activity_time | timeago }}</time>
                                     </div>
                                 </div>
                                 
-                                <!-- Community Item 2 -->
-                                <div class="columns is-mobile mb-3 dashboard-community-feed__item">
-                                    <div class="column is-narrow">
-                                        <div class="dashboard-community-feed__avatar">
-                                            <i class="fas fa-user-circle"></i>
-                                        </div>
-                                    </div>
-                                    <div class="column dashboard-community-feed__content">
-                                        <span class="has-text-weight-bold">Rian</span> added <span class="has-text-weight-bold">Errigal</span> to bucket list
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">3h ago</span>
-                                    </div>
-                                </div>
-                                
+                                {#
                                 <!-- Community Item 3 -->
                                 <div class="columns is-mobile mb-3 dashboard-community-feed__item">
                                     <div class="column is-narrow">
@@ -249,25 +247,61 @@
                                         <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">5h ago</span>
                                     </div>
                                 </div>
-                                
-                                <!-- Community Item 4 -->
-                                <div class="columns is-mobile dashboard-community-feed__item">
-                                    <div class="column is-narrow">
-                                        <div class="dashboard-community-feed__avatar">
-                                            <i class="fas fa-user-circle"></i>
-                                        </div>
-                                    </div>
-                                    <div class="column dashboard-community-feed__content">
-                                        <span class="has-text-weight-bold">Dara</span> climbed <span class="has-text-weight-bold">Mweelrea</span>
-                                        <span class="has-text-grey is-size-7 ml-2 dashboard-community-feed__time">1d ago</span>
-                                    </div>
+                                #}
+                                {% else %}
+                                <div class="dashboard-empty-state">
+                                    Community climbs from public profiles will show up here as people log new summits.
                                 </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
 
                     <!-- Right Column -->
                     <div class="column is-12-tablet is-4-desktop dashboard-grid__secondary">
+
+                        <!-- Achievements Card -->
+                        <div class="box mb-5 dashboard-card dashboard-achievements-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
+                                <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
+                                Achievements
+                            </h2>
+
+                            {% if dashboard_achievements.next_badge %}
+                            <div class="dashboard-achievement-next">
+                                <p class="dashboard-achievement-next__eyebrow">Next to Earn</p>
+                                <p class="dashboard-achievement-next__title">
+                                    <span class="icon"><i class="fas {{ dashboard_achievements.next_badge.icon }}"></i></span>
+                                    {{ dashboard_achievements.next_badge.label }}
+                                </p>
+                                <progress class="progress is-warning dashboard-achievement-next__progress" value="{{ dashboard_achievements.next_badge.progress_count }}" max="{{ dashboard_achievements.next_badge.threshold }}">{{ dashboard_achievements.next_badge.progress_percent }}%</progress>
+                                <p class="dashboard-achievement-next__meta">{{ dashboard_achievements.next_badge.progress_label }}</p>
+                            </div>
+                            {% else %}
+                            <div class="dashboard-achievement-next dashboard-achievement-next--complete">
+                                <p class="dashboard-achievement-next__eyebrow">Achievement Progress</p>
+                                <p class="dashboard-achievement-next__title">
+                                    <span class="icon"><i class="fas fa-trophy"></i></span>
+                                    All current dashboard badges earned
+                                </p>
+                                <p class="dashboard-achievement-next__meta">You have unlocked every badge in the current progression set.</p>
+                            </div>
+                            {% endif %}
+
+                            <div class="columns is-multiline dashboard-achievement-grid">
+                                {% for badge in dashboard_achievements.badges %}
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item{% if badge.is_earned %} dashboard-achievement-grid__item--earned{% elif badge.is_next %} dashboard-achievement-grid__item--next{% else %} dashboard-achievement-grid__item--locked{% endif %}">
+                                        <span class="icon is-large dashboard-achievement-grid__icon">
+                                            <i class="fas {{ badge.icon }} fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">{{ badge.label }}</p>
+                                        <span class="tag is-small dashboard-achievement-grid__status{% if badge.is_earned %} dashboard-achievement-grid__status--earned{% elif badge.is_next %} dashboard-achievement-grid__status--next{% else %} dashboard-achievement-grid__status--locked{% endif %}">{{ badge.earned_label }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                         
                         <!-- Province Progress Card -->
                         <div class="box mb-5 dashboard-card dashboard-province-card">
@@ -306,8 +340,9 @@
                             {% for peak in suggested_peaks %}
                             <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-peak-list__item">
                                 <div class="column dashboard-peak-list__details">
-                                    <p class="has-text-weight-bold dashboard-peak-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
+                                    <p class="has-text-weight-bold dashboard-peak-list__name"><a class="dashboard-peak-list__link" href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a> <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
                                     <p class="is-size-7 has-text-grey dashboard-peak-list__meta">{{ peak.county or 'Unknown county' }}</p>
+                                    <p class="is-size-7 dashboard-peak-list__reason">{{ peak.suggestion_reason }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-peak-list__status">
                                     {{ peak_status(peak.user_status) }}
@@ -337,8 +372,9 @@
                             {% for peak in bucket_list_peaks %}
                             <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-bucket-list__item" data-dashboard-bucket-item data-peak-id="{{ peak.id }}">
                                 <div class="column dashboard-bucket-list__details">
-                                    <p class="has-text-weight-bold dashboard-bucket-list__name">{{ peak.name }} <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
-                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">{{ peak.county or 'Unknown county' }}</p>
+                                    <p class="has-text-weight-bold dashboard-bucket-list__name"><a class="dashboard-bucket-list__link" href="{{ url_for('peak_detail', peak_id=peak.id) }}">{{ peak.name }}</a> <span class="has-text-grey is-size-7">({{ (peak.height_m or peak.height) | format_height(current_height_unit, peak.height_ft) }})</span></p>
+                                    <p class="is-size-7 has-text-grey dashboard-bucket-list__meta">{{ peak.county or 'Unknown county' }}{% if peak.province %}, {{ peak.province }}{% endif %}</p>
+                                    <p class="is-size-7 dashboard-bucket-list__added">Added {{ peak.added_relative }}</p>
                                 </div>
                                 <div class="column is-narrow dashboard-bucket-list__status">
                                     {{ peak_status(peak.user_status) }}

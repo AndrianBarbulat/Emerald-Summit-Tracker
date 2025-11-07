@@ -587,6 +587,58 @@
     line-height: 1.6;
 }
 
+.dashboard-community-feed__link {
+    color: var(--color-forest);
+}
+
+.dashboard-community-feed__link:hover {
+    color: var(--color-sage);
+    text-decoration: underline;
+}
+
+.dashboard-achievement-next {
+    background: linear-gradient(180deg, rgba(255, 243, 205, 0.62) 0%, rgba(245, 241, 235, 0.92) 100%);
+    border: 1px solid rgba(221, 170, 34, 0.2);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+    padding: 0.95rem 1rem;
+}
+
+.dashboard-achievement-next--complete {
+    background: linear-gradient(180deg, rgba(216, 243, 220, 0.7) 0%, rgba(245, 241, 235, 0.92) 100%);
+    border-color: rgba(116, 198, 157, 0.24);
+}
+
+.dashboard-achievement-next__eyebrow {
+    color: var(--color-grey);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+.dashboard-achievement-next__title {
+    align-items: center;
+    color: var(--color-forest);
+    display: flex;
+    font-weight: 700;
+    gap: 0.45rem;
+    line-height: 1.5;
+    margin-bottom: 0.65rem;
+}
+
+.dashboard-achievement-next__meta {
+    color: var(--color-slate);
+    line-height: 1.5;
+    margin-bottom: 0;
+}
+
+.dashboard-achievement-next__progress {
+    height: 0.7rem;
+    margin-bottom: 0.55rem;
+}
+
 .dashboard-achievement-grid {
     margin: -0.35rem;
 }
@@ -608,9 +660,42 @@
     padding: 1rem 0.8rem;
 }
 
+.dashboard-achievement-grid__item--earned {
+    background: linear-gradient(180deg, rgba(216, 243, 220, 0.8) 0%, rgba(245, 241, 235, 0.94) 100%);
+    border-color: rgba(116, 198, 157, 0.28);
+}
+
+.dashboard-achievement-grid__item--next {
+    background: linear-gradient(180deg, rgba(255, 243, 205, 0.82) 0%, rgba(245, 241, 235, 0.94) 100%);
+    border-color: rgba(221, 170, 34, 0.28);
+    box-shadow: 0 12px 24px rgba(27, 67, 50, 0.08);
+}
+
+.dashboard-achievement-grid__item--locked {
+    background: linear-gradient(180deg, rgba(248, 249, 250, 0.94) 0%, rgba(241, 243, 245, 0.92) 100%);
+    border-color: rgba(108, 117, 125, 0.12);
+    color: var(--color-grey);
+}
+
+.dashboard-achievement-grid__icon {
+    color: var(--color-forest);
+}
+
+.dashboard-achievement-grid__item--next .dashboard-achievement-grid__icon {
+    color: #b26c00;
+}
+
+.dashboard-achievement-grid__item--locked .dashboard-achievement-grid__icon {
+    color: var(--color-grey);
+}
+
 .dashboard-achievement-grid__label {
     color: var(--color-forest);
     margin-bottom: 0;
+}
+
+.dashboard-achievement-grid__item--locked .dashboard-achievement-grid__label {
+    color: var(--color-grey);
 }
 
 .dashboard-achievement-grid__status,
@@ -620,14 +705,47 @@
     font-weight: 700;
 }
 
+.dashboard-achievement-grid__status--earned {
+    background: rgba(216, 243, 220, 0.95);
+    color: #2d6a4f;
+}
+
+.dashboard-achievement-grid__status--next {
+    background: rgba(255, 243, 205, 0.95);
+    color: #a86a00;
+}
+
+.dashboard-achievement-grid__status--locked {
+    background: rgba(233, 236, 239, 0.95);
+    color: var(--color-grey);
+}
+
 .dashboard-peak-list__name,
 .dashboard-bucket-list__name {
     color: var(--color-forest);
     margin-bottom: 0.2rem;
 }
 
+.dashboard-peak-list__link,
+.dashboard-bucket-list__link {
+    color: inherit;
+}
+
+.dashboard-peak-list__link:hover,
+.dashboard-bucket-list__link:hover {
+    color: var(--color-sage);
+    text-decoration: underline;
+}
+
 .dashboard-peak-list__meta,
 .dashboard-bucket-list__meta {
+    margin-bottom: 0;
+}
+
+.dashboard-peak-list__reason,
+.dashboard-bucket-list__added {
+    color: var(--color-slate);
+    line-height: 1.5;
     margin-bottom: 0;
 }
 
@@ -716,8 +834,11 @@
     .dashboard-timeline__time,
     .dashboard-community-feed__time,
     .dashboard-achievement-grid__label,
+    .dashboard-achievement-next__meta,
     .dashboard-peak-list__meta,
+    .dashboard-peak-list__reason,
     .dashboard-bucket-list__meta,
+    .dashboard-bucket-list__added,
     .dashboard-progress-card__stat-label,
     .dashboard-progress-card__stat-meta,
     .dashboard-province-card__caption,
