@@ -48,6 +48,41 @@
             </div>
         </section>
 
+        <section class="section pt-4 pb-0 dashboard-quick-stats">
+            <div class="container">
+                <div class="dashboard-quick-stats__grid">
+                    <div class="box dashboard-quick-stat">
+                        <div class="dashboard-quick-stat__icon">
+                            <i class="fas fa-mountain"></i>
+                        </div>
+                        <p class="title is-3 dashboard-quick-stat__value">{{ dashboard_quick_stats.peaks_climbed }}</p>
+                        <p class="dashboard-quick-stat__label">Peaks Climbed</p>
+                    </div>
+                    <div class="box dashboard-quick-stat">
+                        <div class="dashboard-quick-stat__icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <p class="title is-3 dashboard-quick-stat__value">{{ dashboard_quick_stats.total_elevation_m }}m</p>
+                        <p class="dashboard-quick-stat__label">Total Elevation</p>
+                    </div>
+                    <div class="box dashboard-quick-stat">
+                        <div class="dashboard-quick-stat__icon">
+                            <i class="fas fa-fire"></i>
+                        </div>
+                        <p class="title is-3 dashboard-quick-stat__value">{{ dashboard_quick_stats.streak_weeks }}</p>
+                        <p class="dashboard-quick-stat__label">Streak</p>
+                    </div>
+                    <div class="box dashboard-quick-stat">
+                        <div class="dashboard-quick-stat__icon">
+                            <i class="fas fa-bookmark"></i>
+                        </div>
+                        <p class="title is-3 dashboard-quick-stat__value">{{ dashboard_quick_stats.bucket_list_count }}</p>
+                        <p class="dashboard-quick-stat__label">Bucket List</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Main Dashboard Grid -->
         <section class="section pt-0 home-dashboard dashboard-page__main">
             <div class="container">

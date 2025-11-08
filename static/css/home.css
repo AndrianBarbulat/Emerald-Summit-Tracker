@@ -9,6 +9,45 @@
     padding-top: 0;
 }
 
+.dashboard-quick-stats {
+    padding-bottom: 1.25rem;
+}
+
+.dashboard-quick-stats__grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-quick-stat {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(245, 241, 235, 0.88) 100%);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 0;
+    min-height: 100%;
+    padding: 1rem 1.1rem;
+}
+
+.dashboard-quick-stat__icon {
+    color: rgba(27, 67, 50, 0.45);
+    font-size: 1.1rem;
+    margin-bottom: 0.7rem;
+}
+
+.dashboard-quick-stat__value {
+    color: var(--color-forest);
+    line-height: 1;
+    margin-bottom: 0.35rem !important;
+}
+
+.dashboard-quick-stat__label {
+    color: var(--color-grey);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 0;
+    text-transform: uppercase;
+}
+
 .dashboard-welcome {
     background: linear-gradient(135deg, rgba(240, 247, 243, 0.98) 0%, rgba(230, 240, 234, 0.96) 100%);
     border-bottom: 1px solid rgba(27, 67, 50, 0.08);
@@ -776,6 +815,10 @@
     .dashboard-grid {
         row-gap: 1rem;
     }
+
+    .dashboard-quick-stats__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media screen and (max-width: 768px) {
@@ -803,6 +846,14 @@
     .dashboard-add-climb-modal__actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .dashboard-quick-stats {
+        padding-top: 1rem;
+    }
+
+    .dashboard-quick-stats__grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .dashboard-streak-banner {
@@ -835,6 +886,7 @@
     .dashboard-community-feed__time,
     .dashboard-achievement-grid__label,
     .dashboard-achievement-next__meta,
+    .dashboard-quick-stat__label,
     .dashboard-peak-list__meta,
     .dashboard-peak-list__reason,
     .dashboard-bucket-list__meta,
@@ -849,6 +901,14 @@
 
     .dashboard-card {
         padding: 1rem;
+    }
+
+    .dashboard-quick-stat {
+        padding: 0.9rem;
+    }
+
+    .dashboard-quick-stat__value {
+        font-size: 1.65rem !important;
     }
 
     .dashboard-add-climb-modal {

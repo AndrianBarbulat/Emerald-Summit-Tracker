@@ -1788,6 +1788,12 @@ def home():
     )
     bucket_list_peaks = _build_dashboard_bucket_preview(bucket_items, decorated_peaks, limit=5)
     dashboard_progress = _build_dashboard_progress_data(climbs, peaks_by_id, total_peaks)
+    dashboard_quick_stats = {
+        "bucket_list_count": len(bucket_items),
+        "peaks_climbed": dashboard_progress.get("completed_count", 0),
+        "streak_weeks": int(dashboard_streak.get("display_weeks") or 0),
+        "total_elevation_m": dashboard_progress.get("total_elevation_m", 0),
+    }
 
     _set_active_page("dashboard")
     return render_template(
@@ -1797,6 +1803,7 @@ def home():
         dashboard_community_activity=dashboard_community_activity,
         dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
+        dashboard_quick_stats=dashboard_quick_stats,
         dashboard_recent_activity=dashboard_recent_activity,
         dashboard_streak=dashboard_streak,
         peak_statuses=peak_statuses,
