@@ -559,6 +559,12 @@ function prependDashboardActivity(activity) {
         return;
     }
 
+    feed.querySelectorAll('[data-dashboard-onboarding-item]').forEach(function(item) {
+        if (item.parentNode) {
+            item.parentNode.removeChild(item);
+        }
+    });
+
     const emptyState = feed.querySelector('[data-dashboard-activity-empty]');
     if (emptyState) {
         emptyState.hidden = true;

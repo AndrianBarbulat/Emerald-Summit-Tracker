@@ -106,7 +106,7 @@
                                         </div>
                                         <span class="tag is-success dashboard-progress-card__status">{{ dashboard_progress.completion_percent }}%</span>
                                         <p class="has-text-grey dashboard-progress-card__caption">Distinct peaks climbed</p>
-                                        <p class="dashboard-progress-card__subcaption">{{ dashboard_progress.remaining_count }} summits left on the full Irish list.</p>
+                                        <p class="dashboard-progress-card__subcaption">{{ dashboard_progress.intro_message }}</p>
                                     </div>
                                     
                                     <!-- Progress Bar -->
@@ -212,18 +212,24 @@
                             
                             <div class="timeline dashboard-timeline" data-dashboard-activity-feed data-dashboard-activity-limit="10">
                                 {% for activity in dashboard_recent_activity %}
-                                <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-timeline__item" data-dashboard-activity-item>
+                                <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-timeline__item" data-dashboard-activity-item{% if dashboard_is_new_user %} data-dashboard-onboarding-item{% endif %}>
                                     <div class="column is-narrow dashboard-timeline__marker">
                                         <span class="tag {{ activity.tag_class }} dashboard-timeline__tag">{{ activity.label }}</span>
                                     </div>
                                     <div class="column dashboard-timeline__content">
                                         {% if activity.href %}
+                                        {% if activity.trigger_modal %}
+                                        <a class="has-text-weight-bold dashboard-timeline__link" href="{{ activity.href }}" data-dashboard-open-climb-modal>{{ activity.name }}</a>
+                                        {% else %}
                                         <a class="has-text-weight-bold dashboard-timeline__link" href="{{ activity.href }}">{{ activity.name }}</a>
+                                        {% endif %}
                                         {% else %}
                                         <span class="has-text-weight-bold">{{ activity.name }}</span>
                                         {% endif %}
                                         - {{ activity.description }}
+                                        {% if activity.activity_time %}
                                         <time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="{{ activity.activity_time or '' }}">{{ activity.activity_time | timeago }}</time>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 {% else %}
@@ -234,7 +240,11 @@
                             </div>
                             
                             <p class="has-text-centered has-text-grey is-size-7 mt-4 dashboard-activity-card__footer">
+                                {% if dashboard_is_new_user %}
+                                A few simple ways to get started.
+                                {% else %}
                                 Showing your latest 10 actions.
+                                {% endif %}
                             </p>
                         </div>
 

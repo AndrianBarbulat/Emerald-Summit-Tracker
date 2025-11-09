@@ -1319,6 +1319,33 @@ def _build_dashboard_streak(climbs: list[dict]) -> dict:
     }
 
 
+def _build_dashboard_onboarding_steps() -> list[dict]:
+    return [
+        {
+            "description": "Find your first summit and see what catches your eye.",
+            "href": url_for("summit_list"),
+            "label": "Step",
+            "name": "Browse Summit List",
+            "tag_class": "is-info",
+        },
+        {
+            "description": "Save a few peaks so your future adventures have a shortlist.",
+            "href": url_for("summit_list"),
+            "label": "Step",
+            "name": "Add to Bucket List",
+            "tag_class": "is-warning",
+        },
+        {
+            "description": "Open the climb modal and celebrate your first summit entry.",
+            "href": "#",
+            "label": "Step",
+            "name": "Log First Climb",
+            "tag_class": "is-success",
+            "trigger_modal": True,
+        },
+    ]
+
+
 def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
     earned_badges = {}
     for badge in badges:
@@ -1428,6 +1455,7 @@ def _build_dashboard_suggestions(
     climbs: list[dict],
     community_climbs: list[dict],
     limit: int = 5,
+    popular_only: bool = False,
 ) -> list[dict]:
     decorated_by_id = {
         _peak_key(peak.get("id")): peak
@@ -1495,6 +1523,22 @@ def _build_dashboard_suggestions(
         reason = f"Popular with the community ({climb_total} recent climb{'s' if climb_total != 1 else ''})"
         if add_suggestion(peak, reason, "popular") and len(suggestions) >= limit:
             return suggestions[:limit]
+
+    if popular_only:
+        if len(suggestions) >= limit:
+            return suggestions[:limit]
+
+        fallback_candidates = sorted(
+            [
+                peak for peak in decorated_peaks
+                if _normalize_peak_status(peak.get("user_status")) != "climbed"
+            ],
+            key=_dashboard_peak_sort_key,
+        )
+        for peak in fallback_candidates:
+            if add_suggestion(peak, "Popular first climbs to get started", "popular_fallback") and len(suggestions) >= limit:
+                break
+        return suggestions[:limit]
 
     latest_climb = climbs[0] if climbs else None
     latest_county = ""
@@ -1768,6 +1812,7 @@ def home():
     climbs = get_user_climbs(user_id)
     bucket_items = get_user_bucket_list(user_id)
     badges = get_user_badges(user_id)
+    is_new_user_dashboard = not climbs and not bucket_items and not badges
     popular_community_climbs = get_community_recent_climbs(limit=250)
     dashboard_community_activity = _build_dashboard_community_feed(
         get_community_recent_climbs_with_profiles(limit=20),
@@ -1777,6 +1822,8 @@ def home():
     )
     dashboard_achievements = _build_dashboard_achievements(badges, len(climbs))
     dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, badges, peaks_by_id)
+    if is_new_user_dashboard:
+        dashboard_recent_activity = _build_dashboard_onboarding_steps()
     dashboard_peak_search_data = _build_dashboard_peak_search_data(decorated_peaks)
     dashboard_streak = _build_dashboard_streak(climbs)
     suggested_peaks = _build_dashboard_suggestions(
@@ -1784,10 +1831,15 @@ def home():
         bucket_items,
         climbs,
         popular_community_climbs,
-        limit=5,
+        limit=3 if is_new_user_dashboard else 5,
+        popular_only=is_new_user_dashboard,
     )
     bucket_list_peaks = _build_dashboard_bucket_preview(bucket_items, decorated_peaks, limit=5)
     dashboard_progress = _build_dashboard_progress_data(climbs, peaks_by_id, total_peaks)
+    if is_new_user_dashboard:
+        dashboard_progress["intro_message"] = "Your adventure starts here. Log your first peak!"
+    else:
+        dashboard_progress["intro_message"] = f"{dashboard_progress.get('remaining_count', 0)} summits left on the full Irish list."
     dashboard_quick_stats = {
         "bucket_list_count": len(bucket_items),
         "peaks_climbed": dashboard_progress.get("completed_count", 0),
@@ -1801,6 +1853,7 @@ def home():
         bucket_list_peaks=bucket_list_peaks,
         dashboard_achievements=dashboard_achievements,
         dashboard_community_activity=dashboard_community_activity,
+        dashboard_is_new_user=is_new_user_dashboard,
         dashboard_peak_search_data=dashboard_peak_search_data,
         dashboard_progress=dashboard_progress,
         dashboard_quick_stats=dashboard_quick_stats,
