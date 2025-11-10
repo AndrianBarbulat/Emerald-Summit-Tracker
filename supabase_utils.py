@@ -684,6 +684,54 @@ def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str,
         return []
 
 
+def get_dashboard_context(user_id: str, community_limit: int = 250) -> Dict[str, Any]:
+    peaks = get_all_peaks()
+    climbs = get_user_climbs(user_id)
+    bucket_items = get_user_bucket_list(user_id)
+    badges = get_user_badges(user_id)
+    community_climbs = get_community_recent_climbs_with_profiles(limit=community_limit)
+
+    peaks_by_id = {
+        peak.get("id"): peak
+        for peak in peaks
+        if peak.get("id") is not None
+    }
+    climbed_peak_ids = {
+        str(climb.get("peak_id"))
+        for climb in climbs
+        if climb.get("peak_id") is not None
+    }
+    bucket_peak_ids = {
+        str(item.get("peak_id"))
+        for item in bucket_items
+        if item.get("peak_id") is not None
+    }
+
+    peak_statuses: Dict[str, str] = {}
+    for peak in peaks:
+        peak_id = peak.get("id")
+        if peak_id is None:
+            continue
+
+        peak_key = str(peak_id)
+        if peak_key in climbed_peak_ids:
+            peak_statuses[peak_key] = "climbed"
+        elif peak_key in bucket_peak_ids:
+            peak_statuses[peak_key] = "bucket_listed"
+        else:
+            peak_statuses[peak_key] = "not_attempted"
+
+    return {
+        "all_peaks": peaks,
+        "badges": badges,
+        "bucket_items": bucket_items,
+        "climbs": climbs,
+        "community_climbs": community_climbs,
+        "peak_statuses": peak_statuses,
+        "peaks_by_id": peaks_by_id,
+    }
+
+
 def get_peak_statuses(user_id: str, peak_ids: List[Any]) -> Dict[str, str]:
     normalized_ids: List[tuple[str, Any]] = []
     seen_ids = set()

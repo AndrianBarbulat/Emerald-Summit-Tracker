@@ -1,4 +1,5 @@
 import re
+import time
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for, g
@@ -11,7 +12,7 @@ from supabase_utils import (
     get_peak_average_difficulty,
     get_peak_count,
     get_community_recent_climbs,
-    get_community_recent_climbs_with_profiles,
+    get_dashboard_context,
     get_peak_by_id,
     get_peak_climbers_with_profiles,
     get_peak_comments_with_profiles,
@@ -1800,22 +1801,21 @@ def home():
     if not context["profile"]:
         return redirect("/")
 
+    start = time.time()
     user_id = context["profile"].get("id")
-    all_peaks = get_all_peaks()
-    peaks_by_id = {peak.get("id"): peak for peak in all_peaks if peak.get("id") is not None}
+    raw_dashboard = get_dashboard_context(user_id)
+    all_peaks = raw_dashboard.get("all_peaks") or []
+    peaks_by_id = raw_dashboard.get("peaks_by_id") or {}
     total_peaks = app.config.get("TOTAL_PEAK_COUNT") or len(all_peaks)
-    peak_statuses = get_peak_statuses(
-        user_id,
-        [peak.get("id") for peak in all_peaks if peak.get("id") is not None],
-    )
+    peak_statuses = raw_dashboard.get("peak_statuses") or {}
     decorated_peaks = _decorate_peaks_with_statuses(all_peaks, peak_statuses)
-    climbs = get_user_climbs(user_id)
-    bucket_items = get_user_bucket_list(user_id)
-    badges = get_user_badges(user_id)
+    climbs = raw_dashboard.get("climbs") or []
+    bucket_items = raw_dashboard.get("bucket_items") or []
+    badges = raw_dashboard.get("badges") or []
+    community_climbs = raw_dashboard.get("community_climbs") or []
     is_new_user_dashboard = not climbs and not bucket_items and not badges
-    popular_community_climbs = get_community_recent_climbs(limit=250)
     dashboard_community_activity = _build_dashboard_community_feed(
-        get_community_recent_climbs_with_profiles(limit=20),
+        community_climbs,
         peaks_by_id,
         user_id,
         limit=6,
@@ -1830,7 +1830,7 @@ def home():
         decorated_peaks,
         bucket_items,
         climbs,
-        popular_community_climbs,
+        community_climbs,
         limit=3 if is_new_user_dashboard else 5,
         popular_only=is_new_user_dashboard,
     )
@@ -1847,21 +1847,24 @@ def home():
         "total_elevation_m": dashboard_progress.get("total_elevation_m", 0),
     }
 
+    dashboard_ctx = {
+        "bucket_list_peaks": bucket_list_peaks,
+        "dashboard_achievements": dashboard_achievements,
+        "dashboard_community_activity": dashboard_community_activity,
+        "dashboard_is_new_user": is_new_user_dashboard,
+        "dashboard_peak_search_data": dashboard_peak_search_data,
+        "dashboard_progress": dashboard_progress,
+        "dashboard_quick_stats": dashboard_quick_stats,
+        "dashboard_recent_activity": dashboard_recent_activity,
+        "dashboard_streak": dashboard_streak,
+        "peak_statuses": peak_statuses,
+        "suggested_peaks": suggested_peaks,
+    }
+
     _set_active_page("dashboard")
-    return render_template(
-        "home.html",
-        bucket_list_peaks=bucket_list_peaks,
-        dashboard_achievements=dashboard_achievements,
-        dashboard_community_activity=dashboard_community_activity,
-        dashboard_is_new_user=is_new_user_dashboard,
-        dashboard_peak_search_data=dashboard_peak_search_data,
-        dashboard_progress=dashboard_progress,
-        dashboard_quick_stats=dashboard_quick_stats,
-        dashboard_recent_activity=dashboard_recent_activity,
-        dashboard_streak=dashboard_streak,
-        peak_statuses=peak_statuses,
-        suggested_peaks=suggested_peaks,
-    )
+    response = render_template("home.html", **dashboard_ctx)
+    print(f"Dashboard: {time.time()-start:.2f}s")
+    return response
 
 
 @app.route("/map")
