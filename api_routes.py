@@ -15,6 +15,7 @@ from supabase_utils import (
     add_to_bucket_list,
     award_badge,
     calculate_climb_streak,
+    clear_shared_data_cache,
     delete_climb,
     delete_comment,
     extract_climb_photo_storage_paths,
@@ -662,6 +663,7 @@ def api_log_climb():
         return _json_error("We couldn't save that climb right now.", 500)
 
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
+    clear_shared_data_cache()
     streak_data = sync_user_current_streak(user_id)
     if streak_data.get("profile") is not None:
         session["profile"] = streak_data["profile"]
@@ -788,6 +790,7 @@ def api_climb(climb_id: int):
             return _json_error("We couldn't delete that climb right now.", 500)
 
         photos_deleted = delete_climb_photo_uploads(photo_storage_paths)
+        clear_shared_data_cache()
         streak_data = sync_user_current_streak(user_id)
         if streak_data.get("profile") is not None:
             session["profile"] = streak_data["profile"]
@@ -826,6 +829,7 @@ def api_climb(climb_id: int):
     if updated_climb is None:
         return _json_error("We couldn't update that climb right now.", 500)
 
+    clear_shared_data_cache()
     streak_data = sync_user_current_streak(user_id)
     if streak_data.get("profile") is not None:
         session["profile"] = streak_data["profile"]

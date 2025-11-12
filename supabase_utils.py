@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote, urlparse
@@ -21,6 +22,20 @@ TABLE_BUCKET_LIST = "bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
 STORAGE_BUCKET_SUMMIT_PHOTOS = os.getenv("SUPABASE_SUMMIT_PHOTOS_BUCKET") or "summit-photos"
+SHARED_CACHE_TTL_SECONDS = 300
+SHARED_COMMUNITY_CACHE_LIMIT = 250
+SHARED_CACHE_KEYS = (
+    "community_feed",
+    "leaderboard_peaks",
+    "leaderboard_elevation",
+    "leaderboard_streaks",
+)
+SHARED_LEADERBOARD_CACHE_KEYS = (
+    "leaderboard_peaks",
+    "leaderboard_elevation",
+    "leaderboard_streaks",
+)
+_SHARED_QUERY_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
 def _build_client() -> Optional[Client]:
@@ -51,6 +66,35 @@ def _storage_bucket(name: str):
         return supabase.storage.from_(name)
     except Exception:
         return None
+
+
+def _cache_is_fresh(entry: Optional[Dict[str, Any]]) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    cached_at = float(entry.get("timestamp") or 0)
+    return (time.time() - cached_at) < SHARED_CACHE_TTL_SECONDS
+
+
+def _get_cached_shared_value(key: str) -> Any:
+    entry = _SHARED_QUERY_CACHE.get(key)
+    if not _cache_is_fresh(entry):
+        return None
+    return entry.get("data")
+
+
+def _set_cached_shared_value(key: str, data: Any, **metadata: Any) -> Any:
+    _SHARED_QUERY_CACHE[key] = {
+        "timestamp": time.time(),
+        "data": data,
+        **metadata,
+    }
+    return data
+
+
+def clear_shared_data_cache(keys: Optional[List[str]] = None) -> None:
+    keys_to_clear = list(keys or SHARED_CACHE_KEYS)
+    for key in keys_to_clear:
+        _SHARED_QUERY_CACHE.pop(str(key or "").strip(), None)
 
 
 def _normalize_photo_urls(value: Any) -> List[str]:
@@ -654,18 +698,7 @@ def get_user_has_climbed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]
         return None
 
 
-def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
-    try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return []
-        response = query.select("*").order("climbed_at", desc=True).limit(limit).execute()
-        return [_normalize_climb_record(climb) for climb in (response.data or [])]
-    except Exception:
-        return []
-
-
-def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str, Any]]:
+def _query_community_recent_climbs_with_profiles(limit: int) -> List[Dict[str, Any]]:
     try:
         query = _table(TABLE_CLIMBS)
         if query is None:
@@ -682,6 +715,233 @@ def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str,
         return normalized_climbs
     except Exception:
         return []
+
+
+def _get_cached_community_feed(limit: int = 10) -> List[Dict[str, Any]]:
+    normalized_limit = max(int(limit or 0), 0)
+    if normalized_limit <= 0:
+        return []
+
+    entry = _SHARED_QUERY_CACHE.get("community_feed") or {}
+    cached_feed = entry.get("data") if _cache_is_fresh(entry) else None
+    cached_limit = int(entry.get("limit") or 0)
+    if isinstance(cached_feed, list) and cached_limit >= normalized_limit:
+        return list(cached_feed[:normalized_limit])
+
+    requested_limit = max(normalized_limit, SHARED_COMMUNITY_CACHE_LIMIT)
+    fresh_feed = _query_community_recent_climbs_with_profiles(requested_limit)
+    _set_cached_shared_value("community_feed", fresh_feed, limit=requested_limit)
+    return list(fresh_feed[:normalized_limit])
+
+
+def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
+    return [
+        _normalize_climb_record(climb)
+        for climb in _get_cached_community_feed(limit)
+    ]
+
+
+def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str, Any]]:
+    normalized_climbs = []
+    for climb in _get_cached_community_feed(limit):
+        current_climb = _normalize_climb_record(climb)
+        current_climb["profile"] = dict(climb.get("profile") or {})
+        current_climb["display_name"] = climb.get("display_name") or current_climb.get("display_name")
+        current_climb["avatar_url"] = climb.get("avatar_url") or current_climb.get("avatar_url")
+        normalized_climbs.append(current_climb)
+    return normalized_climbs
+
+
+def _coerce_float(value: Any) -> Optional[float]:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _timestamp_sort_value(value: Any) -> float:
+    parsed_value = parse_datetime_value(value)
+    if parsed_value is None:
+        return 0.0
+    return parsed_value.timestamp()
+
+
+def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
+    try:
+        climbs_query = _table(TABLE_CLIMBS)
+        profiles_query = _table(TABLE_PROFILES)
+        if climbs_query is None or profiles_query is None:
+            return {key: [] for key in SHARED_LEADERBOARD_CACHE_KEYS}
+
+        climbs_response = climbs_query.select("*").execute()
+        profiles_response = profiles_query.select("*").execute()
+        all_climbs = [_normalize_climb_record(climb) for climb in (climbs_response.data or [])]
+        profiles_by_id = {
+            str(profile.get("id")): dict(profile or {})
+            for profile in (profiles_response.data or [])
+            if profile.get("id") is not None
+        }
+        peaks_by_id = {
+            str(peak.get("id")): peak
+            for peak in get_all_peaks()
+            if peak.get("id") is not None
+        }
+
+        user_stats: Dict[str, Dict[str, Any]] = {}
+        for climb in all_climbs:
+            user_id = str(climb.get("user_id") or "").strip()
+            if not user_id:
+                continue
+
+            profile = profiles_by_id.get(user_id) or {}
+            display_name = (
+                profile.get("display_name")
+                or climb.get("display_name")
+                or user_id[:8]
+            )
+            stats = user_stats.setdefault(
+                user_id,
+                {
+                    "user_id": user_id,
+                    "profile": profile,
+                    "display_name": str(display_name or user_id[:8]).strip() or user_id[:8],
+                    "avatar_url": profile.get("avatar_url"),
+                    "distinct_peak_ids": set(),
+                    "total_climbs": 0,
+                    "total_elevation_m": 0.0,
+                    "climbs": [],
+                    "last_climb_at": None,
+                },
+            )
+            stats["total_climbs"] += 1
+            stats["climbs"].append(climb)
+
+            peak_id = str(climb.get("peak_id") or "").strip()
+            if peak_id and peak_id not in stats["distinct_peak_ids"]:
+                stats["distinct_peak_ids"].add(peak_id)
+                peak = peaks_by_id.get(peak_id) or {}
+                peak_height = _coerce_float(peak.get("height_m") or peak.get("height"))
+                if peak_height is not None:
+                    stats["total_elevation_m"] += peak_height
+
+            climb_time = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+            if _timestamp_sort_value(climb_time) >= _timestamp_sort_value(stats["last_climb_at"]):
+                stats["last_climb_at"] = climb_time
+
+        leaderboard_rows = []
+        for stats in user_stats.values():
+            streak_data = calculate_climb_streak(stats["climbs"])
+            leaderboard_rows.append(
+                {
+                    "user_id": stats["user_id"],
+                    "profile": stats["profile"],
+                    "display_name": stats["display_name"],
+                    "avatar_url": stats["avatar_url"],
+                    "peak_count": len(stats["distinct_peak_ids"]),
+                    "total_climbs": int(stats["total_climbs"] or 0),
+                    "total_elevation_m": int(round(stats["total_elevation_m"] or 0)),
+                    "current_streak": int(streak_data.get("current_streak") or 0),
+                    "last_climb_at": stats["last_climb_at"],
+                }
+            )
+
+        leaderboard_peaks = sorted(
+            leaderboard_rows,
+            key=lambda row: (
+                -int(row.get("peak_count") or 0),
+                -int(row.get("total_climbs") or 0),
+                -_timestamp_sort_value(row.get("last_climb_at")),
+                str(row.get("display_name") or "").lower(),
+            ),
+        )
+        leaderboard_elevation = sorted(
+            leaderboard_rows,
+            key=lambda row: (
+                -int(row.get("total_elevation_m") or 0),
+                -int(row.get("peak_count") or 0),
+                -_timestamp_sort_value(row.get("last_climb_at")),
+                str(row.get("display_name") or "").lower(),
+            ),
+        )
+        leaderboard_streaks = sorted(
+            leaderboard_rows,
+            key=lambda row: (
+                -int(row.get("current_streak") or 0),
+                -int(row.get("peak_count") or 0),
+                -_timestamp_sort_value(row.get("last_climb_at")),
+                str(row.get("display_name") or "").lower(),
+            ),
+        )
+
+        payload: Dict[str, List[Dict[str, Any]]] = {
+            "leaderboard_peaks": [],
+            "leaderboard_elevation": [],
+            "leaderboard_streaks": [],
+        }
+        for key, rows in (
+            ("leaderboard_peaks", leaderboard_peaks),
+            ("leaderboard_elevation", leaderboard_elevation),
+            ("leaderboard_streaks", leaderboard_streaks),
+        ):
+            payload[key] = [
+                {
+                    **row,
+                    "rank": index + 1,
+                }
+                for index, row in enumerate(rows)
+            ]
+        return payload
+    except Exception:
+        return {key: [] for key in SHARED_LEADERBOARD_CACHE_KEYS}
+
+
+def _get_cached_leaderboard_payload() -> Dict[str, List[Dict[str, Any]]]:
+    if all(_cache_is_fresh(_SHARED_QUERY_CACHE.get(key)) for key in SHARED_LEADERBOARD_CACHE_KEYS):
+        return {
+            key: list(_SHARED_QUERY_CACHE.get(key, {}).get("data") or [])
+            for key in SHARED_LEADERBOARD_CACHE_KEYS
+        }
+
+    payload = _build_leaderboard_cache_payload()
+    for key in SHARED_LEADERBOARD_CACHE_KEYS:
+        _set_cached_shared_value(key, payload.get(key) or [])
+    return payload
+
+
+def get_cached_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_peaks") or []
+    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
+    return [
+        {
+            **row,
+            "profile": dict(row.get("profile") or {}),
+        }
+        for row in selected_rows
+    ]
+
+
+def get_cached_leaderboard_elevation(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_elevation") or []
+    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
+    return [
+        {
+            **row,
+            "profile": dict(row.get("profile") or {}),
+        }
+        for row in selected_rows
+    ]
+
+
+def get_cached_leaderboard_streaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_streaks") or []
+    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
+    return [
+        {
+            **row,
+            "profile": dict(row.get("profile") or {}),
+        }
+        for row in selected_rows
+    ]
 
 
 def get_dashboard_context(user_id: str, community_limit: int = 250) -> Dict[str, Any]:
