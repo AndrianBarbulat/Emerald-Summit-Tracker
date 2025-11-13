@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}My Activity | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/my_climbs.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="my-climbs-page my-activity-page">
+    <section class="section my-climbs-header">
+        <div class="container">
+            <div class="my-climbs-header__layout">
+                <div>
+                    <p class="my-climbs-header__eyebrow">Timeline</p>
+                    <h1 class="title is-2 my-climbs-header__title">My Activity</h1>
+                    <p class="my-climbs-header__copy">Your complete climb, bucket list, and badge history in one place.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0 my-climbs-content">
+        <div class="container">
+            <div class="box my-climbs-filter-box">
+                <form method="get" action="{{ url_for('my_activity') }}" class="my-climbs-filter-box__form">
+                    <div class="field">
+                        <label class="label" for="my-activity-type">Activity type</label>
+                        <div class="control">
+                            <div class="select is-fullwidth">
+                                <select id="my-activity-type" name="type">
+                                    {% for option in activity_type_options %}
+                                    <option value="{{ option.value }}"{% if selected_type == option.value %} selected{% endif %}>{{ option.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="my-activity-date-from">From</label>
+                        <div class="control">
+                            <input
+                                id="my-activity-date-from"
+                                class="input"
+                                type="date"
+                                name="date_from"
+                                value="{{ date_from }}"
+                            >
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label" for="my-activity-date-to">To</label>
+                        <div class="control">
+                            <input
+                                id="my-activity-date-to"
+                                class="input"
+                                type="date"
+                                name="date_to"
+                                value="{{ date_to }}"
+                            >
+                        </div>
+                    </div>
+                    <div class="my-climbs-filter-box__actions">
+                        <button type="submit" class="button my-climbs-filter-box__submit">Apply Filters</button>
+                        <a href="{{ url_for('my_activity') }}" class="button is-light">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="box dashboard-card dashboard-activity-card">
+                <div class="is-flex is-justify-content-space-between is-align-items-center mb-4" style="gap: 0.75rem; flex-wrap: wrap;">
+                    <div>
+                        <h2 class="title is-4 mb-1 dashboard-card__title">
+                            <span class="icon has-text-info"><i class="fas fa-history"></i></span>
+                            Activity Feed
+                        </h2>
+                        <p class="has-text-grey is-size-7">
+                            {% if total_filtered_count %}
+                            Showing {{ page_start }}-{{ page_end }} of {{ total_filtered_count }} activities{% if total_filtered_count != total_activity_count %} filtered from {{ total_activity_count }} total{% endif %}.
+                            {% else %}
+                            No activity matched these filters yet.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <a href="{{ url_for('my_climbs') }}" class="button is-light">
+                        <span class="icon"><i class="fas fa-mountain"></i></span>
+                        <span>View My Climbs</span>
+                    </a>
+                </div>
+
+                <div class="timeline dashboard-timeline">
+                    {% for activity in activity_items %}
+                    <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-timeline__item">
+                        <div class="column is-narrow dashboard-timeline__marker">
+                            <span class="tag {{ activity.tag_class }} dashboard-timeline__tag">{{ activity.label }}</span>
+                        </div>
+                        <div class="column dashboard-timeline__content">
+                            {% if activity.href %}
+                            {% if activity.trigger_modal %}
+                            <a class="has-text-weight-bold dashboard-timeline__link" href="{{ activity.href }}" data-dashboard-open-climb-modal>{{ activity.name }}</a>
+                            {% else %}
+                            <a class="has-text-weight-bold dashboard-timeline__link" href="{{ activity.href }}">{{ activity.name }}</a>
+                            {% endif %}
+                            {% else %}
+                            <span class="has-text-weight-bold">{{ activity.name }}</span>
+                            {% endif %}
+                            - {{ activity.description }}
+                            {% if activity.activity_time %}
+                            <time class="has-text-grey is-size-7 ml-2 dashboard-timeline__time" data-timestamp="{{ activity.activity_time or '' }}">{{ activity.activity_time | timeago }}</time>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="dashboard-empty-state">
+                        Try widening your filters, browse the <a class="dashboard-timeline__link" href="{{ url_for('summit_list') }}">Summit List</a>, or log your next climb to build your timeline.
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if total_pages > 1 %}
+                <div class="is-flex is-justify-content-space-between is-align-items-center mt-5" style="gap: 0.75rem; flex-wrap: wrap;">
+                    <p class="has-text-grey is-size-7">Page {{ current_page }} of {{ total_pages }}</p>
+                    <div class="buttons mb-0">
+                        {% if current_page > 1 %}
+                        <a
+                            class="button is-light"
+                            href="{{ url_for('my_activity', type=selected_type if selected_type != 'all' else None, date_from=date_from or None, date_to=date_to or None, page=current_page - 1) }}"
+                        >
+                            Previous
+                        </a>
+                        {% endif %}
+                        {% if current_page < total_pages %}
+                        <a
+                            class="button my-climbs-filter-box__submit"
+                            href="{{ url_for('my_activity', type=selected_type if selected_type != 'all' else None, date_from=date_from or None, date_to=date_to or None, page=current_page + 1) }}"
+                        >
+                            Next
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

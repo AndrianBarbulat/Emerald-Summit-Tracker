@@ -1196,7 +1196,7 @@ def _build_dashboard_activity_items(
     bucket_items: list[dict],
     badges: list[dict],
     peaks_by_id: dict[int, dict],
-    limit: int = 10,
+    limit: int | None = 10,
 ) -> list[dict]:
     activity_items = []
     fallback_date = datetime.min.replace(tzinfo=timezone.utc)
@@ -1279,11 +1279,60 @@ def _build_dashboard_activity_items(
             }
         )
 
-    return sorted(
+    sorted_items = sorted(
         activity_items,
         key=lambda activity: activity.get("timestamp") or fallback_date,
         reverse=True,
-    )[:limit]
+    )
+    if limit is None:
+        return sorted_items
+    return sorted_items[:max(int(limit or 0), 0)]
+
+
+def _filter_dashboard_activity_items(
+    activity_items: list[dict],
+    selected_type: str,
+    date_from: str = "",
+    date_to: str = "",
+) -> list[dict]:
+    normalized_type = str(selected_type or "all").strip().lower() or "all"
+    type_map = {
+        "all": None,
+        "climbs": "climbed",
+        "bucket_list": "bucket_listed",
+        "badges": "badge",
+    }
+    if normalized_type not in type_map:
+        normalized_type = "all"
+
+    try:
+        start_date = datetime.fromisoformat(str(date_from or "").strip()).date() if str(date_from or "").strip() else None
+    except ValueError:
+        start_date = None
+    try:
+        end_date = datetime.fromisoformat(str(date_to or "").strip()).date() if str(date_to or "").strip() else None
+    except ValueError:
+        end_date = None
+
+    if start_date and end_date and start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    target_type = type_map[normalized_type]
+    filtered_items = []
+    for activity in activity_items:
+        if target_type and str(activity.get("type") or "").strip().lower() != target_type:
+            continue
+
+        activity_dt = _parse_datetime(activity.get("activity_time"))
+        activity_date = activity_dt.date() if activity_dt else None
+        if start_date and (activity_date is None or activity_date < start_date):
+            continue
+        if end_date and (activity_date is None or activity_date > end_date):
+            continue
+
+        filtered_items.append(activity)
+
+    return filtered_items
 
 
 def _build_dashboard_streak(climbs: list[dict]) -> dict:
@@ -1937,6 +1986,70 @@ def my_climbs():
         search_query=search_query,
         selected_month=selected_month,
         selected_year=selected_year,
+    )
+
+
+@app.route("/my-activity")
+def my_activity():
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
+    user_id = context["profile"].get("id")
+    selected_type = (request.args.get("type") or "all").strip().lower() or "all"
+    date_from = (request.args.get("date_from") or "").strip()
+    date_to = (request.args.get("date_to") or "").strip()
+
+    try:
+        current_page = max(int(request.args.get("page") or 1), 1)
+    except (TypeError, ValueError):
+        current_page = 1
+
+    raw_dashboard = get_dashboard_context(user_id, community_limit=0)
+    all_activity = _build_dashboard_activity_items(
+        raw_dashboard.get("climbs") or [],
+        raw_dashboard.get("bucket_items") or [],
+        raw_dashboard.get("badges") or [],
+        raw_dashboard.get("peaks_by_id") or {},
+        limit=None,
+    )
+    filtered_activity = _filter_dashboard_activity_items(
+        all_activity,
+        selected_type,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+    per_page = 50
+    filtered_total = len(filtered_activity)
+    total_pages = max(1, (filtered_total + per_page - 1) // per_page) if filtered_total else 1
+    current_page = min(current_page, total_pages)
+    start_index = (current_page - 1) * per_page
+    end_index = start_index + per_page
+    paginated_activity = filtered_activity[start_index:end_index]
+
+    activity_type_options = [
+        {"value": "all", "label": "All activity"},
+        {"value": "climbs", "label": "Climbs"},
+        {"value": "bucket_list", "label": "Bucket List"},
+        {"value": "badges", "label": "Badges"},
+    ]
+
+    _set_active_page("dashboard")
+    return render_template(
+        "my_activity.html",
+        activity_items=paginated_activity,
+        activity_type_options=activity_type_options,
+        current_page=current_page,
+        date_from=date_from,
+        date_to=date_to,
+        page_end=min(end_index, filtered_total),
+        page_start=(start_index + 1) if filtered_total else 0,
+        per_page=per_page,
+        selected_type=selected_type if selected_type in {option["value"] for option in activity_type_options} else "all",
+        total_activity_count=len(all_activity),
+        total_filtered_count=filtered_total,
+        total_pages=total_pages,
     )
 
 
