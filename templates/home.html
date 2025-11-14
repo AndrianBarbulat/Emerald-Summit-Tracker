@@ -34,10 +34,15 @@
                                 <span class="icon"><i class="fas fa-plus"></i></span>
                                 <span>Add Climbed Peak</span>
                             </button>
-                            <a class="button is-info dashboard-welcome__button" href="{{ url_for('summit_list') }}">
-                                <span class="icon"><i class="fas fa-mountain"></i></span>
-                                <span>Summit List</span>
-                            </a>
+                            <div class="dashboard-welcome__action-group dashboard-welcome__action-group--summits">
+                                <a class="button is-info dashboard-welcome__button" href="{{ url_for('summit_list') }}">
+                                    <span class="icon"><i class="fas fa-mountain"></i></span>
+                                    <span>Summit List</span>
+                                </a>
+                                <p class="dashboard-welcome__hint">
+                                    {{ dashboard_progress.completed_count }}/{{ dashboard_progress.total_peaks }} peaks explored
+                                </p>
+                            </div>
                             <a class="button is-info is-outlined dashboard-welcome__button" href="{{ url_for('my_bucket_list') }}">
                                 <span class="icon"><i class="fas fa-list"></i></span>
                                 <span>View My List</span>
@@ -436,6 +441,49 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if dashboard_recently_viewed_peaks %}
+                    <div class="column is-12 dashboard-grid__recent">
+                        <div class="box dashboard-card dashboard-recently-viewed-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
+                                <span class="icon has-text-info"><i class="fas fa-clock-rotate-left"></i></span>
+                                Recently Viewed Peaks
+                            </h2>
+
+                            <div class="dashboard-recently-viewed-grid">
+                                {% for peak in dashboard_recently_viewed_peaks %}
+                                <a class="dashboard-recently-viewed-item" href="{{ url_for('peak_detail', peak_id=peak.id) }}">
+                                    <div class="dashboard-recently-viewed-item__content">
+                                        <div class="dashboard-recently-viewed-item__header">
+                                            <p class="dashboard-recently-viewed-item__name">{{ peak.name }}</p>
+                                            <div class="dashboard-recently-viewed-item__status">
+                                                {{ peak_status(peak.user_status) }}
+                                            </div>
+                                        </div>
+                                        <p class="dashboard-recently-viewed-item__meta">
+                                            {% if peak.height_m or peak.height_ft %}
+                                            {{ peak.height_m | format_height(current_height_unit, peak.height_ft) }}
+                                            {% endif %}
+                                            {% if peak.county or peak.province %}
+                                            <span>&middot;</span>
+                                            {{ peak.county or 'Unknown county' }}{% if peak.province %}, {{ peak.province }}{% endif %}
+                                            {% endif %}
+                                        </p>
+                                        {% if peak.viewed_at %}
+                                        <p class="dashboard-recently-viewed-item__time">
+                                            Viewed <time data-timestamp="{{ peak.viewed_at or '' }}">{{ peak.viewed_at | timeago }}</time>
+                                        </p>
+                                        {% endif %}
+                                    </div>
+                                    <span class="icon dashboard-recently-viewed-item__arrow">
+                                        <i class="fas fa-arrow-right"></i>
+                                    </span>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>

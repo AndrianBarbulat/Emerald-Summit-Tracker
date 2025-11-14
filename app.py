@@ -48,6 +48,8 @@ DASHBOARD_BADGE_RULES = [
     {"key": "fifty_climbs", "label": "50 Summits", "threshold": 50, "icon": "fa-fire"},
     {"key": "hundred_climbs", "label": "100 Summits", "threshold": 100, "icon": "fa-crown"},
 ]
+RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
+RECENTLY_VIEWED_LIMIT = 3
 
 
 def get_session_context() -> dict:
@@ -1034,6 +1036,89 @@ def _decorate_peaks_with_statuses(peaks: list[dict], peak_statuses: dict[str, st
     return decorated_peaks
 
 
+def _track_recently_viewed_peak(peak: dict | None) -> None:
+    if not isinstance(peak, dict):
+        return
+
+    peak_id = peak.get("id")
+    peak_key = _peak_key(peak_id)
+    if not peak_key:
+        return
+
+    existing_entries = session.get(RECENTLY_VIEWED_SESSION_KEY)
+    recent_entries = existing_entries if isinstance(existing_entries, list) else []
+    filtered_entries = []
+    for entry in recent_entries:
+        if not isinstance(entry, dict):
+            continue
+        entry_peak_key = _peak_key(entry.get("peak_id"))
+        if not entry_peak_key or entry_peak_key == peak_key:
+            continue
+        filtered_entries.append(
+            {
+                "peak_id": entry.get("peak_id"),
+                "viewed_at": entry.get("viewed_at"),
+            }
+        )
+
+    filtered_entries.insert(
+        0,
+        {
+            "peak_id": peak_id,
+            "viewed_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    session[RECENTLY_VIEWED_SESSION_KEY] = filtered_entries[:RECENTLY_VIEWED_LIMIT]
+    session.modified = True
+
+
+def _build_recently_viewed_peak_entries(
+    peaks_by_id: dict[int, dict],
+    peak_statuses: dict[str, str] | None = None,
+) -> list[dict]:
+    stored_entries = session.get(RECENTLY_VIEWED_SESSION_KEY)
+    recent_entries = stored_entries if isinstance(stored_entries, list) else []
+    if not recent_entries:
+        return []
+
+    peaks_by_key = {
+        _peak_key(peak_id): peak
+        for peak_id, peak in (peaks_by_id or {}).items()
+    }
+    normalized_statuses = peak_statuses or {}
+    entries = []
+    seen_peak_keys = set()
+
+    for entry in recent_entries:
+        if not isinstance(entry, dict):
+            continue
+
+        peak_key = _peak_key(entry.get("peak_id"))
+        peak = peaks_by_key.get(peak_key)
+        if not peak or peak_key in seen_peak_keys:
+            continue
+
+        seen_peak_keys.add(peak_key)
+        height_m = _to_float(peak.get("height_m") or peak.get("height"))
+        height_ft = _to_float(peak.get("height_ft"))
+        viewed_at = entry.get("viewed_at")
+        entries.append(
+            {
+                "id": peak.get("id"),
+                "name": peak.get("name") or f"Peak #{peak.get('id')}",
+                "county": peak.get("county"),
+                "province": peak.get("province"),
+                "height_m": int(round(height_m)) if height_m is not None else None,
+                "height_ft": int(round(height_ft)) if height_ft is not None else None,
+                "user_status": _normalize_peak_status(normalized_statuses.get(peak_key)),
+                "viewed_at": viewed_at,
+                "viewed_relative": _relative_time(viewed_at) if viewed_at else "",
+            }
+        )
+
+    return entries[:RECENTLY_VIEWED_LIMIT]
+
+
 def _build_map_peaks(peaks: list[dict], peak_statuses: dict[str, str] | None = None) -> list[dict]:
     map_peaks = []
     peak_statuses = peak_statuses or {}
@@ -1895,6 +1980,7 @@ def home():
         "streak_weeks": int(dashboard_streak.get("display_weeks") or 0),
         "total_elevation_m": dashboard_progress.get("total_elevation_m", 0),
     }
+    dashboard_recently_viewed_peaks = _build_recently_viewed_peak_entries(peaks_by_id, peak_statuses)
 
     dashboard_ctx = {
         "bucket_list_peaks": bucket_list_peaks,
@@ -1905,6 +1991,7 @@ def home():
         "dashboard_progress": dashboard_progress,
         "dashboard_quick_stats": dashboard_quick_stats,
         "dashboard_recent_activity": dashboard_recent_activity,
+        "dashboard_recently_viewed_peaks": dashboard_recently_viewed_peaks,
         "dashboard_streak": dashboard_streak,
         "peak_statuses": peak_statuses,
         "suggested_peaks": suggested_peaks,
@@ -2122,6 +2209,7 @@ def logout():
             app.logger.warning("Supabase sign out failed: %s", exc)
     session.pop("user", None)
     session.pop("profile", None)
+    session.pop(RECENTLY_VIEWED_SESSION_KEY, None)
     print("User logged out")
     return redirect("/")
 
@@ -2156,6 +2244,7 @@ def peak_detail(peak_id: int):
     peak = get_peak_by_id(peak_id)
     if peak is None:
         abort(404)
+    _track_recently_viewed_peak(peak)
 
     user_id = context["profile"].get("id") if context["profile"] else None
     has_climbed = False
