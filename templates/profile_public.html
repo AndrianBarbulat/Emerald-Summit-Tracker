@@ -2,64 +2,263 @@
 
 {% block title %}{{ public_profile.display_name or "Climber" }} | Emerald Peak Explorer{% endblock %}
 
+{% block extra_css %}
+{% if current_profile_view == 'map' and public_profile_map.markers %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/my_climbs.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile_public.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+{% if current_profile_view == 'map' and public_profile_map.markers %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    window.myClimbsMapData = {{ public_profile_map.markers | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
+{% endif %}
+{% endblock %}
+
 {% block content %}
-<section class="section peak-detail-page">
-    <div class="container">
-        <div class="box peak-detail-section">
-            <div class="peak-detail-section__header">
-                <div>
-                    <p class="peak-detail-section__eyebrow">Profile</p>
-                    <h1 class="title is-3 peak-detail-section__title">{{ public_profile.display_name or "Climber" }}</h1>
+{% set weather_icons = {
+    'sunny': 'fa-sun',
+    'cloudy': 'fa-cloud-sun',
+    'overcast': 'fa-cloud',
+    'rainy': 'fa-cloud-rain',
+    'windy': 'fa-wind',
+    'snowy': 'fa-snowflake',
+    'foggy': 'fa-smog',
+    'mixed': 'fa-cloud-sun-rain'
+} %}
+
+<div class="public-profile-page my-climbs-page">
+    <section class="section public-profile-hero">
+        <div class="container">
+            <div class="public-profile-hero__card">
+                {% if is_private_profile %}
+                <div class="public-profile-private">
+                    <div class="public-profile-private__title-row">
+                        <h1 class="title is-2 public-profile-private__title">{{ public_profile.display_name or "Climber" }}</h1>
+                        <span class="icon public-profile-private__lock"><i class="fas fa-lock"></i></span>
+                    </div>
+                    <p class="public-profile-private__message">This climber’s profile is private.</p>
                 </div>
-                {% if is_profile_owner %}
-                <a href="/account" class="button is-light">Account Settings</a>
+                {% else %}
+                <div class="public-profile-hero__layout">
+                    <div class="public-profile-hero__identity">
+                        <div class="public-profile-hero__avatar">
+                            {% if public_profile.avatar_url %}
+                            <img src="{{ public_profile.avatar_url }}" alt="{{ public_profile.display_name or 'Climber' }} avatar">
+                            {% else %}
+                            <span class="icon"><i class="fas fa-user-circle"></i></span>
+                            {% endif %}
+                        </div>
+                        <div class="public-profile-hero__copy">
+                            <p class="public-profile-hero__eyebrow">Climber Profile</p>
+                            <h1 class="title is-2 public-profile-hero__title">{{ public_profile.display_name or "Climber" }}</h1>
+                            <div class="public-profile-hero__meta">
+                                {% if public_profile.location %}
+                                <span><i class="fas fa-location-dot"></i> {{ public_profile.location }}</span>
+                                {% endif %}
+                                {% if public_profile_stats.member_since_label %}
+                                <span><i class="fas fa-calendar-alt"></i> Member since {{ public_profile_stats.member_since_label }}</span>
+                                {% endif %}
+                            </div>
+                            {% if public_profile.bio %}
+                            <p class="public-profile-hero__bio">{{ public_profile.bio }}</p>
+                            {% else %}
+                            <p class="public-profile-hero__bio public-profile-hero__bio--muted">This climber has not added a public bio yet.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if is_profile_owner %}
+                    <div class="public-profile-hero__actions">
+                        <a href="{{ url_for('account_settings') }}" class="button public-profile-hero__button">
+                            <span class="icon"><i class="fas fa-pen"></i></span>
+                            <span>Edit Profile</span>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    {% if not is_private_profile %}
+    <section class="section pt-0 public-profile-content">
+        <div class="container">
+            <div class="public-profile-stats">
+                <article class="box public-profile-stat">
+                    <p class="public-profile-stat__label">Peaks Climbed</p>
+                    <p class="public-profile-stat__value">{{ public_profile_stats.peaks_climbed }}</p>
+                </article>
+                <article class="box public-profile-stat">
+                    <p class="public-profile-stat__label">Total Elevation</p>
+                    <p class="public-profile-stat__value">{{ public_profile_stats.total_elevation_m | format_height(current_height_unit, public_profile_stats.total_elevation_ft) }}</p>
+                </article>
+                <article class="box public-profile-stat">
+                    <p class="public-profile-stat__label">Highest Peak</p>
+                    <p class="public-profile-stat__value public-profile-stat__value--text">
+                        {% if public_profile_stats.highest_peak %}
+                        <a href="{{ url_for('peak_detail', peak_id=public_profile_stats.highest_peak.peak_id) }}">{{ public_profile_stats.highest_peak.name }}</a>
+                        {% else %}
+                        No climbs yet
+                        {% endif %}
+                    </p>
+                </article>
+                <article class="box public-profile-stat">
+                    <p class="public-profile-stat__label">Favourite Province</p>
+                    <p class="public-profile-stat__value public-profile-stat__value--text">
+                        {% if public_profile_stats.favourite_province %}
+                        {{ public_profile_stats.favourite_province.name }} <span class="public-profile-stat__subvalue">({{ public_profile_stats.favourite_province.count }})</span>
+                        {% else %}
+                        No climbs yet
+                        {% endif %}
+                    </p>
+                </article>
+            </div>
+
+            <div class="box public-profile-badges">
+                <div class="public-profile-section__head">
+                    <div>
+                        <p class="public-profile-section__eyebrow">Achievements</p>
+                        <h2 class="title is-4 public-profile-section__title">Earned Badges</h2>
+                    </div>
+                </div>
+
+                {% if public_profile_badges %}
+                <div class="public-profile-badges__row">
+                    {% for badge in public_profile_badges %}
+                    <div class="public-profile-badge" title="{{ badge.label }}{% if badge.earned_label %} - {{ badge.earned_label }}{% endif %}">
+                        <span class="icon public-profile-badge__icon"><i class="fas {{ badge.icon }}"></i></span>
+                        <span class="public-profile-badge__label">{{ badge.label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="public-profile-badges__empty">No badges earned yet.</p>
                 {% endif %}
             </div>
 
-            <div class="columns is-variable is-6 is-multiline">
-                <div class="column is-12-tablet is-4-desktop">
-                    <div class="peak-detail-card peak-detail-card__stats">
-                        <div class="peak-detail-stat peak-detail-stat--wide">
-                            <span class="peak-detail-stat__label">Display Name</span>
-                            <span class="peak-detail-stat__value">{{ public_profile.display_name or "-" }}</span>
-                        </div>
-                        <div class="peak-detail-stat">
-                            <span class="peak-detail-stat__label">Location</span>
-                            <span class="peak-detail-stat__value">{{ public_profile.location or "-" }}</span>
-                        </div>
-                        <div class="peak-detail-stat peak-detail-stat--wide">
-                            <span class="peak-detail-stat__label">Website</span>
-                            <span class="peak-detail-stat__value">
-                                {% if public_profile.website %}
-                                <a href="{{ public_profile.website }}" target="_blank" rel="noreferrer noopener">{{ public_profile.website }}</a>
-                                {% else %}
-                                -
-                                {% endif %}
-                            </span>
-                        </div>
+            <div class="box public-profile-history">
+                <div class="public-profile-section__head">
+                    <div>
+                        <p class="public-profile-section__eyebrow">History</p>
+                        <h2 class="title is-4 public-profile-section__title">Recent Climbs</h2>
+                    </div>
+                    <div class="buttons my-climbs-header__views public-profile-history__toggle">
+                        <a
+                            href="{{ url_for('public_profile', display_name=public_profile.display_name, view='list') }}"
+                            class="button my-climbs-view-toggle{% if current_profile_view == 'list' %} is-active{% endif %}"
+                        >
+                            <span class="icon"><i class="fas fa-list"></i></span>
+                            <span>Last 20 Climbs</span>
+                        </a>
+                        <a
+                            href="{{ url_for('public_profile', display_name=public_profile.display_name, view='map') }}"
+                            class="button my-climbs-view-toggle{% if current_profile_view == 'map' %} is-active{% endif %}"
+                        >
+                            <span class="icon"><i class="fas fa-map-location-dot"></i></span>
+                            <span>Map View</span>
+                        </a>
                     </div>
                 </div>
 
-                <div class="column is-12-tablet is-8-desktop">
-                    <div class="peak-detail-card">
-                        <div class="peak-detail-section__header">
-                            <div>
-                                <p class="peak-detail-section__eyebrow">About</p>
-                                <h2 class="title is-5 peak-detail-section__title">Climber Bio</h2>
+                {% if current_profile_view == 'map' %}
+                    {% if public_profile_map.markers %}
+                    <div class="box my-climbs-map-panel public-profile-history__map-panel">
+                        <div class="my-climbs-map-shell">
+                            <div class="my-climbs-map-summary">
+                                <p class="my-climbs-map-summary__eyebrow">Climb Overview</p>
+                                <p class="my-climbs-map-summary__value">
+                                    {{ public_profile_map.unique_peaks }} peak{% if public_profile_map.unique_peaks != 1 %}s{% endif %} climbed
+                                </p>
+                                <p class="my-climbs-map-summary__meta">
+                                    {{ public_profile_stats.total_elevation_m | format_height(current_height_unit, public_profile_stats.total_elevation_ft) }} total elevation
+                                </p>
+                                <div
+                                    class="my-climbs-map-summary__progress"
+                                    role="progressbar"
+                                    aria-label="Peak completion progress"
+                                    aria-valuemin="0"
+                                    aria-valuemax="{{ public_profile_map.total_peaks or 1 }}"
+                                    aria-valuenow="{{ public_profile_map.unique_peaks }}"
+                                >
+                                    <span
+                                        class="my-climbs-map-summary__progress-fill"
+                                        style="width: {{ public_profile_map.completion_percent }}%;"
+                                    ></span>
+                                </div>
                             </div>
+                            <div id="public-profile-map" class="my-climbs-map" data-my-climbs-map></div>
                         </div>
-
-                        {% if public_profile.bio %}
-                        <div class="content">
-                            <p>{{ public_profile.bio }}</p>
-                        </div>
-                        {% else %}
-                        <p class="has-text-grey">This climber has not added a public bio yet.</p>
-                        {% endif %}
                     </div>
-                </div>
+                    {% else %}
+                    <div class="my-climbs-empty-state">
+                        <span class="icon my-climbs-empty-state__icon"><i class="fas fa-map-location-dot"></i></span>
+                        <h2 class="title is-4">No climbs to map yet</h2>
+                        <p class="has-text-grey">This climber has not logged any summits yet.</p>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    {% if public_profile_recent_climbs %}
+                    <div class="public-profile-climb-list">
+                        {% for climb in public_profile_recent_climbs %}
+                        <article class="public-profile-climb-card">
+                            <div class="public-profile-climb-card__top">
+                                <div>
+                                    <p class="public-profile-climb-card__date">{{ climb.date_label }}</p>
+                                    <h3 class="public-profile-climb-card__name">
+                                        <a href="{{ url_for('peak_detail', peak_id=climb.peak_id) }}">{{ climb.peak_name }}</a>
+                                    </h3>
+                                </div>
+                                {% if climb.weather %}
+                                <span class="public-profile-climb-card__weather" title="{{ climb.weather | title }}">
+                                    <i class="fas {{ weather_icons.get(climb.weather, 'fa-cloud') }}"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="public-profile-climb-card__meta">
+                                {% if climb.height_m or climb.height_ft %}
+                                {{ climb.height_m | format_height(current_height_unit, climb.height_ft) }}
+                                {% endif %}
+                                {% if climb.peak_county or climb.peak_province %}
+                                <span>&middot;</span>
+                                {{ climb.peak_county or 'Unknown county' }}{% if climb.peak_province %}, {{ climb.peak_province }}{% endif %}
+                                {% endif %}
+                                {% if climb.date_climbed %}
+                                <span>&middot;</span>
+                                <time data-timestamp="{{ climb.date_climbed or '' }}">{{ climb.date_climbed | timeago }}</time>
+                                {% endif %}
+                            </p>
+                            {% if climb.difficulty_stars %}
+                            <div class="public-profile-climb-card__stars" aria-label="Difficulty {{ climb.difficulty_rating }}">
+                                {% for star_number in range(1, 6) %}
+                                <span class="public-profile-climb-card__star{% if star_number <= climb.difficulty_stars %} is-filled{% endif %}">
+                                    <i class="fas fa-star"></i>
+                                </span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if climb.notes %}
+                            <p class="public-profile-climb-card__notes">{{ climb.notes_preview }}</p>
+                            {% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="my-climbs-empty-state">
+                        <span class="icon my-climbs-empty-state__icon"><i class="fas fa-mountain"></i></span>
+                        <h2 class="title is-4">No climbs shared yet</h2>
+                        <p class="has-text-grey">This climber has not logged any summits yet.</p>
+                    </div>
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
-    </div>
-</section>
+    </section>
+    {% endif %}
+</div>
 {% endblock %}

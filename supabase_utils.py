@@ -326,14 +326,42 @@ def update_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str
 
 
 def get_profile_by_display_name(display_name: str) -> Optional[Dict[str, Any]]:
+    normalized_display_name = str(display_name or "").strip()
+    if not normalized_display_name:
+        return None
+
     try:
         query = _table(TABLE_PROFILES)
         if query is None:
             return None
-        response = query.select("*").eq("display_name", display_name).limit(1).execute()
+        response = query.select("*").eq("display_name", normalized_display_name).limit(1).execute()
         return response.data[0] if response.data else None
     except Exception:
+        pass
+
+    try:
+        query = _table(TABLE_PROFILES)
+        if query is None:
+            return None
+        response = query.select("*").ilike("display_name", normalized_display_name).limit(1).execute()
+        if response.data:
+            return response.data[0]
+    except Exception:
+        pass
+
+    try:
+        query = _table(TABLE_PROFILES)
+        if query is None:
+            return None
+        response = query.select("*").execute()
+        normalized_key = normalized_display_name.lower()
+        for profile in (response.data or []):
+            if str(profile.get("display_name") or "").strip().lower() == normalized_key:
+                return profile
+    except Exception:
         return None
+
+    return None
 
 
 def create_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:

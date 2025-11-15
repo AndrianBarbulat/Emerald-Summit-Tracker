@@ -588,6 +588,70 @@ def _build_my_climb_stats(climbs: list[dict]) -> dict:
     }
 
 
+def _build_public_profile_stats(profile_record: dict, climbs: list[dict], peaks_by_id: dict[int, dict], total_peaks: int) -> dict:
+    progress = _build_dashboard_progress_data(climbs, peaks_by_id, total_peaks)
+    province_breakdown = progress.get("province_breakdown") or []
+    favourite_province = None
+    for province in province_breakdown:
+        if int(province.get("count") or 0) <= 0:
+            continue
+        if favourite_province is None or int(province.get("count") or 0) > int(favourite_province.get("count") or 0):
+            favourite_province = province
+
+    member_since_raw = (
+        profile_record.get("created_at")
+        or profile_record.get("inserted_at")
+        or profile_record.get("updated_at")
+    )
+    highest_peak = progress.get("highest_peak")
+
+    return {
+        "member_since": member_since_raw,
+        "member_since_label": _format_short_date(member_since_raw) if member_since_raw else None,
+        "peaks_climbed": progress.get("completed_count", 0),
+        "total_elevation_m": progress.get("total_elevation_m", 0),
+        "total_elevation_ft": progress.get("total_elevation_ft", 0),
+        "highest_peak": highest_peak,
+        "favourite_province": favourite_province,
+    }
+
+
+def _build_public_profile_badges(badges: list[dict]) -> list[dict]:
+    icon_lookup = {
+        rule["key"]: rule["icon"]
+        for rule in DASHBOARD_BADGE_RULES
+    }
+    unique_badges = {}
+    for badge in badges:
+        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        if not badge_key or badge_key in unique_badges:
+            continue
+        earned_at = (
+            badge.get("created_at")
+            or badge.get("awarded_at")
+            or badge.get("inserted_at")
+            or badge.get("updated_at")
+        )
+        unique_badges[badge_key] = {
+            "key": badge_key,
+            "label": (
+                str(badge.get("label") or badge.get("badge_label") or "").strip()
+                or BADGE_LABELS.get(badge_key)
+                or badge_key.replace("_", " ").title()
+            ),
+            "icon": icon_lookup.get(badge_key, "fa-award"),
+            "earned_at": earned_at,
+            "earned_label": _format_short_date(earned_at) if earned_at else None,
+            "earned_sort": _parse_datetime(earned_at) or datetime.min.replace(tzinfo=timezone.utc),
+        }
+
+    return sorted(
+        unique_badges.values(),
+        key=lambda badge: badge.get("earned_sort") or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+
+
 def _build_dashboard_progress_data(climbs: list[dict], peaks_by_id: dict, total_peaks: int) -> dict:
     province_order = ("Munster", "Leinster", "Ulster", "Connacht")
     province_lookup = {province.lower(): province for province in province_order}
@@ -2312,15 +2376,60 @@ def public_profile(display_name: str):
         abort(404)
 
     current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
-    is_owner = bool(current_user_id and str(profile_record.get("id") or "") == current_user_id)
-    if not is_owner and not _is_profile_public(profile_record):
-        abort(404)
+    profile_user_id = str(profile_record.get("id") or "").strip()
+    is_owner = bool(current_user_id and profile_user_id == current_user_id)
+    is_private_profile = bool(not is_owner and not _is_profile_public(profile_record))
+    current_view = "map" if (request.args.get("view") or "").strip().lower() == "map" else "list"
+
+    public_climbs = []
+    recent_climbs = []
+    member_since_raw = (
+        profile_record.get("created_at")
+        or profile_record.get("inserted_at")
+        or profile_record.get("updated_at")
+    )
+    public_profile_stats = {
+        "favourite_province": None,
+        "highest_peak": None,
+        "member_since": member_since_raw,
+        "member_since_label": _format_short_date(member_since_raw) if member_since_raw else None,
+        "peaks_climbed": 0,
+        "total_elevation_ft": 0,
+        "total_elevation_m": 0,
+    }
+    public_profile_badges = []
+    public_profile_map = {
+        "markers": [],
+        "unique_peaks": 0,
+        "total_peaks": int(app.config.get("TOTAL_PEAK_COUNT") or 0),
+        "completion_percent": 0,
+    }
+
+    if not is_private_profile and profile_user_id:
+        all_peaks = get_all_peaks()
+        peaks_by_id = {
+            peak.get("id"): peak
+            for peak in all_peaks
+            if peak.get("id") is not None
+        }
+        public_climbs = _build_my_climb_entries(get_user_climb_history(profile_user_id))
+        recent_climbs = public_climbs[:20]
+        total_peaks = int(app.config.get("TOTAL_PEAK_COUNT") or 0) or len(all_peaks)
+        public_profile_stats = _build_public_profile_stats(profile_record, public_climbs, peaks_by_id, total_peaks)
+        public_profile_badges = _build_public_profile_badges(get_user_badges(profile_user_id))
+        public_profile_map = _build_my_climb_map_data(public_climbs, total_peaks)
 
     _set_active_page("profile")
     return render_template(
         "profile_public.html",
+        current_profile_view=current_view,
         public_profile=profile_record,
+        public_profile_badges=public_profile_badges,
+        public_profile_map=public_profile_map,
+        public_profile_recent_climbs=recent_climbs,
+        public_profile_stats=public_profile_stats,
         is_profile_owner=is_owner,
+        is_private_profile=is_private_profile,
     )
 
 
