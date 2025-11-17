@@ -2441,7 +2441,7 @@ def account_settings():
         return redirect("/")
 
     _set_active_page("account")
-    return render_template("account_settings.html")
+    return render_template("account_profile.html")
 
 
 @app.errorhandler(404)

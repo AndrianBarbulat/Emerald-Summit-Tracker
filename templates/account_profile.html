@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}Account Settings | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/account_profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="account-page">
+    <section class="section account-page__header">
+        <div class="container">
+            <nav class="breadcrumb" aria-label="breadcrumbs">
+                <ul>
+                    <li><a href="{{ url_for('home') }}">Home</a></li>
+                    <li class="is-active"><a href="#" aria-current="page">Account Settings</a></li>
+                </ul>
+            </nav>
+            <div class="account-page__hero">
+                <div>
+                    <p class="account-page__eyebrow">Profile Settings</p>
+                    <h1 class="title is-2 account-page__title">Account Settings</h1>
+                    <p class="subtitle is-5 account-page__subtitle">Update how your profile appears across the dashboard, community feed, and peak pages.</p>
+                </div>
+                <a href="{{ url_for('my_profile') }}" class="button account-page__profile-link">
+                    <span class="icon"><i class="fas fa-user"></i></span>
+                    <span>View My Profile</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0">
+        <div class="container">
+            <div class="columns is-variable is-5">
+                <div class="column is-12-tablet is-7-desktop">
+                    <div class="box account-card">
+                        <div class="account-card__head">
+                            <div>
+                                <p class="account-card__eyebrow">Public Profile</p>
+                                <h2 class="title is-4 account-card__title">Edit Your Details</h2>
+                            </div>
+                        </div>
+
+                        <form class="account-profile-form" data-account-profile-form novalidate>
+                            <div class="account-profile-form__avatar-row">
+                                <div class="account-avatar-preview" data-account-avatar-preview>
+                                    <img
+                                        {% if profile.avatar_url %}src="{{ profile.avatar_url }}"{% endif %}
+                                        alt="Profile avatar preview"
+                                        data-account-avatar-image
+                                        {% if not profile.avatar_url %}hidden{% endif %}
+                                    >
+                                    <span class="icon account-avatar-preview__icon" data-account-avatar-icon{% if profile.avatar_url %} hidden{% endif %}>
+                                        <i class="fas fa-user-circle"></i>
+                                    </span>
+                                </div>
+
+                                <div class="field account-profile-form__avatar-field">
+                                    <label class="label" for="account-avatar">Avatar</label>
+                                    <div class="file has-name is-fullwidth">
+                                        <label class="file-label">
+                                            <input
+                                                id="account-avatar"
+                                                class="file-input"
+                                                type="file"
+                                                name="avatar"
+                                                accept="image/*"
+                                                data-account-avatar-input
+                                            >
+                                            <span class="file-cta">
+                                                <span class="file-icon">
+                                                    <i class="fas fa-image"></i>
+                                                </span>
+                                                <span class="file-label">Choose avatar</span>
+                                            </span>
+                                            <span class="file-name" data-account-avatar-file-name>
+                                                {{ 'Current avatar' if profile.avatar_url else 'No file selected' }}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    <p class="help account-profile-form__help" data-account-avatar-help>Image only, max 2MB. We resize it to 200x200 before upload.</p>
+                                    <p class="field-error-message"></p>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label class="label" for="account-display-name">Display Name</label>
+                                <div class="control has-icons-left">
+                                    <input
+                                        id="account-display-name"
+                                        class="input"
+                                        type="text"
+                                        name="display_name"
+                                        value="{{ profile.display_name or '' }}"
+                                        maxlength="30"
+                                        placeholder="e.g. emerald_explorer"
+                                        autocomplete="nickname"
+                                        data-account-display-name
+                                    >
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-at"></i>
+                                    </span>
+                                </div>
+                                <p class="help account-profile-form__help">Required. Use 3-30 letters, numbers, or underscores.</p>
+                                <p class="field-error-message"></p>
+                            </div>
+
+                            <div class="field">
+                                <div class="account-profile-form__field-head">
+                                    <label class="label" for="account-bio">Bio</label>
+                                    <span class="account-profile-form__counter" data-account-bio-counter>0 / 500</span>
+                                </div>
+                                <div class="control">
+                                    <textarea
+                                        id="account-bio"
+                                        class="textarea"
+                                        name="bio"
+                                        rows="5"
+                                        maxlength="500"
+                                        placeholder="A few lines about your favourite terrain, counties, or climbing style..."
+                                        data-account-bio
+                                    >{{ profile.bio or '' }}</textarea>
+                                </div>
+                                <p class="help account-profile-form__help">Optional. Keep it concise and friendly.</p>
+                                <p class="field-error-message"></p>
+                            </div>
+
+                            <div class="field">
+                                <label class="label" for="account-location">Location</label>
+                                <div class="control has-icons-left">
+                                    <input
+                                        id="account-location"
+                                        class="input"
+                                        type="text"
+                                        name="location"
+                                        value="{{ profile.location or '' }}"
+                                        maxlength="200"
+                                        placeholder="e.g. County Kerry, Ireland"
+                                        autocomplete="address-level2"
+                                        data-account-location
+                                    >
+                                    <span class="icon is-small is-left">
+                                        <i class="fas fa-location-dot"></i>
+                                    </span>
+                                </div>
+                                <p class="help account-profile-form__help">Optional. This helps other climbers place your adventures.</p>
+                                <p class="field-error-message"></p>
+                            </div>
+
+                            <div class="account-profile-form__actions">
+                                <button type="submit" class="button account-profile-form__save" data-account-save-button>
+                                    <span class="icon"><i class="fas fa-floppy-disk"></i></span>
+                                    <span>Save Profile</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="column is-12-tablet is-5-desktop">
+                    <div class="box account-card account-preview-card">
+                        <p class="account-card__eyebrow">Live Preview</p>
+                        <h2 class="title is-4 account-card__title">How Others See You</h2>
+
+                        <div class="account-preview-card__profile">
+                            <div class="account-preview-card__avatar" data-account-preview-avatar>
+                                <img
+                                    {% if profile.avatar_url %}src="{{ profile.avatar_url }}"{% endif %}
+                                    alt="Profile preview avatar"
+                                    data-account-preview-avatar-image
+                                    {% if not profile.avatar_url %}hidden{% endif %}
+                                >
+                                <span class="icon account-preview-card__avatar-icon" data-account-preview-avatar-icon{% if profile.avatar_url %} hidden{% endif %}>
+                                    <i class="fas fa-user-circle"></i>
+                                </span>
+                            </div>
+                            <div>
+                                <p class="account-preview-card__name" data-account-preview-display-name>{{ profile.display_name or 'Climber' }}</p>
+                                <p class="account-preview-card__location" data-account-preview-location>
+                                    {% if profile.location %}
+                                    <i class="fas fa-location-dot"></i> {{ profile.location }}
+                                    {% else %}
+                                    Add a location to show where you climb from.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="account-preview-card__bio" data-account-preview-bio>
+                            {% if profile.bio %}
+                            {{ profile.bio }}
+                            {% else %}
+                            Your bio will appear here once you add one.
+                            {% endif %}
+                        </div>
+
+                        <div class="account-preview-card__meta">
+                            <div>
+                                <p class="account-preview-card__meta-label">Email</p>
+                                <p class="account-preview-card__meta-value">{{ user.email or 'No email available' }}</p>
+                            </div>
+                            <div>
+                                <p class="account-preview-card__meta-label">Profile Link</p>
+                                <p class="account-preview-card__meta-value" data-account-preview-profile-link>
+                                    {% if profile.display_name %}
+                                    <a href="{{ url_for('my_profile') }}">/profile/{{ profile.display_name }}</a>
+                                    {% else %}
+                                    Saved after you set a display name
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="box account-card account-card--muted">
+                        <p class="account-card__eyebrow">Tips</p>
+                        <h2 class="title is-5 account-card__title">Profile Guidelines</h2>
+                        <ul class="account-tips">
+                            <li>Short display names are easier to remember and look cleaner in the community feed.</li>
+                            <li>Your avatar is resized to a square so faces or logos work best when centered.</li>
+                            <li>Location and bio are optional, but they help your public profile feel more welcoming.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/account.js') }}"></script>
+{% endblock %}

@@ -37,9 +37,11 @@ from supabase_utils import (
     supabase,
     sync_user_current_streak,
     upload_climb_photos,
+    upload_profile_avatar,
     update_climb,
     update_user_profile,
     delete_climb_photo_uploads,
+    delete_profile_avatar_upload,
 )
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -72,6 +74,7 @@ BADGE_RULES = [
     {"key": "ten_climbs", "label": "Ten Summits", "threshold": 10},
 ]
 PROFILE_PREVIEW_FIELDS = ("id", "display_name", "avatar_url", "bio", "location")
+DISPLAY_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]{3,30}$")
 PROFILE_UPDATE_FIELDS = {
     "display_name",
     "first_name",
@@ -79,7 +82,6 @@ PROFILE_UPDATE_FIELDS = {
     "bio",
     "location",
     "website",
-    "avatar_url",
     "unit_preference",
     "units",
     "measurement_system",
@@ -914,11 +916,17 @@ def api_profile_update():
         return error_response
 
     payload = _get_request_data()
+    avatar_file = request.files.get("avatar")
     updates = {}
     for field_name in PROFILE_UPDATE_FIELDS:
         if field_name not in payload:
             continue
-        cleaned_value = _clean_text(payload.get(field_name), 1000 if field_name == "bio" else 200)
+        max_length = 500 if field_name == "bio" else 200
+        cleaned_value = _clean_text(
+            payload.get(field_name),
+            max_length,
+            strip_html=field_name in {"bio", "location", "website"},
+        )
         if cleaned_value is None:
             return _json_error(f"{field_name.replace('_', ' ').title()} is too long.", 400)
         updates[field_name] = cleaned_value
@@ -926,19 +934,55 @@ def api_profile_update():
     if "preferences" in payload and isinstance(payload.get("preferences"), dict):
         updates["preferences"] = payload.get("preferences")
 
-    if not updates:
+    if not updates and avatar_file is None:
         return _json_error("No supported profile fields were provided.", 400)
 
     display_name = updates.get("display_name")
     if "display_name" in updates:
         if not display_name:
-            return _json_error("Display name cannot be empty.", 400)
+            return _json_error("Display name is required.", 400, fields={"display_name": "Display name is required."})
+        if not DISPLAY_NAME_PATTERN.match(display_name):
+            return _json_error(
+                "Display name must be 3-30 characters and use only letters, numbers, or underscores.",
+                400,
+                fields={"display_name": "Use 3-30 letters, numbers, or underscores."},
+            )
         existing_profile = get_profile_by_display_name(display_name)
         if existing_profile and str(existing_profile.get("id") or "") != user_id:
-            return _json_error("That display name is already taken.", 400)
+            return _json_error("That display name is already taken.", 400, fields={"display_name": "That display name is already taken."})
 
-    updated_profile = update_user_profile(user_id, updates) or get_user_profile(user_id)
+    if "bio" in updates and len(str(updates.get("bio") or "")) > 500:
+        return _json_error("Bio must be 500 characters or fewer.", 400, fields={"bio": "Bio must be 500 characters or fewer."})
+
+    existing_profile = get_user_profile(user_id) or {}
+    uploaded_avatar_path = None
+    if avatar_file is not None and str(getattr(avatar_file, "filename", "") or "").strip():
+        upload_result = upload_profile_avatar(
+            user_id,
+            avatar_file,
+            existing_avatar_url=existing_profile.get("avatar_url"),
+        )
+        if upload_result.get("error"):
+            return _json_error(
+                str(upload_result["error"]),
+                400,
+                fields={"avatar": str(upload_result["error"])},
+            )
+        uploaded_avatar_path = upload_result.get("storage_path")
+        updates["avatar_url"] = upload_result.get("avatar_url")
+
+    updated_profile = update_user_profile(user_id, updates)
     if updated_profile is None:
+        refreshed_profile = get_user_profile(user_id)
+        profile_matches_updates = bool(refreshed_profile) and all(
+            refreshed_profile.get(field_name) == field_value
+            for field_name, field_value in updates.items()
+        )
+        updated_profile = refreshed_profile if profile_matches_updates else None
+
+    if updated_profile is None:
+        if uploaded_avatar_path:
+            delete_profile_avatar_upload(uploaded_avatar_path)
         return _json_error("We couldn't update your profile right now.", 500)
 
     session["profile"] = updated_profile

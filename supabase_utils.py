@@ -22,6 +22,7 @@ TABLE_BUCKET_LIST = "bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
 STORAGE_BUCKET_SUMMIT_PHOTOS = os.getenv("SUPABASE_SUMMIT_PHOTOS_BUCKET") or "summit-photos"
+STORAGE_BUCKET_AVATARS = os.getenv("SUPABASE_AVATARS_BUCKET") or "avatars"
 SHARED_CACHE_TTL_SECONDS = 300
 SHARED_COMMUNITY_CACHE_LIMIT = 250
 SHARED_CACHE_KEYS = (
@@ -122,30 +123,41 @@ def _normalize_photo_urls(value: Any) -> List[str]:
     return []
 
 
+def _storage_object_path_from_public_url(value: Any, bucket_name: str) -> Optional[str]:
+    normalized_value = str(value or "").strip()
+    normalized_bucket = str(bucket_name or "").strip().strip("/")
+    if not normalized_value or not normalized_bucket:
+        return None
+
+    parsed_url = urlparse(normalized_value)
+    candidate_path = ""
+    bucket_marker = f"/storage/v1/object/public/{normalized_bucket}/"
+
+    if parsed_url.scheme and parsed_url.netloc:
+        parsed_path = unquote(parsed_url.path or "")
+        if bucket_marker in parsed_path:
+            candidate_path = parsed_path.split(bucket_marker, 1)[1]
+    else:
+        candidate_path = normalized_value
+
+    candidate_path = unquote(str(candidate_path or "").strip()).lstrip("/")
+    bucket_prefix = f"{normalized_bucket}/"
+    if candidate_path.startswith(bucket_prefix):
+        candidate_path = candidate_path[len(bucket_prefix):]
+
+    return candidate_path or None
+
+
 def extract_climb_photo_storage_paths(value: Any) -> List[str]:
     normalized_urls = _normalize_photo_urls(value)
     if not normalized_urls:
         return []
 
-    bucket_marker = f"/storage/v1/object/public/{STORAGE_BUCKET_SUMMIT_PHOTOS}/"
     storage_paths: List[str] = []
     seen_paths = set()
 
     for photo_url in normalized_urls:
-        parsed_url = urlparse(photo_url)
-        candidate_path = ""
-
-        if parsed_url.scheme and parsed_url.netloc:
-            parsed_path = unquote(parsed_url.path or "")
-            if bucket_marker in parsed_path:
-                candidate_path = parsed_path.split(bucket_marker, 1)[1]
-        else:
-            candidate_path = str(photo_url or "").strip()
-
-        candidate_path = unquote(str(candidate_path or "").strip()).lstrip("/")
-        bucket_prefix = f"{STORAGE_BUCKET_SUMMIT_PHOTOS}/"
-        if candidate_path.startswith(bucket_prefix):
-            candidate_path = candidate_path[len(bucket_prefix):]
+        candidate_path = _storage_object_path_from_public_url(photo_url, STORAGE_BUCKET_SUMMIT_PHOTOS)
 
         if not candidate_path or candidate_path in seen_paths:
             continue
@@ -154,6 +166,10 @@ def extract_climb_photo_storage_paths(value: Any) -> List[str]:
         storage_paths.append(candidate_path)
 
     return storage_paths
+
+
+def extract_profile_avatar_storage_path(value: Any) -> Optional[str]:
+    return _storage_object_path_from_public_url(value, STORAGE_BUCKET_AVATARS)
 
 
 def _normalize_climb_record(climb: Dict[str, Any]) -> Dict[str, Any]:
@@ -175,6 +191,21 @@ def _build_storage_photo_path(user_id: str, peak_id: Any, original_filename: str
     safe_name = secure_filename(original_filename or "") or f"photo-{index}.jpg"
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     return f"{user_id}/{peak_id}/{timestamp}_{index}_{safe_name}"
+
+
+def _delete_storage_objects(bucket_name: str, storage_paths: List[str]) -> bool:
+    if not storage_paths:
+        return True
+
+    bucket = _storage_bucket(bucket_name)
+    if bucket is None:
+        return False
+
+    try:
+        bucket.remove(storage_paths)
+        return True
+    except Exception:
+        return False
 
 
 def upload_climb_photos(user_id: str, peak_id: Any, uploaded_files: List[Any]) -> Dict[str, Any]:
@@ -229,18 +260,81 @@ def upload_climb_photos(user_id: str, peak_id: Any, uploaded_files: List[Any]) -
 
 
 def delete_climb_photo_uploads(storage_paths: List[str]) -> bool:
-    if not storage_paths:
-        return True
+    return _delete_storage_objects(STORAGE_BUCKET_SUMMIT_PHOTOS, storage_paths)
 
-    bucket = _storage_bucket(STORAGE_BUCKET_SUMMIT_PHOTOS)
+
+def delete_profile_avatar_upload(storage_path: Optional[str]) -> bool:
+    if not storage_path:
+        return True
+    return _delete_storage_objects(STORAGE_BUCKET_AVATARS, [storage_path])
+
+
+def upload_profile_avatar(user_id: str, uploaded_file: Any, existing_avatar_url: Any = None) -> Dict[str, Any]:
+    if uploaded_file is None:
+        return {"avatar_url": None, "storage_path": None, "error": "No avatar file was provided."}
+
+    bucket = _storage_bucket(STORAGE_BUCKET_AVATARS)
     if bucket is None:
-        return False
+        return {"avatar_url": None, "storage_path": None, "error": "Your avatar could not be uploaded right now."}
+
+    original_filename = getattr(uploaded_file, "filename", "") or "avatar.jpg"
+    raw_mimetype = str(getattr(uploaded_file, "mimetype", "") or "").strip().lower()
+    extension = os.path.splitext(secure_filename(original_filename) or "")[1].lower()
+    extension_by_type = {
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }
+    allowed_mimetypes = set(extension_by_type.keys())
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+    if raw_mimetype not in allowed_mimetypes:
+        return {"avatar_url": None, "storage_path": None, "error": "Avatar images must be JPG, PNG, WEBP, or GIF."}
+
+    if extension not in allowed_extensions:
+        extension = extension_by_type.get(raw_mimetype, ".jpg")
+    elif extension == ".jpeg":
+        extension = ".jpg"
 
     try:
-        bucket.remove(storage_paths)
-        return True
+        uploaded_file.stream.seek(0)
     except Exception:
-        return False
+        pass
+
+    file_bytes = uploaded_file.read()
+    if not isinstance(file_bytes, (bytes, bytearray)):
+        file_bytes = bytes(file_bytes or b"")
+
+    if not file_bytes:
+        return {"avatar_url": None, "storage_path": None, "error": "Please choose an avatar image to upload."}
+
+    if len(file_bytes) > (2 * 1024 * 1024):
+        return {"avatar_url": None, "storage_path": None, "error": "Avatar images must be 2MB or smaller."}
+
+    storage_path = f"{user_id}/avatar{extension}"
+    previous_storage_path = extract_profile_avatar_storage_path(existing_avatar_url)
+    try:
+        bucket.upload(
+            storage_path,
+            bytes(file_bytes),
+            {"content-type": raw_mimetype, "upsert": "true"},
+        )
+    except Exception:
+        try:
+            bucket.remove([storage_path])
+            bucket.upload(storage_path, bytes(file_bytes), {"content-type": raw_mimetype})
+        except Exception:
+            return {"avatar_url": None, "storage_path": None, "error": "Your avatar could not be uploaded right now."}
+
+    if previous_storage_path and previous_storage_path != storage_path:
+        delete_profile_avatar_upload(previous_storage_path)
+
+    return {
+        "avatar_url": bucket.get_public_url(storage_path),
+        "storage_path": storage_path,
+        "error": None,
+    }
 
 
 def get_all_peaks(
