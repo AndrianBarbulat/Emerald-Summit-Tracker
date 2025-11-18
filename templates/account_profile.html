@@ -7,6 +7,28 @@
 {% endblock %}
 
 {% block content %}
+{% set profile_preferences = profile.get('preferences') if profile and profile.get('preferences') is mapping else {} %}
+{% set visibility_source = (
+    profile.get('profile_visibility')
+    if profile and profile.get('profile_visibility') is not none
+    else profile.get('public_profile')
+    if profile and profile.get('public_profile') is not none
+    else profile.get('is_public')
+    if profile and profile.get('is_public') is not none
+    else profile.get('show_profile')
+    if profile and profile.get('show_profile') is not none
+    else profile_preferences.get('profile_visibility')
+    if profile_preferences.get('profile_visibility') is not none
+    else profile_preferences.get('public_profile')
+    if profile_preferences.get('public_profile') is not none
+    else profile_preferences.get('is_public')
+    if profile_preferences.get('is_public') is not none
+    else profile_preferences.get('show_profile')
+    if profile_preferences.get('show_profile') is not none
+    else ''
+) %}
+{% set visibility_text = visibility_source|string|lower %}
+{% set is_public_profile = visibility_source is sameas true or visibility_text in ['public', 'everyone', 'all', 'true', '1', 'on', 'yes'] or (not visibility_text and profile and profile.get('display_name')) %}
 <div class="account-page">
     <section class="section account-page__header">
         <div class="container">
@@ -148,10 +170,76 @@
                                 <p class="field-error-message"></p>
                             </div>
 
+                            <div class="field">
+                                <div class="account-setting-card">
+                                    <div class="account-setting-card__head">
+                                        <div>
+                                            <label class="label" for="account-profile-visibility">Make my profile public</label>
+                                            <p class="help account-profile-form__help">Choose whether other climbers can discover your profile around the app.</p>
+                                        </div>
+                                        <label class="account-toggle" for="account-profile-visibility">
+                                            <input
+                                                id="account-profile-visibility"
+                                                class="account-toggle__input"
+                                                type="checkbox"
+                                                name="profile_visibility"
+                                                value="public"
+                                                {% if is_public_profile %}checked{% endif %}
+                                                data-account-public-toggle
+                                            >
+                                            <span class="account-toggle__track" aria-hidden="true"></span>
+                                            <span class="account-toggle__label" data-account-public-toggle-label>{{ 'Public' if is_public_profile else 'Private' }}</span>
+                                        </label>
+                                    </div>
+                                    <p class="account-setting-card__description" data-account-privacy-description>
+                                        {% if is_public_profile %}
+                                        Other climbers can see your profile, bio, location, stats, climb history, and leaderboard placements.
+                                        {% else %}
+                                        Your public profile and leaderboard placements stay hidden from other climbers until you switch this on.
+                                        {% endif %}
+                                    </p>
+                                    <p class="field-error-message"></p>
+                                </div>
+                            </div>
+
+                            <div class="field">
+                                <label class="label">Unit Preference</label>
+                                <div class="account-unit-options">
+                                    <label class="account-unit-option">
+                                        <input
+                                            type="radio"
+                                            name="unit_preference"
+                                            value="metric"
+                                            {% if unit_preference != 'imperial' %}checked{% endif %}
+                                            data-account-unit-input
+                                        >
+                                        <span class="account-unit-option__content">
+                                            <span class="account-unit-option__title">Metric (metres)</span>
+                                            <span class="account-unit-option__meta">Show heights like 1039m across the app.</span>
+                                        </span>
+                                    </label>
+                                    <label class="account-unit-option">
+                                        <input
+                                            type="radio"
+                                            name="unit_preference"
+                                            value="imperial"
+                                            {% if unit_preference == 'imperial' %}checked{% endif %}
+                                            data-account-unit-input
+                                        >
+                                        <span class="account-unit-option__content">
+                                            <span class="account-unit-option__title">Imperial (feet)</span>
+                                            <span class="account-unit-option__meta">Show heights like 3407ft across the app.</span>
+                                        </span>
+                                    </label>
+                                </div>
+                                <p class="help account-profile-form__help">This changes height displays everywhere you browse, from summit lists to peak detail pages.</p>
+                                <p class="field-error-message"></p>
+                            </div>
+
                             <div class="account-profile-form__actions">
                                 <button type="submit" class="button account-profile-form__save" data-account-save-button>
                                     <span class="icon"><i class="fas fa-floppy-disk"></i></span>
-                                    <span>Save Profile</span>
+                                    <span>Save Settings</span>
                                 </button>
                             </div>
                         </form>
@@ -210,6 +298,14 @@
                                     {% endif %}
                                 </p>
                             </div>
+                            <div>
+                                <p class="account-preview-card__meta-label">Visibility</p>
+                                <p class="account-preview-card__meta-value" data-account-preview-visibility>{{ 'Public profile' if is_public_profile else 'Private profile' }}</p>
+                            </div>
+                            <div>
+                                <p class="account-preview-card__meta-label">Height Units</p>
+                                <p class="account-preview-card__meta-value" data-account-preview-unit-preference>{{ 'Imperial (feet)' if unit_preference == 'imperial' else 'Metric (metres)' }}</p>
+                            </div>
                         </div>
                     </div>
 
@@ -220,6 +316,7 @@
                             <li>Short display names are easier to remember and look cleaner in the community feed.</li>
                             <li>Your avatar is resized to a square so faces or logos work best when centered.</li>
                             <li>Location and bio are optional, but they help your public profile feel more welcoming.</li>
+                            <li>You can switch privacy or height units at any time and save everything together.</li>
                         </ul>
                     </div>
                 </div>

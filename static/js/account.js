@@ -1,6 +1,7 @@
 const ACCOUNT_DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/;
 const ACCOUNT_MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCOUNT_ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const ACCOUNT_UNIT_OPTIONS = new Set(['metric', 'imperial']);
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('[data-account-profile-form]');
@@ -18,14 +19,20 @@ document.addEventListener('DOMContentLoaded', function() {
         bioInput: form.querySelector('[data-account-bio]'),
         displayNameInput: form.querySelector('[data-account-display-name]'),
         locationInput: form.querySelector('[data-account-location]'),
+        previewUnitPreference: document.querySelector('[data-account-preview-unit-preference]'),
         previewAvatarIcon: document.querySelector('[data-account-preview-avatar-icon]'),
         previewAvatarImage: document.querySelector('[data-account-preview-avatar-image]'),
         previewBio: document.querySelector('[data-account-preview-bio]'),
         previewDisplayName: document.querySelector('[data-account-preview-display-name]'),
         previewLocation: document.querySelector('[data-account-preview-location]'),
         previewProfileLink: document.querySelector('[data-account-preview-profile-link]'),
+        previewVisibility: document.querySelector('[data-account-preview-visibility]'),
+        privacyDescription: form.querySelector('[data-account-privacy-description]'),
+        publicToggle: form.querySelector('[data-account-public-toggle]'),
+        publicToggleLabel: form.querySelector('[data-account-public-toggle-label]'),
         saveButton: form.querySelector('[data-account-save-button]')
     };
+    elements.unitInputs = Array.from(form.querySelectorAll('[data-account-unit-input]'));
 
     const state = {
         avatarBlob: null,
@@ -40,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     syncAccountBioCounter(elements);
     syncAccountPreview(elements);
+    syncAccountPreferencePreview(elements);
 
     if (elements.displayNameInput) {
         elements.displayNameInput.addEventListener('input', function() {
@@ -70,6 +78,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (elements.publicToggle) {
+        elements.publicToggle.addEventListener('change', function() {
+            clearAccountFieldError(elements.publicToggle);
+            syncAccountPreferencePreview(elements);
+        });
+    }
+
+    elements.unitInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            clearAccountUnitErrors(elements);
+            syncAccountPreferencePreview(elements);
+        });
+    });
+
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
         clearAccountFormErrors(form);
@@ -87,6 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('display_name', String(elements.displayNameInput ? elements.displayNameInput.value : '').trim());
         formData.append('bio', String(elements.bioInput ? elements.bioInput.value : '').trim());
         formData.append('location', String(elements.locationInput ? elements.locationInput.value : '').trim());
+        formData.append('profile_visibility', elements.publicToggle && elements.publicToggle.checked ? 'public' : 'private');
+        formData.append('unit_preference', getAccountSelectedUnitPreference(elements, 'metric'));
         if (state.avatarBlob) {
             formData.append('avatar', state.avatarBlob, state.avatarFilename || 'avatar.jpg');
         }
@@ -105,6 +129,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (elements.locationInput) {
                 elements.locationInput.value = String(updatedProfile.location || '');
             }
+            if (elements.publicToggle) {
+                elements.publicToggle.checked = getAccountProfileIsPublic(updatedProfile);
+            }
+            syncAccountUnitInputs(elements, getAccountProfileUnitPreference(updatedProfile));
 
             const updatedAvatarUrl = String(updatedProfile.avatar_url || '').trim();
             state.originalAvatarUrl = updatedAvatarUrl;
@@ -120,6 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             applyAccountAvatarPreview(elements, updatedAvatarUrl);
             syncAccountBioCounter(elements);
             syncAccountPreview(elements);
+            syncAccountPreferencePreview(elements);
             syncNavbarDisplayName(updatedProfile.display_name);
             if (typeof window.showToast === 'function') {
                 window.showToast('Your profile has been updated.', 'success');
@@ -144,6 +173,7 @@ function validateAccountProfileForm(elements, state) {
     const displayName = String(elements.displayNameInput ? elements.displayNameInput.value : '').trim();
     const bio = String(elements.bioInput ? elements.bioInput.value : '').trim();
     const location = String(elements.locationInput ? elements.locationInput.value : '').trim();
+    const unitPreference = getAccountSelectedUnitPreference(elements, '');
 
     if (!displayName) {
         fieldErrors.display_name = 'Display name is required.';
@@ -157,6 +187,10 @@ function validateAccountProfileForm(elements, state) {
 
     if (location.length > 200) {
         fieldErrors.location = 'Location must be 200 characters or fewer.';
+    }
+
+    if (!ACCOUNT_UNIT_OPTIONS.has(unitPreference)) {
+        fieldErrors.unit_preference = 'Choose either metric or imperial units.';
     }
 
     if (state.avatarError) {
@@ -312,7 +346,9 @@ function applyAccountFieldErrors(form, fieldErrors) {
         avatar: '[data-account-avatar-input]',
         bio: '[data-account-bio]',
         display_name: '[data-account-display-name]',
-        location: '[data-account-location]'
+        location: '[data-account-location]',
+        profile_visibility: '[data-account-public-toggle]',
+        unit_preference: '[data-account-unit-input]'
     });
 }
 
@@ -368,6 +404,31 @@ function syncAccountPreview(elements) {
         } else {
             elements.previewProfileLink.textContent = 'Saved after you set a display name';
         }
+    }
+}
+
+function syncAccountPreferencePreview(elements) {
+    const isPublic = Boolean(elements.publicToggle && elements.publicToggle.checked);
+    const unitPreference = getAccountSelectedUnitPreference(elements, 'metric');
+
+    if (elements.publicToggleLabel) {
+        elements.publicToggleLabel.textContent = isPublic ? 'Public' : 'Private';
+    }
+
+    if (elements.privacyDescription) {
+        elements.privacyDescription.textContent = isPublic
+            ? 'Other climbers can see your profile, bio, location, stats, climb history, and leaderboard placements.'
+            : 'Your public profile and leaderboard placements stay hidden from other climbers until you switch this on.';
+    }
+
+    if (elements.previewVisibility) {
+        elements.previewVisibility.textContent = isPublic ? 'Public profile' : 'Private profile';
+    }
+
+    if (elements.previewUnitPreference) {
+        elements.previewUnitPreference.textContent = unitPreference === 'imperial'
+            ? 'Imperial (feet)'
+            : 'Metric (metres)';
     }
 }
 
@@ -436,6 +497,115 @@ function syncNavbarDisplayName(displayName) {
     document.querySelectorAll('.site-navbar__display-name').forEach(function(element) {
         element.textContent = normalizedName;
     });
+}
+
+function clearAccountUnitErrors(elements) {
+    elements.unitInputs.forEach(function(input) {
+        clearAccountFieldError(input);
+    });
+}
+
+function getAccountSelectedUnitPreference(elements, fallbackValue) {
+    const selectedInput = elements.unitInputs.find(function(input) {
+        return input.checked;
+    });
+    const normalizedValue = String(selectedInput ? selectedInput.value : fallbackValue || '').trim().toLowerCase();
+    return ACCOUNT_UNIT_OPTIONS.has(normalizedValue)
+        ? normalizedValue
+        : String(fallbackValue || '').trim().toLowerCase();
+}
+
+function syncAccountUnitInputs(elements, unitPreference) {
+    const normalizedUnit = ACCOUNT_UNIT_OPTIONS.has(String(unitPreference || '').trim().toLowerCase())
+        ? String(unitPreference || '').trim().toLowerCase()
+        : 'metric';
+    elements.unitInputs.forEach(function(input) {
+        input.checked = String(input.value || '').trim().toLowerCase() === normalizedUnit;
+    });
+}
+
+function getAccountProfileIsPublic(profile) {
+    const profileObject = profile && typeof profile === 'object' ? profile : {};
+    const preferences = profileObject.preferences && typeof profileObject.preferences === 'object'
+        ? profileObject.preferences
+        : {};
+    const candidateValues = [
+        profileObject.profile_visibility,
+        profileObject.public_profile,
+        profileObject.is_public,
+        profileObject.show_profile,
+        preferences.profile_visibility,
+        preferences.public_profile,
+        preferences.is_public,
+        preferences.show_profile
+    ];
+
+    for (let index = 0; index < candidateValues.length; index += 1) {
+        const value = candidateValues[index];
+        if (typeof value === 'boolean') {
+            return value;
+        }
+
+        const normalized = String(value || '').trim().toLowerCase();
+        if (!normalized) {
+            continue;
+        }
+        if (['public', 'everyone', 'all', 'true', '1', 'on', 'yes'].includes(normalized)) {
+            return true;
+        }
+        if (['private', 'hidden', 'off', 'false', '0', 'only me', 'me'].includes(normalized)) {
+            return false;
+        }
+    }
+
+    return Boolean(String(profileObject.display_name || '').trim());
+}
+
+function getAccountProfileUnitPreference(profile) {
+    const profileObject = profile && typeof profile === 'object' ? profile : {};
+    const preferences = profileObject.preferences && typeof profileObject.preferences === 'object'
+        ? profileObject.preferences
+        : {};
+    const candidateValues = [
+        profileObject.unit_preference,
+        profileObject.units,
+        profileObject.measurement_system,
+        profileObject.measurement_preference,
+        profileObject.height_unit,
+        profileObject.height_units,
+        profileObject.distance_unit,
+        profileObject.distance_units,
+        profileObject.use_imperial_units,
+        preferences.unit_preference,
+        preferences.units,
+        preferences.measurement_system,
+        preferences.measurement_preference,
+        preferences.height_unit,
+        preferences.height_units,
+        preferences.distance_unit,
+        preferences.distance_units,
+        preferences.use_imperial_units
+    ];
+
+    for (let index = 0; index < candidateValues.length; index += 1) {
+        const value = candidateValues[index];
+        if (typeof value === 'boolean') {
+            return value ? 'imperial' : 'metric';
+        }
+
+        const normalized = String(value || '').trim().toLowerCase();
+        if (!normalized) {
+            continue;
+        }
+        if (['imperial', 'feet', 'foot', 'ft', 'us', 'true', '1', 'yes', 'on'].includes(normalized)) {
+            return 'imperial';
+        }
+        if (['metric', 'meters', 'metres', 'm', 'false', '0', 'no', 'off'].includes(normalized)) {
+            return 'metric';
+        }
+    }
+
+    return 'metric';
 }
 
 function escapeAccountHtml(value) {

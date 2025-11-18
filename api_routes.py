@@ -81,6 +81,7 @@ PROFILE_UPDATE_FIELDS = {
     "last_name",
     "bio",
     "location",
+    "profile_visibility",
     "website",
     "unit_preference",
     "units",
@@ -211,6 +212,113 @@ def _clean_text(value, max_length: int, allow_empty: bool = True, strip_html: bo
     if len(cleaned) > max_length:
         return None
     return cleaned
+
+
+def _normalize_profile_visibility(value) -> str | None:
+    if isinstance(value, bool):
+        return "public" if value else "private"
+
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized in {"public", "everyone", "all", "true", "1", "on", "yes"}:
+        return "public"
+    if normalized in {"private", "hidden", "off", "false", "0", "only me", "me"}:
+        return "private"
+    return None
+
+
+def _normalize_unit_preference(value) -> str | None:
+    if isinstance(value, bool):
+        return "imperial" if value else "metric"
+
+    normalized = str(value or "").strip().lower()
+    if not normalized:
+        return None
+    if normalized in {"imperial", "feet", "foot", "ft", "us", "true", "1", "yes", "on"}:
+        return "imperial"
+    if normalized in {"metric", "meters", "metres", "m", "false", "0", "no", "off"}:
+        return "metric"
+    return None
+
+
+def _merge_profile_preference_updates(existing_profile: dict, updates: dict, preference_updates: dict) -> dict:
+    if not preference_updates:
+        return updates
+
+    merged_updates = dict(updates)
+    current_preferences = existing_profile.get("preferences")
+    merged_preferences = dict(current_preferences) if isinstance(current_preferences, dict) else {}
+    pending_preferences = merged_updates.get("preferences")
+    if isinstance(pending_preferences, dict):
+        merged_preferences.update(pending_preferences)
+    merged_preferences.update(preference_updates)
+    merged_updates["preferences"] = merged_preferences
+    return merged_updates
+
+
+def _prepare_profile_settings_updates(existing_profile: dict, updates: dict) -> dict:
+    prepared_updates = dict(updates)
+    preference_updates = {}
+
+    if "profile_visibility" in prepared_updates:
+        normalized_visibility = prepared_updates.pop("profile_visibility")
+        visibility_fields = [
+            field_name
+            for field_name in ("profile_visibility", "public_profile", "is_public", "show_profile")
+            if field_name in existing_profile
+        ]
+        if visibility_fields:
+            for field_name in visibility_fields:
+                prepared_updates[field_name] = (
+                    normalized_visibility
+                    if field_name == "profile_visibility"
+                    else normalized_visibility == "public"
+                )
+        elif "preferences" in existing_profile:
+            preference_updates["profile_visibility"] = normalized_visibility
+        else:
+            prepared_updates["profile_visibility"] = normalized_visibility
+
+    if "unit_preference" in prepared_updates:
+        normalized_unit = prepared_updates.pop("unit_preference")
+        is_imperial = normalized_unit == "imperial"
+        unit_fields = {
+            field_name
+            for field_name in (
+                "unit_preference",
+                "units",
+                "measurement_system",
+                "measurement_preference",
+                "height_unit",
+                "height_units",
+                "use_imperial_units",
+            )
+            if field_name in existing_profile
+        }
+
+        if unit_fields:
+            if "unit_preference" in unit_fields:
+                prepared_updates["unit_preference"] = normalized_unit
+            elif "measurement_system" in unit_fields:
+                prepared_updates["measurement_system"] = normalized_unit
+            elif "measurement_preference" in unit_fields:
+                prepared_updates["measurement_preference"] = normalized_unit
+            elif "units" in unit_fields:
+                prepared_updates["units"] = normalized_unit
+
+            if "height_unit" in unit_fields:
+                prepared_updates["height_unit"] = "ft" if is_imperial else "m"
+            if "height_units" in unit_fields:
+                prepared_updates["height_units"] = "ft" if is_imperial else "m"
+            if "use_imperial_units" in unit_fields:
+                prepared_updates["use_imperial_units"] = is_imperial
+        elif "preferences" in existing_profile:
+            preference_updates["unit_preference"] = normalized_unit
+        else:
+            prepared_updates["unit_preference"] = normalized_unit
+
+    return _merge_profile_preference_updates(existing_profile, prepared_updates, preference_updates)
 
 
 def _extract_field(payload: dict, *names):
@@ -954,7 +1062,28 @@ def api_profile_update():
     if "bio" in updates and len(str(updates.get("bio") or "")) > 500:
         return _json_error("Bio must be 500 characters or fewer.", 400, fields={"bio": "Bio must be 500 characters or fewer."})
 
+    if "profile_visibility" in updates:
+        normalized_visibility = _normalize_profile_visibility(updates.get("profile_visibility"))
+        if normalized_visibility is None:
+            return _json_error(
+                "Choose whether your profile should be public or private.",
+                400,
+                fields={"profile_visibility": "Choose public or private visibility."},
+            )
+        updates["profile_visibility"] = normalized_visibility
+
+    if "unit_preference" in updates:
+        normalized_unit_preference = _normalize_unit_preference(updates.get("unit_preference"))
+        if normalized_unit_preference is None:
+            return _json_error(
+                "Choose either metric or imperial units.",
+                400,
+                fields={"unit_preference": "Choose either metric or imperial units."},
+            )
+        updates["unit_preference"] = normalized_unit_preference
+
     existing_profile = get_user_profile(user_id) or {}
+    updates = _prepare_profile_settings_updates(existing_profile, updates)
     uploaded_avatar_path = None
     if avatar_file is not None and str(getattr(avatar_file, "filename", "") or "").strip():
         upload_result = upload_profile_avatar(
