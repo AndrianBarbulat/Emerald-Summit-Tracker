@@ -2,6 +2,7 @@ const ACCOUNT_DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/;
 const ACCOUNT_MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCOUNT_ALLOWED_AVATAR_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const ACCOUNT_UNIT_OPTIONS = new Set(['metric', 'imperial']);
+const ACCOUNT_DELETE_CONFIRM_TEXT = 'DELETE';
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.querySelector('[data-account-profile-form]');
@@ -17,8 +18,17 @@ document.addEventListener('DOMContentLoaded', function() {
         avatarFileName: form.querySelector('[data-account-avatar-file-name]'),
         bioCounter: form.querySelector('[data-account-bio-counter]'),
         bioInput: form.querySelector('[data-account-bio]'),
+        deleteConfirmButton: document.querySelector('[data-account-delete-confirm-button]'),
+        deleteConfirmInput: document.querySelector('[data-account-delete-confirm-input]'),
+        deleteError: document.querySelector('[data-account-delete-error]'),
+        deleteModal: document.querySelector('[data-account-delete-modal]'),
+        deleteOpenButton: document.querySelector('[data-account-delete-open-button]'),
+        deleteCloseButtons: Array.from(document.querySelectorAll('[data-account-delete-close]')),
         displayNameInput: form.querySelector('[data-account-display-name]'),
+        emailInput: document.querySelector('[data-account-email]'),
         locationInput: form.querySelector('[data-account-location]'),
+        passwordResetButton: document.querySelector('[data-account-password-reset-button]'),
+        passwordResetMessage: document.querySelector('[data-account-password-reset-message]'),
         previewUnitPreference: document.querySelector('[data-account-preview-unit-preference]'),
         previewAvatarIcon: document.querySelector('[data-account-preview-avatar-icon]'),
         previewAvatarImage: document.querySelector('[data-account-preview-avatar-image]'),
@@ -39,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
         avatarError: '',
         avatarFilename: '',
         avatarObjectUrl: '',
+        deleteBusy: false,
         originalAvatarUrl: elements.avatarImage && !elements.avatarImage.hidden
             ? String(elements.avatarImage.getAttribute('src') || '').trim()
             : '',
@@ -90,6 +101,113 @@ document.addEventListener('DOMContentLoaded', function() {
             clearAccountUnitErrors(elements);
             syncAccountPreferencePreview(elements);
         });
+    });
+
+    if (elements.passwordResetButton) {
+        elements.passwordResetButton.addEventListener('click', async function() {
+            const email = String(elements.emailInput ? elements.emailInput.value : '').trim();
+            setAccountInlineMessage(elements.passwordResetMessage, '', '');
+            if (!email) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('We could not find an email address for this account.', 'error');
+                }
+                return;
+            }
+
+            toggleAccountSaveBusy(elements.passwordResetButton, true);
+            try {
+                const result = await window.postJsonRequest('/api/account/password-reset', {});
+                const message = result && result.message
+                    ? result.message
+                    : ('We\'ve sent a password reset email to ' + email + '.');
+                setAccountInlineMessage(elements.passwordResetMessage, message, 'success');
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'success');
+                }
+            } catch (error) {
+                const message = (error && error.message) || 'We could not send a password reset email right now.';
+                setAccountInlineMessage(elements.passwordResetMessage, message, 'error');
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'error');
+                }
+            } finally {
+                toggleAccountSaveBusy(elements.passwordResetButton, false);
+            }
+        });
+    }
+
+    if (elements.deleteOpenButton) {
+        elements.deleteOpenButton.addEventListener('click', function() {
+            openAccountDeleteModal(elements);
+        });
+    }
+
+    elements.deleteCloseButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            closeAccountDeleteModal(elements, state);
+        });
+    });
+
+    if (elements.deleteModal) {
+        elements.deleteModal.addEventListener('click', function(event) {
+            if (event.target === elements.deleteModal) {
+                closeAccountDeleteModal(elements, state);
+            }
+        });
+    }
+
+    if (elements.deleteConfirmInput) {
+        elements.deleteConfirmInput.addEventListener('input', function() {
+            syncAccountDeleteConfirmState(elements);
+        });
+    }
+
+    if (elements.deleteConfirmButton) {
+        elements.deleteConfirmButton.addEventListener('click', async function() {
+            if (state.deleteBusy) {
+                return;
+            }
+
+            const confirmationValue = String(elements.deleteConfirmInput ? elements.deleteConfirmInput.value : '').trim();
+            if (confirmationValue !== ACCOUNT_DELETE_CONFIRM_TEXT) {
+                setAccountDeleteError(elements, 'Type DELETE exactly to confirm account deletion.');
+                syncAccountDeleteConfirmState(elements);
+                return;
+            }
+
+            state.deleteBusy = true;
+            setAccountDeleteError(elements, '');
+            toggleAccountSaveBusy(elements.deleteConfirmButton, true);
+            try {
+                const result = await window.postJsonRequest('/api/account/delete', {});
+                const warnings = Array.isArray(result && result.warnings) ? result.warnings : [];
+                const message = warnings.length
+                    ? 'Your account was deleted, but a few cleanup steps had to be finished best-effort.'
+                    : 'Your account has been deleted.';
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, warnings.length ? 'warning' : 'success');
+                }
+                window.setTimeout(function() {
+                    window.location.assign((result && result.redirect_url) || '/');
+                }, warnings.length ? 1200 : 700);
+            } catch (error) {
+                const message = (error && error.message) || 'We could not delete your account right now.';
+                setAccountDeleteError(elements, message);
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'error');
+                }
+            } finally {
+                state.deleteBusy = false;
+                toggleAccountSaveBusy(elements.deleteConfirmButton, false);
+                syncAccountDeleteConfirmState(elements);
+            }
+        });
+    }
+
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && elements.deleteModal && elements.deleteModal.classList.contains('is-active')) {
+            closeAccountDeleteModal(elements, state);
+        }
     });
 
     form.addEventListener('submit', async function(event) {
@@ -361,6 +479,89 @@ function clearAccountFormErrors(form) {
 function clearAccountFieldError(control) {
     if (control && typeof window.clearFieldError === 'function') {
         window.clearFieldError(control);
+    }
+}
+
+function setAccountInlineMessage(element, message, type) {
+    if (!element) {
+        return;
+    }
+
+    const normalizedMessage = String(message || '').trim();
+    element.hidden = !normalizedMessage;
+    element.textContent = normalizedMessage;
+    element.classList.remove('is-success', 'is-danger');
+    if (normalizedMessage && type === 'success') {
+        element.classList.add('is-success');
+    }
+    if (normalizedMessage && type === 'error') {
+        element.classList.add('is-danger');
+    }
+}
+
+function openAccountDeleteModal(elements) {
+    if (!elements.deleteModal) {
+        return;
+    }
+
+    elements.deleteModal.classList.add('is-active');
+    document.documentElement.classList.add('is-clipped');
+    if (elements.deleteConfirmInput) {
+        elements.deleteConfirmInput.value = '';
+    }
+    setAccountDeleteError(elements, '');
+    syncAccountDeleteConfirmState(elements);
+    if (elements.deleteConfirmInput && typeof elements.deleteConfirmInput.focus === 'function') {
+        window.setTimeout(function() {
+            elements.deleteConfirmInput.focus();
+        }, 40);
+    }
+}
+
+function closeAccountDeleteModal(elements, state) {
+    if (!elements.deleteModal || (state && state.deleteBusy)) {
+        return;
+    }
+
+    elements.deleteModal.classList.remove('is-active');
+    document.documentElement.classList.remove('is-clipped');
+    if (elements.deleteConfirmInput) {
+        elements.deleteConfirmInput.value = '';
+    }
+    setAccountDeleteError(elements, '');
+    syncAccountDeleteConfirmState(elements);
+}
+
+function setAccountDeleteError(elements, message) {
+    if (!elements.deleteError) {
+        return;
+    }
+
+    elements.deleteError.textContent = String(message || '').trim();
+    if (elements.deleteConfirmInput) {
+        if (message) {
+            elements.deleteConfirmInput.classList.add('field-error', 'is-danger');
+            elements.deleteConfirmInput.setAttribute('aria-invalid', 'true');
+        } else {
+            elements.deleteConfirmInput.classList.remove('field-error', 'is-danger');
+            elements.deleteConfirmInput.removeAttribute('aria-invalid');
+        }
+    }
+}
+
+function syncAccountDeleteConfirmState(elements) {
+    const typedValue = String(elements.deleteConfirmInput ? elements.deleteConfirmInput.value : '').trim();
+    const isReady = typedValue === ACCOUNT_DELETE_CONFIRM_TEXT;
+    if (elements.deleteConfirmButton) {
+        elements.deleteConfirmButton.disabled = !isReady;
+        elements.deleteConfirmButton.classList.toggle('is-disabled', !isReady);
+    }
+    if (typedValue && typedValue !== ACCOUNT_DELETE_CONFIRM_TEXT) {
+        setAccountDeleteError(elements, 'Type DELETE exactly to confirm account deletion.');
+        return;
+    }
+    if (!typedValue || isReady) {
+        setAccountDeleteError(elements, '');
     }
 }
 

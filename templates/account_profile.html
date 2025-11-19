@@ -244,6 +244,49 @@
                             </div>
                         </form>
                     </div>
+
+                    <div class="box account-card account-card--muted account-security-card">
+                        <p class="account-card__eyebrow">Security</p>
+                        <h2 class="title is-4 account-card__title">Email & Password</h2>
+
+                        <div class="field">
+                            <label class="label" for="account-email">Email</label>
+                            <div class="control has-icons-left">
+                                <input
+                                    id="account-email"
+                                    class="input"
+                                    type="email"
+                                    value="{{ user.email or '' }}"
+                                    readonly
+                                    data-account-email
+                                >
+                                <span class="icon is-small is-left">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                            </div>
+                            <p class="help account-profile-form__help">Your login email is managed through Supabase and is shown here for reference.</p>
+                        </div>
+
+                        <div class="account-security-card__actions">
+                            <button type="button" class="button account-secondary-button" data-account-password-reset-button>
+                                <span class="icon"><i class="fas fa-key"></i></span>
+                                <span>Send Password Reset Email</span>
+                            </button>
+                            <p class="account-security-card__message" data-account-password-reset-message hidden></p>
+                        </div>
+                    </div>
+
+                    <div class="box account-card account-card--danger">
+                        <p class="account-card__eyebrow">Danger Zone</p>
+                        <h2 class="title is-4 account-card__title">Delete Account</h2>
+                        <p class="account-card__danger-copy">
+                            This permanently deletes your profile, uploaded summit photos, avatar, and associated climbing data as completely as possible.
+                        </p>
+                        <button type="button" class="button account-danger-button" data-account-delete-open-button>
+                            <span class="icon"><i class="fas fa-trash"></i></span>
+                            <span>Delete Account</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="column is-12-tablet is-5-desktop">
@@ -323,6 +366,42 @@
             </div>
         </div>
     </section>
+
+    <div class="modal" data-account-delete-modal>
+        <div class="modal-background" data-account-delete-close></div>
+        <div class="modal-card account-delete-modal__card">
+            <header class="modal-card-head account-delete-modal__head">
+                <p class="modal-card-title">Delete Account</p>
+                <button class="delete" aria-label="close" type="button" data-account-delete-close></button>
+            </header>
+            <section class="modal-card-body account-delete-modal__body">
+                <p class="account-delete-modal__copy">
+                    This cannot be undone. Type <strong>DELETE</strong> to confirm permanent removal of your account and uploaded content.
+                </p>
+                <div class="field">
+                    <label class="label" for="account-delete-confirm">Type DELETE to confirm</label>
+                    <div class="control">
+                        <input
+                            id="account-delete-confirm"
+                            class="input"
+                            type="text"
+                            autocomplete="off"
+                            spellcheck="false"
+                            data-account-delete-confirm-input
+                        >
+                    </div>
+                    <p class="field-error-message" data-account-delete-error></p>
+                </div>
+            </section>
+            <footer class="modal-card-foot account-delete-modal__foot">
+                <button type="button" class="button" data-account-delete-close>Cancel</button>
+                <button type="button" class="button account-danger-button" data-account-delete-confirm-button disabled>
+                    <span class="icon"><i class="fas fa-trash"></i></span>
+                    <span>Delete Permanently</span>
+                </button>
+            </footer>
+        </div>
+    </div>
 </div>
 {% endblock %}
 

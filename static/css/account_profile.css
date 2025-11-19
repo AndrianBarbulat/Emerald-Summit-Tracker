@@ -66,6 +66,11 @@
     background: linear-gradient(180deg, rgba(245, 241, 235, 0.78) 0%, rgba(255, 255, 255, 0.95) 100%);
 }
 
+.account-card--danger {
+    background: linear-gradient(180deg, rgba(255, 245, 245, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+    border: 1px solid rgba(225, 87, 89, 0.18);
+}
+
 .account-card__head {
     margin-bottom: 1rem;
 }
@@ -88,6 +93,12 @@
 .account-profile-form .file-name,
 .account-profile-form .file-cta {
     border-radius: var(--radius-sm);
+}
+
+.account-card .input[readonly] {
+    background: rgba(245, 241, 235, 0.78);
+    border-color: rgba(82, 121, 111, 0.14);
+    color: var(--color-slate);
 }
 
 .account-profile-form .file-cta {
@@ -173,6 +184,43 @@
     display: flex;
     justify-content: flex-start;
     padding-top: 0.25rem;
+}
+
+.account-secondary-button,
+.account-danger-button {
+    border-radius: 999px;
+    font-weight: 600;
+    min-height: 2.9rem;
+}
+
+.account-secondary-button {
+    background: rgba(27, 67, 50, 0.08);
+    border-color: rgba(27, 67, 50, 0.12);
+    color: var(--color-forest);
+}
+
+.account-secondary-button:hover,
+.account-secondary-button:focus-visible {
+    background: rgba(27, 67, 50, 0.14);
+    color: var(--color-forest);
+}
+
+.account-danger-button {
+    background: var(--color-danger);
+    border-color: transparent;
+    color: var(--color-white);
+}
+
+.account-danger-button:hover,
+.account-danger-button:focus-visible {
+    background: #c84548;
+    color: var(--color-white);
+}
+
+.account-danger-button[disabled],
+.account-danger-button.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
 }
 
 .account-setting-card {
@@ -319,6 +367,68 @@
     border-color: var(--color-danger);
 }
 
+.account-security-card {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.account-security-card__actions {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.account-security-card__message,
+.account-card__danger-copy {
+    color: var(--color-grey);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.account-security-card__message.is-success {
+    color: var(--color-forest);
+}
+
+.account-security-card__message.is-danger {
+    color: var(--color-danger);
+}
+
+.account-delete-modal__card {
+    border-radius: var(--radius-lg);
+    max-width: 32rem;
+    overflow: hidden;
+}
+
+.account-delete-modal__head {
+    background: var(--color-forest);
+    border-bottom: none;
+}
+
+.account-delete-modal__head .modal-card-title,
+.account-delete-modal__head .delete {
+    color: var(--color-white);
+}
+
+.account-delete-modal__body,
+.account-delete-modal__foot {
+    background: #fffdfb;
+}
+
+.account-delete-modal__body {
+    padding-bottom: 1rem;
+}
+
+.account-delete-modal__copy {
+    color: var(--color-slate);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.account-delete-modal__foot {
+    border-top: 1px solid rgba(27, 67, 50, 0.08);
+    justify-content: flex-end;
+}
+
 .account-preview-card {
     display: grid;
     gap: 1rem;
@@ -440,7 +550,9 @@
     }
 
     .account-profile-form__actions,
-    .account-page__profile-link {
+    .account-page__profile-link,
+    .account-secondary-button,
+    .account-danger-button {
         width: 100%;
     }
 

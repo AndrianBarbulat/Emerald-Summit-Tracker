@@ -2,7 +2,7 @@ import json
 import re
 from datetime import date, datetime, timezone
 
-from flask import Blueprint, jsonify, request, session, url_for
+from flask import Blueprint, current_app, jsonify, request, session, url_for
 from time_utils import format_time_ago, parse_datetime_value
 
 from supabase_utils import (
@@ -19,6 +19,7 @@ from supabase_utils import (
     delete_climb,
     delete_comment,
     extract_climb_photo_storage_paths,
+    extract_profile_avatar_storage_path,
     delete_profile,
     get_all_peaks,
     get_climb_by_id,
@@ -134,6 +135,20 @@ def _get_current_user_id() -> str | None:
         return str(user["id"])
 
     return None
+
+
+def _get_current_user_email() -> str:
+    user = session.get("user")
+    if isinstance(user, dict) and user.get("email"):
+        return str(user["email"]).strip().lower()
+
+    profile = session.get("profile")
+    if isinstance(profile, dict):
+        for field_name in ("email", "email_address"):
+            if profile.get(field_name):
+                return str(profile[field_name]).strip().lower()
+
+    return ""
 
 
 def _sync_session_profile(user_id: str):
@@ -702,6 +717,59 @@ def _delete_rows_for_user(table_name: str, user_id: str, column_name: str = "use
         return False
 
 
+def _log_account_cleanup_issue(user_id: str, message: str, exc: Exception | None = None) -> None:
+    if exc is not None:
+        current_app.logger.warning("Account cleanup issue for user %s: %s (%s)", user_id, message, exc)
+        return
+    current_app.logger.warning("Account cleanup issue for user %s: %s", user_id, message)
+
+
+def _collect_account_photo_storage_paths(climbs: list[dict]) -> list[str]:
+    storage_paths = []
+    seen_paths = set()
+
+    for climb in climbs:
+        for storage_path in extract_climb_photo_storage_paths((climb or {}).get("photo_urls")):
+            if not storage_path or storage_path in seen_paths:
+                continue
+            seen_paths.add(storage_path)
+            storage_paths.append(storage_path)
+
+    return storage_paths
+
+
+def _best_effort_delete_profile_data(user_id: str) -> tuple[bool, list[str]]:
+    warnings = []
+
+    deleted_profile = delete_profile(user_id)
+    if deleted_profile is not None or get_user_profile(user_id) is None:
+        return True, warnings
+
+    warnings.append("We could not remove the profile row cleanly, so fallback cleanup was used.")
+    _log_account_cleanup_issue(user_id, warnings[-1])
+
+    for table_name, column_name in (
+        (TABLE_COMMENTS, "user_id"),
+        (TABLE_BUCKET_LIST, "user_id"),
+        (TABLE_CLIMBS, "user_id"),
+        (TABLE_USER_BADGES, "user_id"),
+    ):
+        if _delete_rows_for_user(table_name, user_id, column_name):
+            continue
+        warning = f"We could not fully delete rows from {table_name}."
+        warnings.append(warning)
+        _log_account_cleanup_issue(user_id, warning)
+
+    deleted_profile = delete_profile(user_id)
+    if deleted_profile is not None or get_user_profile(user_id) is None:
+        return True, warnings
+
+    warning = "The profile record could not be deleted."
+    warnings.append(warning)
+    _log_account_cleanup_issue(user_id, warning)
+    return False, warnings
+
+
 @api.route("/log-climb", methods=["POST"])
 def api_log_climb():
     user_id, error_response = _require_login()
@@ -1139,6 +1207,36 @@ def api_profile_preview(display_name: str):
     return _json_success({"profile": preview})
 
 
+@api.route("/account/password-reset", methods=["POST"])
+def api_account_password_reset():
+    user_id, error_response = _require_login()
+    if error_response:
+        return error_response
+
+    user_email = _get_current_user_email()
+    if not user_email:
+        return _json_error("We could not find an email address for this account.", 400)
+
+    if supabase is None or not hasattr(supabase, "auth"):
+        return _json_error("Password reset is not available right now.", 500)
+
+    try:
+        reset_method = getattr(supabase.auth, "reset_password_for_email", None) or getattr(supabase.auth, "reset_password_email", None)
+        if reset_method is None:
+            return _json_error("Password reset is not available right now.", 500)
+        reset_method(user_email)
+    except Exception as exc:
+        current_app.logger.warning("Password reset email failed for user %s: %s", user_id, exc)
+        return _json_error("We couldn't send a password reset email right now.", 500)
+
+    return _json_success(
+        {
+            "email": user_email,
+            "message": f"We've sent a password reset email to {user_email}.",
+        }
+    )
+
+
 @api.route("/account/delete", methods=["POST"])
 def api_account_delete():
     user_id, error_response = _require_login()
@@ -1148,25 +1246,45 @@ def api_account_delete():
     if supabase is None or not hasattr(supabase, "auth") or not hasattr(supabase.auth, "admin"):
         return _json_error("Account deletion is not available right now.", 500)
 
-    cleanup_steps = [
-        (TABLE_COMMENTS, "user_id"),
-        (TABLE_BUCKET_LIST, "user_id"),
-        (TABLE_CLIMBS, "user_id"),
-        (TABLE_USER_BADGES, "user_id"),
-    ]
-    for table_name, column_name in cleanup_steps:
-        if not _delete_rows_for_user(table_name, user_id, column_name):
-            return _json_error("We couldn't fully delete your account data right now.", 500)
+    current_profile = get_user_profile(user_id) or (session.get("profile") if isinstance(session.get("profile"), dict) else {})
+    user_climbs = get_user_climbs(user_id)
+    warnings = []
 
-    delete_profile(user_id)
-    if get_user_profile(user_id) is not None:
-        return _json_error("We couldn't fully delete your account profile right now.", 500)
+    photo_storage_paths = _collect_account_photo_storage_paths(user_climbs)
+    if photo_storage_paths and not delete_climb_photo_uploads(photo_storage_paths):
+        warning = "One or more climb photos could not be deleted from storage."
+        warnings.append(warning)
+        _log_account_cleanup_issue(user_id, warning)
 
+    avatar_storage_path = extract_profile_avatar_storage_path((current_profile or {}).get("avatar_url"))
+    if avatar_storage_path and not delete_profile_avatar_upload(avatar_storage_path):
+        warning = "Your avatar file could not be deleted from storage."
+        warnings.append(warning)
+        _log_account_cleanup_issue(user_id, warning)
+
+    profile_deleted, profile_warnings = _best_effort_delete_profile_data(user_id)
+    warnings.extend(profile_warnings)
+
+    auth_deleted = False
     try:
         supabase.auth.admin.delete_user(user_id)
-    except Exception:
-        return _json_error("We couldn't permanently delete your account right now.", 500)
+        auth_deleted = True
+    except Exception as exc:
+        warning = "Your authentication account could not be fully deleted."
+        warnings.append(warning)
+        _log_account_cleanup_issue(user_id, warning, exc)
 
-    session.pop("user", None)
-    session.pop("profile", None)
-    return _json_success({"deleted": True})
+    clear_shared_data_cache()
+    session.clear()
+
+    if not profile_deleted and not auth_deleted:
+        return _json_error("We couldn't delete your account right now.", 500)
+
+    return _json_success(
+        {
+            "deleted": True,
+            "partial_failure": bool(warnings),
+            "redirect_url": url_for("index"),
+            "warnings": warnings,
+        }
+    )
