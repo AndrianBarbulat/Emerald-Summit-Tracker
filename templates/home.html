@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'macros/user_avatar.html' import user_avatar %}
 {% from 'macros/peak_status.html' import peak_status %}
 
 {% block title %}Emerald Summit Explorer - Dashboard{% endblock %}
@@ -265,9 +266,15 @@
                                 {% for climb in dashboard_community_activity %}
                                 <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-community-feed__item">
                                     <div class="column is-narrow">
-                                        <div class="dashboard-community-feed__avatar">
-                                            {{ climb.initials }}
-                                        </div>
+                                        {% if climb.profile_url %}
+                                        <a class="dashboard-community-feed__avatar" href="{{ climb.profile_url }}" aria-label="{{ climb.display_name or 'Climber' }}">
+                                            {{ user_avatar(climb, '32') }}
+                                        </a>
+                                        {% else %}
+                                        <span class="dashboard-community-feed__avatar" aria-hidden="true">
+                                            {{ user_avatar(climb, '32') }}
+                                        </span>
+                                        {% endif %}
                                     </div>
                                     <div class="column dashboard-community-feed__content">
                                         {% if climb.profile_url %}

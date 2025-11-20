@@ -34,24 +34,13 @@
 
 .public-profile-hero__avatar {
     align-items: center;
-    background: linear-gradient(145deg, rgba(116, 198, 157, 0.2), rgba(82, 121, 111, 0.12));
-    border: 1px solid rgba(27, 67, 50, 0.08);
-    border-radius: 50%;
-    color: var(--color-sage);
     display: inline-flex;
     flex: 0 0 auto;
-    font-size: 3rem;
-    height: 5.25rem;
     justify-content: center;
-    overflow: hidden;
-    width: 5.25rem;
 }
 
-.public-profile-hero__avatar img {
-    display: block;
-    height: 100%;
-    object-fit: cover;
-    width: 100%;
+.public-profile-hero__avatar .user-avatar {
+    box-shadow: 0 12px 26px rgba(27, 67, 50, 0.1);
 }
 
 .public-profile-hero__copy {
@@ -336,9 +325,8 @@
         flex-direction: column;
     }
 
-    .public-profile-hero__avatar {
-        height: 4.75rem;
-        width: 4.75rem;
+    .public-profile-hero__avatar .user-avatar {
+        --user-avatar-size: 4.75rem;
     }
 
     .public-profile-stats {

@@ -2039,6 +2039,25 @@ function prependPeakComment(section, comment) {
         article.setAttribute('data-comment-id', String(comment.id));
     }
 
+    const layout = document.createElement('div');
+    layout.className = 'peak-detail-list-item__layout';
+
+    const avatar = buildUserAvatarNode(comment, 32);
+    if (comment.profile_url) {
+        const avatarLink = document.createElement('a');
+        avatarLink.className = 'peak-detail-list-item__avatar-link';
+        avatarLink.href = String(comment.profile_url);
+        avatarLink.setAttribute('aria-label', String(comment.display_name || 'Climber'));
+        avatarLink.appendChild(avatar);
+        layout.appendChild(avatarLink);
+    } else {
+        const avatarWrap = document.createElement('span');
+        avatarWrap.className = 'peak-detail-list-item__avatar';
+        avatarWrap.setAttribute('aria-hidden', 'true');
+        avatarWrap.appendChild(avatar);
+        layout.appendChild(avatarWrap);
+    }
+
     const body = document.createElement('div');
     body.className = 'peak-detail-list-item__body';
 
@@ -2088,10 +2107,47 @@ function prependPeakComment(section, comment) {
 
     body.appendChild(header);
     body.appendChild(copy);
-    article.appendChild(body);
+    layout.appendChild(body);
+    article.appendChild(layout);
     list.insertBefore(article, list.firstChild);
     refreshTimeAgo(article);
     syncPeakCommentEmptyState(section);
+}
+
+function buildUserAvatarNode(record, size) {
+    const avatar = document.createElement('span');
+    avatar.className = 'user-avatar';
+    avatar.style.setProperty('--user-avatar-size', String(size || 32) + 'px');
+
+    const avatarUrl = String(record && record.avatar_url ? record.avatar_url : '').trim();
+    if (avatarUrl) {
+        const image = document.createElement('img');
+        image.className = 'user-avatar__image';
+        image.src = avatarUrl;
+        image.alt = String(record && record.display_name ? record.display_name : 'Climber') + ' avatar';
+        image.onerror = function() {
+            image.hidden = true;
+            if (icon) {
+                icon.hidden = false;
+            }
+        };
+        avatar.appendChild(image);
+
+        const icon = document.createElement('span');
+        icon.className = 'icon user-avatar__icon';
+        icon.hidden = true;
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = '<i class="fas fa-user-circle"></i>';
+        avatar.appendChild(icon);
+        return avatar;
+    }
+
+    const fallbackIcon = document.createElement('span');
+    fallbackIcon.className = 'icon user-avatar__icon';
+    fallbackIcon.setAttribute('aria-hidden', 'true');
+    fallbackIcon.innerHTML = '<i class="fas fa-user-circle"></i>';
+    avatar.appendChild(fallbackIcon);
+    return avatar;
 }
 
 function openPeakLogForm(panel, form) {

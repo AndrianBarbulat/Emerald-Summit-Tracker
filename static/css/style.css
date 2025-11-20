@@ -70,6 +70,40 @@ select.field-error {
     min-height: 1.2rem;
 }
 
+.user-avatar {
+    --user-avatar-size: 32px;
+    align-items: center;
+    background: linear-gradient(145deg, rgba(116, 198, 157, 0.2), rgba(82, 121, 111, 0.12));
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: 50%;
+    color: var(--color-sage);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: var(--user-avatar-size);
+    justify-content: center;
+    overflow: hidden;
+    width: var(--user-avatar-size);
+}
+
+.user-avatar__image {
+    display: block;
+    height: 100%;
+    object-fit: cover;
+    width: 100%;
+}
+
+.user-avatar__icon {
+    align-items: center;
+    display: inline-flex;
+    font-size: calc(var(--user-avatar-size) * 0.72);
+    justify-content: center;
+    line-height: 1;
+}
+
+.user-avatar__icon[hidden] {
+    display: none !important;
+}
+
 .box {
     border-radius: var(--radius-md);
     border: 1px solid var(--color-light-grey);
@@ -1257,9 +1291,29 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
     padding: 1rem;
 }
 
+.peak-detail-list-item__layout {
+    display: flex;
+    gap: 0.85rem;
+}
+
+.peak-detail-list-item__avatar,
+.peak-detail-list-item__avatar-link {
+    color: inherit;
+    display: inline-flex;
+    flex: 0 0 auto;
+    text-decoration: none;
+}
+
+.peak-detail-list-item__avatar-link:hover .user-avatar,
+.peak-detail-list-item__avatar-link:focus-visible .user-avatar {
+    border-color: rgba(82, 121, 111, 0.32);
+    box-shadow: 0 0 0 0.15rem rgba(116, 198, 157, 0.16);
+}
+
 .peak-detail-list-item__body {
     display: grid;
     gap: 0.45rem;
+    min-width: 0;
 }
 
 .peak-detail-list-item__header {
@@ -1272,6 +1326,7 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
 .peak-detail-list-item__heading {
     display: grid;
     gap: 0.15rem;
+    min-width: 0;
 }
 
 .peak-detail-list-item__title {
@@ -1634,9 +1689,15 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
     gap: 0.5rem;
 }
 
-.site-navbar__user-icon {
+.site-navbar__user-avatar {
+    align-items: center;
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.site-navbar__user-avatar .user-avatar {
+    border-color: rgba(212, 168, 83, 0.38);
     color: var(--color-gold);
-    font-size: 1.1rem;
 }
 
 .site-navbar__display-name {

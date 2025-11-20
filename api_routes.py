@@ -481,6 +481,7 @@ def _serialize_comment(comment: dict | None, current_user_id: str | None) -> dic
     }
     return {
         **current_comment,
+        "avatar_url": profile.get("avatar_url") or current_comment.get("avatar_url"),
         "comment_text": current_comment.get("comment_text") or current_comment.get("text") or "",
         "created_at": created_at,
         "display_name": display_name,

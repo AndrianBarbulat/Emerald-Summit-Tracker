@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'macros/user_avatar.html' import user_avatar %}
 
 {% block title %}{{ public_profile.display_name or "Climber" }} | Emerald Peak Explorer{% endblock %}
 
@@ -48,11 +49,7 @@
                 <div class="public-profile-hero__layout">
                     <div class="public-profile-hero__identity">
                         <div class="public-profile-hero__avatar">
-                            {% if public_profile.avatar_url %}
-                            <img src="{{ public_profile.avatar_url }}" alt="{{ public_profile.display_name or 'Climber' }} avatar">
-                            {% else %}
-                            <span class="icon"><i class="fas fa-user-circle"></i></span>
-                            {% endif %}
+                            {{ user_avatar(public_profile, '96') }}
                         </div>
                         <div class="public-profile-hero__copy">
                             <p class="public-profile-hero__eyebrow">Climber Profile</p>

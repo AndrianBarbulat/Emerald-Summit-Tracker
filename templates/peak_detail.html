@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% from 'macros/peak_status.html' import peak_status as render_peak_status %}
+{% from 'macros/user_avatar.html' import user_avatar %}
 
 {% block title %}{{ peak.name or 'Peak Detail' }}{% endblock %}
 
@@ -659,7 +660,17 @@
                                 <div class="peak-detail-list">
                                     {% for climber in climbers %}
                                     <article class="peak-detail-list-item">
-                                        <div class="peak-detail-list-item__body">
+                                        <div class="peak-detail-list-item__layout">
+                                            {% if climber.profile_url %}
+                                            <a href="{{ climber.profile_url }}" class="peak-detail-list-item__avatar-link" aria-label="{{ climber.display_name or 'Climber' }}">
+                                                {{ user_avatar(climber, '32') }}
+                                            </a>
+                                            {% else %}
+                                            <span class="peak-detail-list-item__avatar" aria-hidden="true">
+                                                {{ user_avatar(climber, '32') }}
+                                            </span>
+                                            {% endif %}
+                                            <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
                                                 <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
@@ -679,6 +690,7 @@
                                                 <span class="peak-detail-stars-display__value">
                                                     {{ climber.difficulty_rating or 'No rating' }}
                                                 </span>
+                                            </div>
                                             </div>
                                         </div>
                                     </article>
@@ -689,7 +701,17 @@
                                 <div class="peak-detail-list is-hidden" data-peak-community-hidden-climbers hidden>
                                     {% for climber in all_climbers[5:] %}
                                     <article class="peak-detail-list-item">
-                                        <div class="peak-detail-list-item__body">
+                                        <div class="peak-detail-list-item__layout">
+                                            {% if climber.profile_url %}
+                                            <a href="{{ climber.profile_url }}" class="peak-detail-list-item__avatar-link" aria-label="{{ climber.display_name or 'Climber' }}">
+                                                {{ user_avatar(climber, '32') }}
+                                            </a>
+                                            {% else %}
+                                            <span class="peak-detail-list-item__avatar" aria-hidden="true">
+                                                {{ user_avatar(climber, '32') }}
+                                            </span>
+                                            {% endif %}
+                                            <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
                                                 <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
@@ -709,6 +731,7 @@
                                                 <span class="peak-detail-stars-display__value">
                                                     {{ climber.difficulty_rating or 'No rating' }}
                                                 </span>
+                                            </div>
                                             </div>
                                         </div>
                                     </article>
@@ -758,7 +781,17 @@
                                 <div class="peak-detail-list" data-peak-comments-list>
                                     {% for comment in comments %}
                                     <article class="peak-detail-list-item" data-comment-id="{{ comment.id }}">
-                                        <div class="peak-detail-list-item__body">
+                                        <div class="peak-detail-list-item__layout">
+                                            {% if comment.profile_url %}
+                                            <a href="{{ comment.profile_url }}" class="peak-detail-list-item__avatar-link" aria-label="{{ comment.display_name or 'Climber' }}">
+                                                {{ user_avatar(comment, '32') }}
+                                            </a>
+                                            {% else %}
+                                            <span class="peak-detail-list-item__avatar" aria-hidden="true">
+                                                {{ user_avatar(comment, '32') }}
+                                            </span>
+                                            {% endif %}
+                                            <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 <div class="peak-detail-list-item__heading">
                                                     {% if comment.profile_url %}
@@ -782,6 +815,7 @@
                                                 {% endif %}
                                             </div>
                                             <p class="peak-detail-list-item__copy">{{ comment.comment_text }}</p>
+                                            </div>
                                         </div>
                                     </article>
                                     {% endfor %}

@@ -1,0 +1,27 @@
+{% macro user_avatar(profile, size='32') -%}
+{% set avatar_source = profile.get('avatar_url') if profile is mapping else profile.avatar_url %}
+{% set display_name = (
+    profile.get('display_name')
+    if profile is mapping and profile.get('display_name')
+    else profile.display_name
+    if profile is not mapping and profile.display_name
+    else 'Climber'
+) %}
+<span class="user-avatar" style="--user-avatar-size: {{ size }}px;">
+    {% if avatar_source %}
+    <img
+        class="user-avatar__image"
+        src="{{ avatar_source }}"
+        alt="{{ display_name }} avatar"
+        onerror="this.hidden=true; if (this.nextElementSibling) { this.nextElementSibling.hidden=false; }"
+    >
+    <span class="icon user-avatar__icon" hidden aria-hidden="true">
+        <i class="fas fa-user-circle"></i>
+    </span>
+    {% else %}
+    <span class="icon user-avatar__icon" aria-hidden="true">
+        <i class="fas fa-user-circle"></i>
+    </span>
+    {% endif %}
+</span>
+{%- endmacro %}

@@ -632,14 +632,10 @@
 
 .dashboard-community-feed__avatar {
     align-items: center;
-    background: linear-gradient(145deg, rgba(116, 198, 157, 0.22), rgba(82, 121, 111, 0.12));
-    border-radius: 50%;
-    color: var(--color-sage);
     display: inline-flex;
-    font-size: 1.55rem;
-    height: 2.75rem;
     justify-content: center;
-    width: 2.75rem;
+    line-height: 1;
+    text-decoration: none;
 }
 
 .dashboard-community-feed__content {
@@ -1058,8 +1054,7 @@
     }
 
     .dashboard-community-feed__avatar {
-        height: 2.4rem;
-        width: 2.4rem;
+        min-height: 2.4rem;
     }
 
     .dashboard-peak-list__actions,

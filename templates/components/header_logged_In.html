@@ -1,3 +1,4 @@
+{% from 'macros/user_avatar.html' import user_avatar %}
 <nav class="navbar is-fixed-top site-navbar" role="navigation" aria-label="authenticated navigation">
     <div class="container">
         <div class="navbar-brand">
@@ -42,8 +43,8 @@
                         aria-expanded="false"
                         data-navbar-dropdown-toggle
                     >
-                        <span class="icon site-navbar__user-icon" aria-hidden="true">
-                            <i class="fas fa-circle-user"></i>
+                        <span class="site-navbar__user-avatar" aria-hidden="true">
+                            {{ user_avatar(profile, '24') }}
                         </span>
                         <span class="site-navbar__display-name">{{ profile.display_name or 'Climber' }}</span>
                     </a>
