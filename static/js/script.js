@@ -2069,7 +2069,7 @@ function prependPeakComment(section, comment) {
 
     if (comment.profile_url) {
         const link = document.createElement('a');
-        link.className = 'peak-detail-list-item__title-link';
+        link.className = 'peak-detail-list-item__title-link user-profile-link';
         link.href = String(comment.profile_url);
 
         const title = document.createElement('p');

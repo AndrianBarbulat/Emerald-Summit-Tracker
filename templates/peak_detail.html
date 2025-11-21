@@ -659,7 +659,7 @@
                                 {% if climbers %}
                                 <div class="peak-detail-list">
                                     {% for climber in climbers %}
-                                    <article class="peak-detail-list-item">
+                                    <article class="peak-detail-list-item{% if climber.is_private_profile %} is-private-profile{% endif %}">
                                         <div class="peak-detail-list-item__layout">
                                             {% if climber.profile_url %}
                                             <a href="{{ climber.profile_url }}" class="peak-detail-list-item__avatar-link" aria-label="{{ climber.display_name or 'Climber' }}">
@@ -673,7 +673,7 @@
                                             <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
-                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}">
                                                     <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 </a>
                                                 {% else %}
@@ -700,7 +700,7 @@
                                 {% if total_climbers > 5 %}
                                 <div class="peak-detail-list is-hidden" data-peak-community-hidden-climbers hidden>
                                     {% for climber in all_climbers[5:] %}
-                                    <article class="peak-detail-list-item">
+                                    <article class="peak-detail-list-item{% if climber.is_private_profile %} is-private-profile{% endif %}">
                                         <div class="peak-detail-list-item__layout">
                                             {% if climber.profile_url %}
                                             <a href="{{ climber.profile_url }}" class="peak-detail-list-item__avatar-link" aria-label="{{ climber.display_name or 'Climber' }}">
@@ -714,7 +714,7 @@
                                             <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
-                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link">
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}">
                                                     <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 </a>
                                                 {% else %}
@@ -795,7 +795,7 @@
                                             <div class="peak-detail-list-item__header">
                                                 <div class="peak-detail-list-item__heading">
                                                     {% if comment.profile_url %}
-                                                    <a href="{{ comment.profile_url }}" class="peak-detail-list-item__title-link">
+                                                    <a href="{{ comment.profile_url }}" class="peak-detail-list-item__title-link user-profile-link">
                                                         <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
                                                     </a>
                                                     {% else %}

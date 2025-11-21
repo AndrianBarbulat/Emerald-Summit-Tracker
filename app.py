@@ -420,10 +420,10 @@ def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str |
         return None
 
     profile_user_id = str(profile.get("id") or "").strip()
-    if _is_profile_public(profile) or (current_user_id and profile_user_id == str(current_user_id)):
-        return url_for("public_profile", display_name=display_name)
+    if current_user_id and profile_user_id == str(current_user_id):
+        return url_for("my_profile")
 
-    return None
+    return url_for("public_profile", display_name=display_name)
 
 
 def _build_peak_climber_entries(climbers: list[dict], current_user_id: str | None) -> list[dict]:
@@ -454,6 +454,11 @@ def _build_peak_climber_entries(climbers: list[dict], current_user_id: str | Non
                 "date_label": _format_short_date(raw_date),
                 "difficulty_rating": difficulty_rating,
                 "difficulty_stars": _difficulty_star_count(difficulty_rating),
+                "is_private_profile": bool(
+                    display_name
+                    and not _is_profile_public(profile_record)
+                    and (not current_user_id or user_id != str(current_user_id))
+                ),
                 "profile_url": _profile_url_for(profile_record, current_user_id),
             }
         )

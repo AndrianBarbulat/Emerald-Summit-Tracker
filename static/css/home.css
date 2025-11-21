@@ -651,6 +651,17 @@
     text-decoration: underline;
 }
 
+.dashboard-community-feed__profile-link {
+    color: var(--color-sage);
+}
+
+.dashboard-community-feed__profile-link:hover,
+.dashboard-community-feed__profile-link:focus-visible {
+    color: var(--color-sage);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
 .dashboard-achievement-next {
     background: linear-gradient(180deg, rgba(255, 243, 205, 0.62) 0%, rgba(245, 241, 235, 0.92) 100%);
     border: 1px solid rgba(221, 170, 34, 0.2);

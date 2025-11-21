@@ -459,10 +459,10 @@ def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str |
         return None
 
     profile_user_id = str(profile.get("id") or "").strip()
-    if _is_profile_public(profile) or (current_user_id and profile_user_id == current_user_id):
-        return url_for("public_profile", display_name=display_name)
+    if current_user_id and profile_user_id == current_user_id:
+        return url_for("my_profile")
 
-    return None
+    return url_for("public_profile", display_name=display_name)
 
 
 def _serialize_comment(comment: dict | None, current_user_id: str | None) -> dict:
