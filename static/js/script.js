@@ -183,6 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
         initPeakCommunitySection(section);
     });
 
+    initProfilePreviewTooltips();
+
     refreshTimeAgo(document);
     startTimeAgoUpdates();
 
@@ -222,6 +224,8 @@ const AUTH_MODAL_COPY = {
 };
 
 let timeAgoIntervalId = null;
+const profilePreviewCache = Object.create(null);
+let profilePreviewTooltipState = null;
 const timeAgoDateFormatter = new Intl.DateTimeFormat('en-IE', {
     day: 'numeric',
     month: 'short',
@@ -316,6 +320,258 @@ function timeAgo(dateString) {
     }
 
     return formatAbsoluteTimestamp(parsedDate);
+}
+
+function initProfilePreviewTooltips() {
+    const desktopPreviewMedia = window.matchMedia('(min-width: 769px) and (hover: hover) and (pointer: fine)');
+    const tooltip = createProfilePreviewTooltip();
+    const state = {
+        activeLink: null,
+        hoverTimer: null,
+        hideTimer: null,
+        media: desktopPreviewMedia,
+        tooltip: tooltip
+    };
+    profilePreviewTooltipState = state;
+
+    const hideTooltip = function() {
+        window.clearTimeout(state.hideTimer);
+        state.hideTimer = null;
+        state.activeLink = null;
+        state.tooltip.classList.remove('is-visible');
+        state.tooltip.hidden = true;
+    };
+
+    const cancelPendingHover = function() {
+        window.clearTimeout(state.hoverTimer);
+        state.hoverTimer = null;
+    };
+
+    const handleLinkEnter = function(link) {
+        if (!state.media.matches) {
+            return;
+        }
+
+        window.clearTimeout(state.hideTimer);
+        cancelPendingHover();
+        state.activeLink = link;
+        state.hoverTimer = window.setTimeout(async function() {
+            const previewName = getProfilePreviewName(link);
+            if (!previewName || state.activeLink !== link) {
+                return;
+            }
+
+            const preview = await fetchProfilePreview(previewName);
+            if (!preview || state.activeLink !== link) {
+                return;
+            }
+
+            renderProfilePreviewTooltip(state.tooltip, preview);
+            positionProfilePreviewTooltip(state.tooltip, link);
+            state.tooltip.hidden = false;
+            requestAnimationFrame(function() {
+                state.tooltip.classList.add('is-visible');
+            });
+        }, 500);
+    };
+
+    const handleLinkLeave = function(link) {
+        if (state.activeLink === link) {
+            state.activeLink = null;
+        }
+        cancelPendingHover();
+        state.hideTimer = window.setTimeout(hideTooltip, 70);
+    };
+
+    document.addEventListener('mouseover', function(event) {
+        const link = event.target && typeof event.target.closest === 'function'
+            ? event.target.closest('.user-profile-link[data-profile-preview-name]')
+            : null;
+        if (!link) {
+            return;
+        }
+
+        if (event.relatedTarget && link.contains(event.relatedTarget)) {
+            return;
+        }
+
+        handleLinkEnter(link);
+    });
+
+    document.addEventListener('mouseout', function(event) {
+        const link = event.target && typeof event.target.closest === 'function'
+            ? event.target.closest('.user-profile-link[data-profile-preview-name]')
+            : null;
+        if (!link) {
+            return;
+        }
+
+        if (event.relatedTarget && link.contains(event.relatedTarget)) {
+            return;
+        }
+
+        handleLinkLeave(link);
+    });
+
+    document.addEventListener('click', function() {
+        hideTooltip();
+    });
+
+    state.media.addEventListener('change', function() {
+        cancelPendingHover();
+        hideTooltip();
+    });
+
+    document.addEventListener('scroll', hideTooltip, true);
+    window.addEventListener('resize', hideTooltip);
+}
+
+function createProfilePreviewTooltip() {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'profile-preview-tooltip';
+    tooltip.hidden = true;
+    tooltip.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(tooltip);
+    return tooltip;
+}
+
+function getProfilePreviewName(link) {
+    if (!link) {
+        return '';
+    }
+
+    const datasetName = String(link.getAttribute('data-profile-preview-name') || '').trim();
+    if (datasetName) {
+        return datasetName;
+    }
+
+    return String(link.textContent || '').trim();
+}
+
+async function fetchProfilePreview(displayName) {
+    const normalizedName = String(displayName || '').trim();
+    if (!normalizedName) {
+        return null;
+    }
+
+    const cacheKey = normalizedName.toLowerCase();
+    const cachedEntry = profilePreviewCache[cacheKey];
+    if (cachedEntry && Object.prototype.hasOwnProperty.call(cachedEntry, 'data')) {
+        return cachedEntry.data;
+    }
+    if (cachedEntry && cachedEntry.promise) {
+        return cachedEntry.promise;
+    }
+
+    const requestPromise = fetch('/api/profile/preview/' + encodeURIComponent(normalizedName), {
+        headers: {
+            Accept: 'application/json'
+        }
+    }).then(async function(response) {
+        const payload = await response.json().catch(function() {
+            return {};
+        });
+        if (!response.ok) {
+            profilePreviewCache[cacheKey] = { data: null };
+            return null;
+        }
+
+        const preview = payload && payload.profile ? payload.profile : payload;
+        profilePreviewCache[cacheKey] = { data: preview || null };
+        return profilePreviewCache[cacheKey].data;
+    }).catch(function() {
+        profilePreviewCache[cacheKey] = { data: null };
+        return null;
+    });
+
+    profilePreviewCache[cacheKey] = { promise: requestPromise };
+    const preview = await requestPromise;
+    if (!profilePreviewCache[cacheKey] || profilePreviewCache[cacheKey].promise) {
+        profilePreviewCache[cacheKey] = { data: preview || null };
+    }
+    return preview;
+}
+
+function renderProfilePreviewTooltip(tooltip, preview) {
+    if (!tooltip || !preview) {
+        return;
+    }
+
+    const displayName = String(preview.display_name || 'Climber').trim() || 'Climber';
+    const location = String(preview.location || '').trim();
+    const memberSince = String(preview.member_since || 'Recently').trim() || 'Recently';
+    const peaksClimbedCount = Number(preview.peaks_climbed_count || 0);
+    const locationMarkup = location
+        ? '<p class="profile-preview-tooltip__location"><i class="fas fa-location-dot"></i> ' + escapeHtml(location) + '</p>'
+        : '<p class="profile-preview-tooltip__location">Exploring from somewhere in Ireland.</p>';
+
+    tooltip.innerHTML = `
+        <div class="profile-preview-tooltip__layout">
+            <div class="profile-preview-tooltip__header">
+                ${renderProfilePreviewAvatar(preview)}
+                <div class="profile-preview-tooltip__identity">
+                    <p class="profile-preview-tooltip__name">${escapeHtml(displayName)}</p>
+                    ${locationMarkup}
+                </div>
+            </div>
+            <div class="profile-preview-tooltip__meta">
+                <div class="profile-preview-tooltip__meta-item">
+                    <span class="profile-preview-tooltip__meta-label">Peaks Climbed</span>
+                    <span class="profile-preview-tooltip__meta-value">${Number.isFinite(peaksClimbedCount) ? peaksClimbedCount : 0}</span>
+                </div>
+                <div class="profile-preview-tooltip__meta-item">
+                    <span class="profile-preview-tooltip__meta-label">Member Since</span>
+                    <span class="profile-preview-tooltip__meta-value">${escapeHtml(memberSince)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderProfilePreviewAvatar(preview) {
+    const avatarUrl = String(preview && preview.avatar_url ? preview.avatar_url : '').trim();
+    const displayName = String(preview && preview.display_name ? preview.display_name : 'Climber').trim() || 'Climber';
+    const baseOpen = '<span class="user-avatar" style="--user-avatar-size: 40px;">';
+    if (avatarUrl) {
+        return (
+            baseOpen +
+            '<img class="user-avatar__image" src="' + escapeHtml(avatarUrl) + '" alt="' + escapeHtml(displayName) + ' avatar" ' +
+            'onerror="this.hidden=true; if (this.nextElementSibling) { this.nextElementSibling.hidden=false; }">' +
+            '<span class="icon user-avatar__icon" hidden aria-hidden="true"><i class="fas fa-user-circle"></i></span>' +
+            '</span>'
+        );
+    }
+
+    return baseOpen + '<span class="icon user-avatar__icon" aria-hidden="true"><i class="fas fa-user-circle"></i></span></span>';
+}
+
+function positionProfilePreviewTooltip(tooltip, link) {
+    if (!tooltip || !link) {
+        return;
+    }
+
+    tooltip.style.left = '0px';
+    tooltip.style.top = '0px';
+    const linkRect = link.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const gap = 12;
+
+    let left = linkRect.left + (linkRect.width / 2) - (tooltipRect.width / 2);
+    left = Math.max(8, Math.min(left, viewportWidth - tooltipRect.width - 8));
+
+    const canPositionAbove = linkRect.top >= (tooltipRect.height + gap + 8);
+    let top = canPositionAbove
+        ? (linkRect.top - tooltipRect.height - gap)
+        : (linkRect.bottom + gap);
+
+    if (!canPositionAbove && (top + tooltipRect.height + 8) > viewportHeight) {
+        top = Math.max(8, viewportHeight - tooltipRect.height - 8);
+    }
+
+    tooltip.style.left = Math.round(left) + 'px';
+    tooltip.style.top = Math.round(top) + 'px';
 }
 
 function refreshTimeAgo(scope) {
@@ -2071,6 +2327,7 @@ function prependPeakComment(section, comment) {
         const link = document.createElement('a');
         link.className = 'peak-detail-list-item__title-link user-profile-link';
         link.href = String(comment.profile_url);
+        link.setAttribute('data-profile-preview-name', String(comment.display_name || 'Climber'));
 
         const title = document.createElement('p');
         title.className = 'peak-detail-list-item__title';

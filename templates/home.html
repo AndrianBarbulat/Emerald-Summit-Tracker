@@ -278,7 +278,7 @@
                                     </div>
                                     <div class="column dashboard-community-feed__content">
                                         {% if climb.profile_url %}
-                                        <a class="has-text-weight-bold dashboard-community-feed__profile-link user-profile-link" href="{{ climb.profile_url }}">{{ climb.display_name }}</a>
+                                        <a class="has-text-weight-bold dashboard-community-feed__profile-link user-profile-link" href="{{ climb.profile_url }}" data-profile-preview-name="{{ climb.display_name }}">{{ climb.display_name }}</a>
                                         {% else %}
                                         <span class="has-text-weight-bold">{{ climb.display_name }}</span>
                                         {% endif %}

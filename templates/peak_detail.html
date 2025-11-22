@@ -673,7 +673,7 @@
                                             <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
-                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}">
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}" data-profile-preview-name="{{ climber.display_name }}">
                                                     <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 </a>
                                                 {% else %}
@@ -714,7 +714,7 @@
                                             <div class="peak-detail-list-item__body">
                                             <div class="peak-detail-list-item__header">
                                                 {% if climber.profile_url %}
-                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}">
+                                                <a href="{{ climber.profile_url }}" class="peak-detail-list-item__title-link user-profile-link{% if climber.is_private_profile %} is-private-profile{% endif %}" data-profile-preview-name="{{ climber.display_name }}">
                                                     <p class="peak-detail-list-item__title">{{ climber.display_name }}</p>
                                                 </a>
                                                 {% else %}
@@ -795,7 +795,7 @@
                                             <div class="peak-detail-list-item__header">
                                                 <div class="peak-detail-list-item__heading">
                                                     {% if comment.profile_url %}
-                                                    <a href="{{ comment.profile_url }}" class="peak-detail-list-item__title-link user-profile-link">
+                                                    <a href="{{ comment.profile_url }}" class="peak-detail-list-item__title-link user-profile-link" data-profile-preview-name="{{ comment.display_name }}">
                                                         <p class="peak-detail-list-item__title">{{ comment.display_name }}</p>
                                                     </a>
                                                     {% else %}

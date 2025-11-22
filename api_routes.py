@@ -3,7 +3,7 @@ import re
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, current_app, jsonify, request, session, url_for
-from time_utils import format_time_ago, parse_datetime_value
+from time_utils import format_display_date, format_time_ago, parse_datetime_value
 
 from supabase_utils import (
     TABLE_BUCKET_LIST,
@@ -1197,15 +1197,29 @@ def api_profile_preview(display_name: str):
     if profile is None:
         return _json_error("That profile could not be found.", 400)
 
-    preview = {
-        field_name: profile.get(field_name)
-        for field_name in PROFILE_PREVIEW_FIELDS
-        if profile.get(field_name) is not None
-    }
-    if not preview.get("display_name"):
-        preview["display_name"] = cleaned_name
+    if not _is_profile_public(profile):
+        return _json_error("Profile preview is unavailable.", 400)
 
-    return _json_success({"profile": preview})
+    climbs = get_user_climbs(str(profile.get("id") or ""))
+    unique_peak_ids = {
+        str(climb.get("peak_id")).strip()
+        for climb in climbs
+        if climb.get("peak_id") is not None and str(climb.get("peak_id")).strip()
+    }
+    member_since_raw = (
+        profile.get("created_at")
+        or profile.get("inserted_at")
+        or profile.get("updated_at")
+    )
+    preview = {
+        "display_name": str(profile.get("display_name") or cleaned_name).strip() or cleaned_name,
+        "avatar_url": profile.get("avatar_url"),
+        "location": profile.get("location") or "",
+        "peaks_climbed_count": len(unique_peak_ids),
+        "member_since": format_display_date(member_since_raw, fallback="Recently") if member_since_raw else "Recently",
+    }
+
+    return _json_success(preview)
 
 
 @api.route("/account/password-reset", methods=["POST"])
