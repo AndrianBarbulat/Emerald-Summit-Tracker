@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setAccountDeleteError(elements, '');
             toggleAccountSaveBusy(elements.deleteConfirmButton, true);
             try {
-                const result = await window.postJsonRequest('/api/account/delete', {});
+                const result = await window.postJsonRequest('/api/account/delete', { confirm: ACCOUNT_DELETE_CONFIRM_TEXT });
                 const warnings = Array.isArray(result && result.warnings) ? result.warnings : [];
                 const message = warnings.length
                     ? 'Your account was deleted, but a few cleanup steps had to be finished best-effort.'
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.showToast(message, warnings.length ? 'warning' : 'success');
                 }
                 window.setTimeout(function() {
-                    window.location.assign((result && result.redirect_url) || '/');
+                    window.location.assign((result && (result.redirect || result.redirect_url)) || '/');
                 }, warnings.length ? 1200 : 700);
             } catch (error) {
                 const message = (error && error.message) || 'We could not delete your account right now.';

@@ -77,10 +77,12 @@ BADGE_RULES = [
 PROFILE_PREVIEW_FIELDS = ("id", "display_name", "avatar_url", "bio", "location")
 DISPLAY_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]{3,30}$")
 PROFILE_UPDATE_FIELDS = {
+    "avatar_url",
     "display_name",
     "first_name",
     "last_name",
     "bio",
+    "is_public",
     "location",
     "profile_visibility",
     "website",
@@ -93,6 +95,12 @@ PROFILE_UPDATE_FIELDS = {
     "distance_unit",
     "distance_units",
     "use_imperial_units",
+}
+PROFILE_SCALAR_TEXT_UPDATE_FIELDS = PROFILE_UPDATE_FIELDS - {
+    "avatar_url",
+    "is_public",
+    "profile_visibility",
+    "unit_preference",
 }
 
 
@@ -154,6 +162,7 @@ def _get_current_user_email() -> str:
 def _sync_session_profile(user_id: str):
     refreshed_profile = get_user_profile(user_id)
     if refreshed_profile is not None:
+        refreshed_profile = _serialize_profile_payload(refreshed_profile)
         session["profile"] = refreshed_profile
     return refreshed_profile
 
@@ -255,6 +264,42 @@ def _normalize_unit_preference(value) -> str | None:
     if normalized in {"metric", "meters", "metres", "m", "false", "0", "no", "off"}:
         return "metric"
     return None
+
+
+def _profile_unit_preference_value(profile: dict | None) -> str:
+    if not isinstance(profile, dict):
+        return "metric"
+
+    candidate_values = [
+        profile.get("unit_preference"),
+        profile.get("units"),
+        profile.get("measurement_system"),
+        profile.get("measurement_preference"),
+        profile.get("height_unit"),
+        profile.get("height_units"),
+        profile.get("use_imperial_units"),
+    ]
+
+    preferences = profile.get("preferences")
+    if isinstance(preferences, dict):
+        candidate_values.extend(
+            [
+                preferences.get("unit_preference"),
+                preferences.get("units"),
+                preferences.get("measurement_system"),
+                preferences.get("measurement_preference"),
+                preferences.get("height_unit"),
+                preferences.get("height_units"),
+                preferences.get("use_imperial_units"),
+            ]
+        )
+
+    for value in candidate_values:
+        normalized_unit = _normalize_unit_preference(value)
+        if normalized_unit:
+            return normalized_unit
+
+    return "metric"
 
 
 def _merge_profile_preference_updates(existing_profile: dict, updates: dict, preference_updates: dict) -> dict:
@@ -448,6 +493,14 @@ def _is_profile_public(profile: dict | None) -> bool:
     if visibility in {"public", "everyone", "all", "true", "1", "on", "yes"}:
         return True
     return bool(str((profile or {}).get("display_name") or "").strip())
+
+
+def _serialize_profile_payload(profile: dict | None) -> dict:
+    serialized_profile = dict(profile or {})
+    serialized_profile["is_public"] = _is_profile_public(serialized_profile)
+    serialized_profile["profile_visibility"] = "public" if serialized_profile["is_public"] else "private"
+    serialized_profile["unit_preference"] = _profile_unit_preference_value(serialized_profile)
+    return serialized_profile
 
 
 def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str | None:
@@ -1095,7 +1148,7 @@ def api_profile_update():
     payload = _get_request_data()
     avatar_file = request.files.get("avatar")
     updates = {}
-    for field_name in PROFILE_UPDATE_FIELDS:
+    for field_name in PROFILE_SCALAR_TEXT_UPDATE_FIELDS:
         if field_name not in payload:
             continue
         max_length = 500 if field_name == "bio" else 200
@@ -1107,6 +1160,42 @@ def api_profile_update():
         if cleaned_value is None:
             return _json_error(f"{field_name.replace('_', ' ').title()} is too long.", 400)
         updates[field_name] = cleaned_value
+
+    raw_avatar_url = _extract_field(payload, "avatar_url")
+    if raw_avatar_url is not _UNSET:
+        cleaned_avatar_url = _clean_text(raw_avatar_url, 2000)
+        if cleaned_avatar_url is None:
+            return _json_error(
+                "Avatar URL is too long.",
+                400,
+                fields={"avatar_url": "Avatar URL must be 2000 characters or fewer."},
+            )
+        updates["avatar_url"] = cleaned_avatar_url
+
+    raw_visibility = _extract_field(payload, "profile_visibility", "is_public")
+    if raw_visibility is not _UNSET:
+        normalized_visibility = _normalize_profile_visibility(raw_visibility)
+        if normalized_visibility is None:
+            return _json_error(
+                "Choose whether your profile should be public or private.",
+                400,
+                fields={
+                    "is_public": "Choose public or private visibility.",
+                    "profile_visibility": "Choose public or private visibility.",
+                },
+            )
+        updates["profile_visibility"] = normalized_visibility
+
+    raw_unit_preference = _extract_field(payload, "unit_preference")
+    if raw_unit_preference is not _UNSET:
+        normalized_unit_preference = _normalize_unit_preference(raw_unit_preference)
+        if normalized_unit_preference is None:
+            return _json_error(
+                "Choose either metric or imperial units.",
+                400,
+                fields={"unit_preference": "Choose either metric or imperial units."},
+            )
+        updates["unit_preference"] = normalized_unit_preference
 
     if "preferences" in payload and isinstance(payload.get("preferences"), dict):
         updates["preferences"] = payload.get("preferences")
@@ -1130,26 +1219,6 @@ def api_profile_update():
 
     if "bio" in updates and len(str(updates.get("bio") or "")) > 500:
         return _json_error("Bio must be 500 characters or fewer.", 400, fields={"bio": "Bio must be 500 characters or fewer."})
-
-    if "profile_visibility" in updates:
-        normalized_visibility = _normalize_profile_visibility(updates.get("profile_visibility"))
-        if normalized_visibility is None:
-            return _json_error(
-                "Choose whether your profile should be public or private.",
-                400,
-                fields={"profile_visibility": "Choose public or private visibility."},
-            )
-        updates["profile_visibility"] = normalized_visibility
-
-    if "unit_preference" in updates:
-        normalized_unit_preference = _normalize_unit_preference(updates.get("unit_preference"))
-        if normalized_unit_preference is None:
-            return _json_error(
-                "Choose either metric or imperial units.",
-                400,
-                fields={"unit_preference": "Choose either metric or imperial units."},
-            )
-        updates["unit_preference"] = normalized_unit_preference
 
     existing_profile = get_user_profile(user_id) or {}
     updates = _prepare_profile_settings_updates(existing_profile, updates)
@@ -1183,6 +1252,7 @@ def api_profile_update():
             delete_profile_avatar_upload(uploaded_avatar_path)
         return _json_error("We couldn't update your profile right now.", 500)
 
+    updated_profile = _serialize_profile_payload(updated_profile)
     session["profile"] = updated_profile
     return _json_success({"profile": updated_profile})
 
@@ -1258,6 +1328,15 @@ def api_account_delete():
     if error_response:
         return error_response
 
+    payload = _get_request_data()
+    confirmation_value = str(payload.get("confirm") or "").strip()
+    if confirmation_value != "DELETE":
+        return _json_error(
+            "Type DELETE to confirm account deletion.",
+            400,
+            fields={"confirm": "Type DELETE to confirm account deletion."},
+        )
+
     if supabase is None or not hasattr(supabase, "auth") or not hasattr(supabase.auth, "admin"):
         return _json_error("Account deletion is not available right now.", 500)
 
@@ -1289,16 +1368,24 @@ def api_account_delete():
         warnings.append(warning)
         _log_account_cleanup_issue(user_id, warning, exc)
 
-    clear_shared_data_cache()
-    session.clear()
-
     if not profile_deleted and not auth_deleted:
         return _json_error("We couldn't delete your account right now.", 500)
+
+    try:
+        sign_out_method = getattr(supabase.auth, "sign_out", None)
+        if callable(sign_out_method):
+            sign_out_method()
+    except Exception as exc:
+        _log_account_cleanup_issue(user_id, "The active session could not be signed out cleanly.", exc)
+
+    clear_shared_data_cache()
+    session.clear()
 
     return _json_success(
         {
             "deleted": True,
             "partial_failure": bool(warnings),
+            "redirect": url_for("index"),
             "redirect_url": url_for("index"),
             "warnings": warnings,
         }
