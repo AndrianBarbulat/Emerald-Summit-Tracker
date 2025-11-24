@@ -69,12 +69,20 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if is_profile_owner %}
+                    {% if compare_with_me_url or is_profile_owner %}
                     <div class="public-profile-hero__actions">
+                        {% if compare_with_me_url %}
+                        <a href="{{ compare_with_me_url }}" class="button public-profile-hero__button public-profile-hero__button--compare">
+                            <span class="icon"><i class="fas fa-scale-balanced"></i></span>
+                            <span>Compare with Me</span>
+                        </a>
+                        {% endif %}
+                        {% if is_profile_owner %}
                         <a href="{{ url_for('account_settings') }}" class="button public-profile-hero__button">
                             <span class="icon"><i class="fas fa-pen"></i></span>
                             <span>Edit Profile</span>
                         </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

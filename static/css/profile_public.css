@@ -91,7 +91,10 @@
 }
 
 .public-profile-hero__actions {
+    display: flex;
     flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 .public-profile-hero__button {
@@ -107,6 +110,19 @@
 .public-profile-hero__button:focus-visible {
     background: #214d39;
     color: var(--color-white);
+}
+
+.public-profile-hero__button--compare {
+    background: rgba(116, 198, 157, 0.14);
+    border-color: rgba(116, 198, 157, 0.4);
+    color: var(--color-forest);
+}
+
+.public-profile-hero__button--compare:hover,
+.public-profile-hero__button--compare:focus-visible {
+    background: rgba(116, 198, 157, 0.22);
+    border-color: rgba(116, 198, 157, 0.5);
+    color: var(--color-forest);
 }
 
 .public-profile-private {

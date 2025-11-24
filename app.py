@@ -22,6 +22,7 @@ from supabase_utils import (
     get_user_climb_history,
     get_user_climbs,
     get_user_has_climbed,
+    get_user_profile,
     get_user_peak_climbs,
     get_peak_statuses,
     is_bucket_listed as get_bucket_list_entry,
@@ -657,6 +658,127 @@ def _build_public_profile_badges(badges: list[dict]) -> list[dict]:
     )
 
 
+def _build_distinct_climbed_peak_entries(climbs: list[dict], peaks_by_id: dict) -> list[dict]:
+    distinct_peaks: dict[str, dict] = {}
+    fallback_date = datetime.min.replace(tzinfo=timezone.utc)
+
+    for climb in climbs:
+        peak_id = climb.get("peak_id")
+        if peak_id is None:
+            continue
+
+        climb_peak = climb.get("peak") if isinstance(climb.get("peak"), dict) else {}
+        peak = dict(peaks_by_id.get(peak_id) or peaks_by_id.get(_peak_key(peak_id)) or climb_peak or {})
+        raw_date = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+        date_sort = climb.get("date_sort") or _parse_datetime(raw_date) or fallback_date
+        province_name = str(peak.get("province") or climb.get("peak_province") or "").strip()
+
+        entry = {
+            "peak_id": peak_id,
+            "name": climb.get("peak_name") or peak.get("name") or f"Peak #{peak_id}",
+            "height_m": climb.get("height_m") if climb.get("height_m") is not None else peak.get("height_m"),
+            "height_ft": climb.get("height_ft") if climb.get("height_ft") is not None else peak.get("height_ft"),
+            "county": climb.get("peak_county") or peak.get("county"),
+            "province": province_name,
+            "province_key": re.sub(r"[^a-z0-9]+", "-", province_name.lower()).strip("-") or "default",
+            "date_climbed": raw_date,
+            "date_sort": date_sort,
+        }
+
+        peak_key = _peak_key(peak_id)
+        existing_entry = distinct_peaks.get(peak_key)
+        if existing_entry is None or date_sort > existing_entry.get("date_sort", fallback_date):
+            distinct_peaks[peak_key] = entry
+
+    return sorted(
+        distinct_peaks.values(),
+        key=lambda peak: (-(peak.get("height_m") or 0), str(peak.get("name") or "").lower()),
+    )
+
+
+def _empty_public_profile_view_data(profile_record: dict | None) -> dict:
+    member_since_raw = (
+        (profile_record or {}).get("created_at")
+        or (profile_record or {}).get("inserted_at")
+        or (profile_record or {}).get("updated_at")
+    )
+    total_peaks = int(app.config.get("TOTAL_PEAK_COUNT") or 0)
+
+    return {
+        "all_climbs": [],
+        "recent_climbs": [],
+        "badges": [],
+        "distinct_peaks": [],
+        "map": {
+            "markers": [],
+            "unique_peaks": 0,
+            "total_peaks": total_peaks,
+            "completion_percent": 0,
+        },
+        "progress": {
+            "completed_count": 0,
+            "completion_percent": 0,
+            "province_breakdown": [],
+            "total_elevation_ft": 0,
+            "total_elevation_m": 0,
+            "total_peaks": total_peaks,
+        },
+        "stats": {
+            "favourite_province": None,
+            "highest_peak": None,
+            "member_since": member_since_raw,
+            "member_since_label": _format_short_date(member_since_raw) if member_since_raw else None,
+            "peaks_climbed": 0,
+            "streak_weeks": 0,
+            "badge_count": 0,
+            "province_breakdown": [],
+            "total_elevation_ft": 0,
+            "total_elevation_m": 0,
+        },
+        "streak": _build_dashboard_streak([]),
+    }
+
+
+def _build_public_profile_view_data(
+    profile_record: dict,
+    all_peaks: list[dict] | None = None,
+    total_peaks: int | None = None,
+) -> dict:
+    profile_user_id = str((profile_record or {}).get("id") or "").strip()
+    if not profile_user_id:
+        return _empty_public_profile_view_data(profile_record)
+
+    resolved_all_peaks = list(all_peaks) if all_peaks is not None else get_all_peaks()
+    resolved_total_peaks = int(total_peaks or 0) or int(app.config.get("TOTAL_PEAK_COUNT") or 0) or len(resolved_all_peaks)
+    peaks_by_id = {
+        peak.get("id"): peak
+        for peak in resolved_all_peaks
+        if peak.get("id") is not None
+    }
+
+    climbs = _build_my_climb_entries(get_user_climb_history(profile_user_id))
+    progress = _build_dashboard_progress_data(climbs, peaks_by_id, resolved_total_peaks)
+    badges = _build_public_profile_badges(get_user_badges(profile_user_id))
+    streak = _build_dashboard_streak(climbs)
+    stats = {
+        **_build_public_profile_stats(profile_record, climbs, peaks_by_id, resolved_total_peaks),
+        "streak_weeks": int(streak.get("display_weeks") or 0),
+        "badge_count": len(badges),
+        "province_breakdown": progress.get("province_breakdown") or [],
+    }
+
+    return {
+        "all_climbs": climbs,
+        "recent_climbs": climbs[:20],
+        "badges": badges,
+        "distinct_peaks": _build_distinct_climbed_peak_entries(climbs, peaks_by_id),
+        "map": _build_my_climb_map_data(climbs, resolved_total_peaks),
+        "progress": progress,
+        "stats": stats,
+        "streak": streak,
+    }
+
+
 def _build_dashboard_progress_data(climbs: list[dict], peaks_by_id: dict, total_peaks: int) -> dict:
     province_order = ("Munster", "Leinster", "Ulster", "Connacht")
     province_lookup = {province.lower(): province for province in province_order}
@@ -853,6 +975,142 @@ def _build_my_climb_map_data(climbs: list[dict], total_peaks: int) -> dict:
         "unique_peaks": unique_peaks,
         "total_peaks": total_peaks,
         "completion_percent": completion_percent,
+    }
+
+
+def _comparison_winner_flags(left_value, right_value) -> tuple[bool, bool]:
+    left_number = int(left_value or 0)
+    right_number = int(right_value or 0)
+    if left_number > right_number:
+        return True, False
+    if right_number > left_number:
+        return False, True
+    return False, False
+
+
+def _build_profile_compare_metric_rows(left_view: dict, right_view: dict) -> list[dict]:
+    left_stats = left_view.get("stats") or {}
+    right_stats = right_view.get("stats") or {}
+
+    metric_rows = [
+        {
+            "icon": "fa-mountain",
+            "kind": "number",
+            "key": "peaks_climbed",
+            "label": "Peaks Climbed",
+            "left_value": int(left_stats.get("peaks_climbed") or 0),
+            "right_value": int(right_stats.get("peaks_climbed") or 0),
+        },
+        {
+            "icon": "fa-chart-column",
+            "kind": "height",
+            "key": "total_elevation",
+            "label": "Total Elevation",
+            "left_value": int(left_stats.get("total_elevation_m") or 0),
+            "left_value_ft": int(left_stats.get("total_elevation_ft") or 0),
+            "right_value": int(right_stats.get("total_elevation_m") or 0),
+            "right_value_ft": int(right_stats.get("total_elevation_ft") or 0),
+        },
+        {
+            "icon": "fa-fire",
+            "kind": "weeks",
+            "key": "streak",
+            "label": "Streak",
+            "left_value": int(left_stats.get("streak_weeks") or 0),
+            "right_value": int(right_stats.get("streak_weeks") or 0),
+        },
+        {
+            "icon": "fa-award",
+            "kind": "number",
+            "key": "badges",
+            "label": "Badges",
+            "left_value": int(left_stats.get("badge_count") or 0),
+            "right_value": int(right_stats.get("badge_count") or 0),
+        },
+    ]
+
+    for row in metric_rows:
+        left_leads, right_leads = _comparison_winner_flags(row.get("left_value"), row.get("right_value"))
+        row["left_is_leader"] = left_leads
+        row["right_is_leader"] = right_leads
+
+    return metric_rows
+
+
+def _build_profile_compare_province_rows(left_view: dict, right_view: dict) -> list[dict]:
+    left_breakdown = left_view.get("stats", {}).get("province_breakdown") or []
+    right_breakdown = right_view.get("stats", {}).get("province_breakdown") or []
+    left_lookup = {str(row.get("name") or "").strip(): row for row in left_breakdown}
+    right_lookup = {str(row.get("name") or "").strip(): row for row in right_breakdown}
+    ordered_names = []
+
+    for province_name in ("Munster", "Leinster", "Ulster", "Connacht"):
+        if province_name in left_lookup or province_name in right_lookup:
+            ordered_names.append(province_name)
+
+    extra_names = sorted(
+        {
+            name
+            for name in [*left_lookup.keys(), *right_lookup.keys()]
+            if name and name not in ordered_names
+        }
+    )
+    ordered_names.extend(extra_names)
+
+    province_rows = []
+    for province_name in ordered_names:
+        left_count = int((left_lookup.get(province_name) or {}).get("count") or 0)
+        right_count = int((right_lookup.get(province_name) or {}).get("count") or 0)
+        left_leads, right_leads = _comparison_winner_flags(left_count, right_count)
+        province_key = (
+            (left_lookup.get(province_name) or {}).get("key")
+            or (right_lookup.get(province_name) or {}).get("key")
+            or re.sub(r"[^a-z0-9]+", "-", province_name.lower()).strip("-")
+            or "default"
+        )
+        province_rows.append(
+            {
+                "key": province_key,
+                "name": province_name,
+                "left_count": left_count,
+                "right_count": right_count,
+                "left_is_leader": left_leads,
+                "right_is_leader": right_leads,
+            }
+        )
+
+    return province_rows
+
+
+def _build_profile_compare_peak_overlap(left_view: dict, right_view: dict) -> dict:
+    left_lookup = {
+        _peak_key(peak.get("peak_id")): peak
+        for peak in (left_view.get("distinct_peaks") or [])
+        if peak.get("peak_id") is not None
+    }
+    right_lookup = {
+        _peak_key(peak.get("peak_id")): peak
+        for peak in (right_view.get("distinct_peaks") or [])
+        if peak.get("peak_id") is not None
+    }
+
+    def _serialize_peak_list(peak_ids: set[str], source_lookup: dict[str, dict]) -> list[dict]:
+        return sorted(
+            [dict(source_lookup[peak_id]) for peak_id in peak_ids if peak_id in source_lookup],
+            key=lambda peak: (-(peak.get("height_m") or 0), str(peak.get("name") or "").lower()),
+        )
+
+    shared_ids = set(left_lookup.keys()) & set(right_lookup.keys())
+    left_only_ids = set(left_lookup.keys()) - set(right_lookup.keys())
+    right_only_ids = set(right_lookup.keys()) - set(left_lookup.keys())
+
+    return {
+        "shared_count": len(shared_ids),
+        "shared_peaks": _serialize_peak_list(shared_ids, left_lookup)[:6],
+        "left_only_count": len(left_only_ids),
+        "left_only_peaks": _serialize_peak_list(left_only_ids, left_lookup)[:6],
+        "right_only_count": len(right_only_ids),
+        "right_only_peaks": _serialize_peak_list(right_only_ids, right_lookup)[:6],
     }
 
 
@@ -2385,56 +2643,71 @@ def public_profile(display_name: str):
     is_owner = bool(current_user_id and profile_user_id == current_user_id)
     is_private_profile = bool(not is_owner and not _is_profile_public(profile_record))
     current_view = "map" if (request.args.get("view") or "").strip().lower() == "map" else "list"
-
-    public_climbs = []
-    recent_climbs = []
-    member_since_raw = (
-        profile_record.get("created_at")
-        or profile_record.get("inserted_at")
-        or profile_record.get("updated_at")
-    )
-    public_profile_stats = {
-        "favourite_province": None,
-        "highest_peak": None,
-        "member_since": member_since_raw,
-        "member_since_label": _format_short_date(member_since_raw) if member_since_raw else None,
-        "peaks_climbed": 0,
-        "total_elevation_ft": 0,
-        "total_elevation_m": 0,
-    }
-    public_profile_badges = []
-    public_profile_map = {
-        "markers": [],
-        "unique_peaks": 0,
-        "total_peaks": int(app.config.get("TOTAL_PEAK_COUNT") or 0),
-        "completion_percent": 0,
-    }
+    public_profile_view = _empty_public_profile_view_data(profile_record)
+    compare_with_me_url = None
 
     if not is_private_profile and profile_user_id:
         all_peaks = get_all_peaks()
-        peaks_by_id = {
-            peak.get("id"): peak
-            for peak in all_peaks
-            if peak.get("id") is not None
-        }
-        public_climbs = _build_my_climb_entries(get_user_climb_history(profile_user_id))
-        recent_climbs = public_climbs[:20]
         total_peaks = int(app.config.get("TOTAL_PEAK_COUNT") or 0) or len(all_peaks)
-        public_profile_stats = _build_public_profile_stats(profile_record, public_climbs, peaks_by_id, total_peaks)
-        public_profile_badges = _build_public_profile_badges(get_user_badges(profile_user_id))
-        public_profile_map = _build_my_climb_map_data(public_climbs, total_peaks)
+        public_profile_view = _build_public_profile_view_data(profile_record, all_peaks=all_peaks, total_peaks=total_peaks)
+
+        current_profile = (
+            get_user_profile(current_user_id)
+            if current_user_id
+            else (context["profile"] if isinstance(context.get("profile"), dict) else {})
+        ) or {}
+        current_display_name = str(current_profile.get("display_name") or "").strip()
+        if (
+            current_display_name
+            and not is_owner
+            and _is_profile_public(current_profile)
+        ):
+            compare_with_me_url = url_for(
+                "compare_profiles",
+                name1=current_display_name,
+                name2=str(profile_record.get("display_name") or "").strip(),
+            )
 
     _set_active_page("profile")
     return render_template(
         "profile_public.html",
         current_profile_view=current_view,
         public_profile=profile_record,
-        public_profile_badges=public_profile_badges,
-        public_profile_map=public_profile_map,
-        public_profile_recent_climbs=recent_climbs,
-        public_profile_stats=public_profile_stats,
+        public_profile_badges=public_profile_view["badges"],
+        public_profile_map=public_profile_view["map"],
+        public_profile_recent_climbs=public_profile_view["recent_climbs"],
+        public_profile_stats=public_profile_view["stats"],
+        compare_with_me_url=compare_with_me_url,
         is_profile_owner=is_owner,
         is_private_profile=is_private_profile,
+    )
+
+
+@app.route("/compare/<name1>/<name2>")
+def compare_profiles(name1: str, name2: str):
+    left_profile = get_profile_by_display_name(name1)
+    right_profile = get_profile_by_display_name(name2)
+    if left_profile is None or right_profile is None:
+        abort(404)
+
+    if not _is_profile_public(left_profile) or not _is_profile_public(right_profile):
+        abort(404)
+
+    all_peaks = get_all_peaks()
+    total_peaks = int(app.config.get("TOTAL_PEAK_COUNT") or 0) or len(all_peaks)
+    left_view = _build_public_profile_view_data(left_profile, all_peaks=all_peaks, total_peaks=total_peaks)
+    right_view = _build_public_profile_view_data(right_profile, all_peaks=all_peaks, total_peaks=total_peaks)
+
+    _set_active_page("profile")
+    return render_template(
+        "profile_compare.html",
+        compare_left=left_view,
+        compare_right=right_view,
+        compare_left_profile=left_profile,
+        compare_right_profile=right_profile,
+        compare_metric_rows=_build_profile_compare_metric_rows(left_view, right_view),
+        compare_province_rows=_build_profile_compare_province_rows(left_view, right_view),
+        compare_peak_overlap=_build_profile_compare_peak_overlap(left_view, right_view),
     )
 
 

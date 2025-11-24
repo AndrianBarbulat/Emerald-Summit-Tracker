@@ -1,0 +1,316 @@
+.profile-compare-page {
+    background:
+        radial-gradient(circle at top left, rgba(116, 198, 157, 0.12), transparent 24%),
+        linear-gradient(180deg, #f7fbf8 0%, var(--color-cream) 48%, #ffffff 100%);
+}
+
+.profile-compare-hero {
+    background: linear-gradient(135deg, rgba(240, 247, 243, 0.98) 0%, rgba(230, 240, 234, 0.96) 100%);
+    border-bottom: 1px solid rgba(27, 67, 50, 0.08);
+}
+
+.profile-compare-hero__copy {
+    margin-bottom: 1rem;
+    max-width: 44rem;
+}
+
+.profile-compare-hero__eyebrow,
+.profile-compare-section__eyebrow {
+    color: var(--color-sage);
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.55rem;
+    text-transform: uppercase;
+}
+
+.profile-compare-hero__title,
+.profile-compare-section__title {
+    color: var(--color-forest);
+    margin-bottom: 0.45rem;
+}
+
+.profile-compare-hero__subtitle,
+.profile-compare-section__caption,
+.profile-compare-empty {
+    color: var(--color-grey);
+}
+
+.profile-compare-board {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: minmax(11rem, 0.9fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.profile-compare-board__header--spacer {
+    min-height: 1px;
+}
+
+.profile-compare-person,
+.profile-compare-board__value,
+.profile-compare-provinces,
+.profile-compare-peaks__card {
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: 0 14px 32px rgba(27, 67, 50, 0.08);
+}
+
+.profile-compare-person {
+    align-items: center;
+    display: grid;
+    gap: 0.9rem;
+    padding: 1rem;
+}
+
+.profile-compare-person__avatar .user-avatar {
+    box-shadow: 0 12px 28px rgba(27, 67, 50, 0.12);
+}
+
+.profile-compare-person__name {
+    color: var(--color-forest);
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0 0 0.3rem;
+}
+
+.profile-compare-person__meta {
+    color: var(--color-grey);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.9rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.profile-compare-person__meta span {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.4rem;
+}
+
+.profile-compare-person__button {
+    background: rgba(116, 198, 157, 0.12);
+    border-color: rgba(116, 198, 157, 0.28);
+    border-radius: 999px;
+    color: var(--color-forest);
+    font-weight: 600;
+    justify-self: start;
+    min-height: 2.85rem;
+}
+
+.profile-compare-person__button:hover,
+.profile-compare-person__button:focus-visible {
+    background: rgba(116, 198, 157, 0.2);
+    border-color: rgba(116, 198, 157, 0.38);
+    color: var(--color-forest);
+}
+
+.profile-compare-board__label {
+    align-items: center;
+    color: var(--color-slate);
+    display: flex;
+    font-size: 0.96rem;
+    font-weight: 700;
+    gap: 0.55rem;
+    min-height: 100%;
+    padding: 0.5rem 0.25rem;
+}
+
+.profile-compare-board__label .icon {
+    color: var(--color-sage);
+}
+
+.profile-compare-board__value {
+    align-items: center;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: center;
+    min-height: 5.3rem;
+    padding: 1rem;
+    text-align: center;
+}
+
+.profile-compare-board__value.is-leading,
+.profile-compare-provinces__value.is-leading {
+    background: rgba(116, 198, 157, 0.16);
+    border-color: rgba(116, 198, 157, 0.4);
+    color: var(--color-forest);
+}
+
+.profile-compare-board__value-main {
+    color: var(--color-slate);
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.profile-compare-board__value.is-leading .profile-compare-board__value-main {
+    color: var(--color-forest);
+}
+
+.profile-compare-provinces,
+.profile-compare-peaks__card {
+    border-radius: var(--radius-lg);
+    margin-bottom: 1rem;
+    padding: 1.1rem;
+}
+
+.profile-compare-section__head {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.profile-compare-provinces__rows {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.profile-compare-provinces__row {
+    align-items: center;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) minmax(80px, 120px) minmax(80px, 120px);
+}
+
+.profile-compare-provinces__value {
+    background: rgba(245, 241, 235, 0.68);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    color: var(--color-slate);
+    font-size: 1.12rem;
+    font-weight: 700;
+    min-height: 3.1rem;
+    padding: 0.8rem 0.9rem;
+    text-align: center;
+}
+
+.profile-compare-province-pill {
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.45rem 0.8rem;
+    text-transform: uppercase;
+}
+
+.profile-compare-province-pill--munster {
+    background: rgba(116, 198, 157, 0.2);
+    color: #1d6b52;
+}
+
+.profile-compare-province-pill--leinster {
+    background: rgba(91, 143, 185, 0.18);
+    color: #355c7d;
+}
+
+.profile-compare-province-pill--ulster {
+    background: rgba(230, 126, 34, 0.18);
+    color: #a75510;
+}
+
+.profile-compare-province-pill--connacht {
+    background: rgba(142, 107, 181, 0.18);
+    color: #6a4b8d;
+}
+
+.profile-compare-province-pill--default {
+    background: rgba(27, 67, 50, 0.08);
+    color: var(--color-slate);
+}
+
+.profile-compare-peaks {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profile-compare-peaks__count {
+    align-items: center;
+    background: rgba(212, 168, 83, 0.16);
+    border-radius: 999px;
+    color: var(--color-forest);
+    display: inline-flex;
+    font-size: 0.94rem;
+    font-weight: 700;
+    min-height: 2rem;
+    padding: 0.3rem 0.75rem;
+}
+
+.profile-compare-peak-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.profile-compare-peak-chip {
+    background: rgba(245, 241, 235, 0.62);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    color: inherit;
+    display: grid;
+    gap: 0.25rem;
+    min-height: 4rem;
+    padding: 0.8rem 0.9rem;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-compare-peak-chip:hover,
+.profile-compare-peak-chip:focus-visible {
+    border-color: rgba(116, 198, 157, 0.36);
+    box-shadow: 0 10px 22px rgba(27, 67, 50, 0.08);
+    transform: translateY(-1px);
+}
+
+.profile-compare-peak-chip__name {
+    color: var(--color-forest);
+    font-weight: 700;
+}
+
+.profile-compare-peak-chip__meta {
+    color: var(--color-grey);
+    font-size: 0.92rem;
+}
+
+@media screen and (max-width: 1023px) {
+    .profile-compare-board {
+        grid-template-columns: minmax(8rem, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .profile-compare-peaks {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .profile-compare-board {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-compare-board__header--spacer {
+        display: none;
+    }
+
+    .profile-compare-board__label {
+        background: transparent;
+        border-top: 1px solid rgba(27, 67, 50, 0.08);
+        margin-top: 0.25rem;
+        padding-top: 1rem;
+    }
+
+    .profile-compare-person__button {
+        width: 100%;
+    }
+
+    .profile-compare-provinces__row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .profile-compare-provinces__label {
+        grid-column: 1 / -1;
+    }
+}
