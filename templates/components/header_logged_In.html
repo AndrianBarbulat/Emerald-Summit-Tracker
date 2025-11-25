@@ -49,8 +49,20 @@
                         <span class="site-navbar__display-name">{{ profile.display_name or 'Climber' }}</span>
                     </a>
 
+                    {% if has_unseen_badge_notifications %}
+                    <a
+                        href="{{ url_for('achievements') }}"
+                        class="site-navbar__notification-link"
+                        aria-label="{{ unseen_badge_notification_count }} new achievement notification{% if unseen_badge_notification_count != 1 %}s{% endif %}"
+                        title="View new achievements"
+                    >
+                        <span class="site-navbar__notification-dot" aria-hidden="true"></span>
+                    </a>
+                    {% endif %}
+
                     <div class="navbar-dropdown is-right">
                         <a href="{{ url_for('my_profile') }}" class="navbar-item {{ 'is-active' if active_page == 'profile' else '' }}">My Profile</a>
+                        <a href="{{ url_for('achievements') }}" class="navbar-item {{ 'is-active' if active_page == 'achievements' else '' }}">Achievements</a>
                         <a href="/my-climbs" class="navbar-item {{ 'is-active' if active_page == 'my_climbs' else '' }}">My Climbs</a>
                         <a href="/my-bucket-list" class="navbar-item {{ 'is-active' if active_page == 'my_bucket_list' else '' }}">Bucket List</a>
                         <a href="/account" class="navbar-item {{ 'is-active' if active_page == 'account' else '' }}">Account Settings</a>

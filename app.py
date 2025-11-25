@@ -49,6 +49,7 @@ DASHBOARD_BADGE_RULES = [
     {"key": "fifty_climbs", "label": "50 Summits", "threshold": 50, "icon": "fa-fire"},
     {"key": "hundred_climbs", "label": "100 Summits", "threshold": 100, "icon": "fa-crown"},
 ]
+BADGE_NOTIFICATION_SEEN_SESSION_KEY = "badge_notifications_last_seen_at"
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
 RECENTLY_VIEWED_LIMIT = 3
 
@@ -69,6 +70,55 @@ def _prime_total_peak_count_cache() -> None:
 
 def _set_active_page(page_name: str | None) -> None:
     g.active_page = page_name or ""
+
+
+def _badge_earned_at_value(badge: dict | None) -> str:
+    if not isinstance(badge, dict):
+        return ""
+    return str(
+        badge.get("earned_at")
+        or badge.get("created_at")
+        or badge.get("awarded_at")
+        or badge.get("inserted_at")
+        or badge.get("updated_at")
+        or ""
+    ).strip()
+
+
+def _mark_badge_notifications_seen() -> None:
+    session[BADGE_NOTIFICATION_SEEN_SESSION_KEY] = datetime.now(tz=timezone.utc).isoformat()
+
+
+def _get_badge_notification_state(profile: dict | None) -> dict:
+    if not isinstance(profile, dict):
+        return {
+            "has_unseen_badge_notifications": False,
+            "unseen_badge_notification_count": 0,
+        }
+
+    user_id = str(profile.get("id") or "").strip()
+    if not user_id:
+        return {
+            "has_unseen_badge_notifications": False,
+            "unseen_badge_notification_count": 0,
+        }
+
+    last_seen_at = session.get(BADGE_NOTIFICATION_SEEN_SESSION_KEY)
+    last_seen_dt = parse_datetime_value(last_seen_at)
+    unseen_count = 0
+
+    for badge in get_user_badges(user_id):
+        earned_at = _badge_earned_at_value(badge)
+        earned_dt = parse_datetime_value(earned_at)
+        if earned_dt is None:
+            continue
+        if last_seen_dt is None or earned_dt > last_seen_dt:
+            unseen_count += 1
+
+    return {
+        "has_unseen_badge_notifications": unseen_count > 0,
+        "unseen_badge_notification_count": unseen_count,
+    }
 
 
 _prime_total_peak_count_cache()
@@ -326,9 +376,11 @@ def inject_common_data() -> dict:
     profile = session.get("profile")
     user = session.get("user")
     unit_preference = "imperial" if _prefers_imperial_units(profile) else "metric"
+    badge_notification_state = _get_badge_notification_state(profile)
 
     return {
         "active_page": getattr(g, "active_page", ""),
+        **badge_notification_state,
         "current_height_unit": "ft" if unit_preference == "imperial" else "m",
         "profile": profile,
         "total_peak_count": int(app.config.get("TOTAL_PEAK_COUNT") or 0),
@@ -2262,6 +2314,7 @@ def home():
     if not context["profile"]:
         return redirect("/")
 
+    _mark_badge_notifications_seen()
     start = time.time()
     user_id = context["profile"].get("id")
     raw_dashboard = get_dashboard_context(user_id)
@@ -2328,6 +2381,31 @@ def home():
     response = render_template("home.html", **dashboard_ctx)
     print(f"Dashboard: {time.time()-start:.2f}s")
     return response
+
+
+@app.route("/achievements")
+def achievements():
+    context = get_session_context()
+    if not context["profile"]:
+        return redirect("/")
+
+    _mark_badge_notifications_seen()
+    user_id = context["profile"].get("id")
+    raw_dashboard = get_dashboard_context(user_id, community_limit=0)
+    climbs = raw_dashboard.get("climbs") or []
+    badges = raw_dashboard.get("badges") or []
+    dashboard_achievements = _build_dashboard_achievements(badges, len(climbs))
+    earned_badges = _build_public_profile_badges(badges)
+    dashboard_streak = _build_dashboard_streak(climbs)
+
+    _set_active_page("achievements")
+    return render_template(
+        "achievements.html",
+        achievements_badges=dashboard_achievements,
+        achievements_earned_badges=earned_badges,
+        achievements_streak=dashboard_streak,
+        achievements_total_climbs=len(climbs),
+    )
 
 
 @app.route("/map")
