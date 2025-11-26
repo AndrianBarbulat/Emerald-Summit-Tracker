@@ -3,6 +3,7 @@ import re
 from datetime import date, datetime, timezone
 
 from flask import Blueprint, current_app, jsonify, request, session, url_for
+from badges_config import AUTO_AWARD_BADGE_RULES, BADGE_LABELS, normalize_badge_key
 from time_utils import format_display_date, format_time_ago, parse_datetime_value
 
 from supabase_utils import (
@@ -69,11 +70,6 @@ ALLOWED_DIFFICULTY_VALUES = {
     "moderate",
     "hard",
 }
-BADGE_RULES = [
-    {"key": "first_climb", "label": "First Climb", "threshold": 1},
-    {"key": "five_climbs", "label": "Five Summits", "threshold": 5},
-    {"key": "ten_climbs", "label": "Ten Summits", "threshold": 10},
-]
 PROFILE_PREVIEW_FIELDS = ("id", "display_name", "avatar_url", "bio", "location")
 DISPLAY_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_]{3,30}$")
 PROFILE_UPDATE_FIELDS = {
@@ -712,23 +708,23 @@ def _remove_bucket_list_entry_if_present(user_id: str, peak_id: int) -> bool:
 def _award_new_badges_for_user(user_id: str) -> list[dict]:
     climb_count = len(get_user_climbs(user_id))
     existing_badges = {
-        str(badge.get("badge_key") or "").strip()
+        normalize_badge_key(badge.get("badge_key"))
         for badge in get_user_badges(user_id)
         if badge.get("badge_key")
     }
 
     new_badges = []
-    for rule in BADGE_RULES:
+    for rule in AUTO_AWARD_BADGE_RULES:
         if climb_count < rule["threshold"] or rule["key"] in existing_badges:
             continue
         created_badge = award_badge(user_id, rule["key"])
         if created_badge is not None or rule["key"] in {
-            str(badge.get("badge_key") or "").strip()
+            normalize_badge_key(badge.get("badge_key"))
             for badge in get_user_badges(user_id)
             if badge.get("badge_key")
         }:
             existing_badges.add(rule["key"])
-            new_badges.append({"key": rule["key"], "label": rule["label"]})
+            new_badges.append({"key": rule["key"], "label": BADGE_LABELS.get(rule["key"], rule["label"])})
 
     return new_badges
 

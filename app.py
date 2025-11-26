@@ -6,6 +6,7 @@ from flask import Flask, abort, jsonify, render_template, request, redirect, ses
 from werkzeug.exceptions import HTTPException
 
 from api_routes import api
+from badges_config import BADGE_ICON_LOOKUP, BADGE_LABELS, DASHBOARD_BADGE_RULES, normalize_badge_key
 from supabase_utils import (
     calculate_climb_streak,
     get_all_peaks,
@@ -36,19 +37,6 @@ app.register_blueprint(api)
 
 FEET_PER_METER = 3.28084
 EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
-BADGE_LABELS = {
-    "first_climb": "First Climb",
-    "five_climbs": "Five Summits",
-    "ten_climbs": "Ten Summits",
-}
-DASHBOARD_BADGE_RULES = [
-    {"key": "first_climb", "label": "First Climb", "threshold": 1, "icon": "fa-flag-checkered"},
-    {"key": "five_climbs", "label": "Five Summits", "threshold": 5, "icon": "fa-mountain"},
-    {"key": "ten_climbs", "label": "Ten Summits", "threshold": 10, "icon": "fa-compass"},
-    {"key": "twenty_five_climbs", "label": "25 Summits", "threshold": 25, "icon": "fa-map"},
-    {"key": "fifty_climbs", "label": "50 Summits", "threshold": 50, "icon": "fa-fire"},
-    {"key": "hundred_climbs", "label": "100 Summits", "threshold": 100, "icon": "fa-crown"},
-]
 BADGE_NOTIFICATION_SEEN_SESSION_KEY = "badge_notifications_last_seen_at"
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
 RECENTLY_VIEWED_LIMIT = 3
@@ -675,13 +663,9 @@ def _build_public_profile_stats(profile_record: dict, climbs: list[dict], peaks_
 
 
 def _build_public_profile_badges(badges: list[dict]) -> list[dict]:
-    icon_lookup = {
-        rule["key"]: rule["icon"]
-        for rule in DASHBOARD_BADGE_RULES
-    }
     unique_badges = {}
     for badge in badges:
-        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        badge_key = normalize_badge_key(badge.get("badge_key"))
         if not badge_key or badge_key in unique_badges:
             continue
         earned_at = (
@@ -697,7 +681,7 @@ def _build_public_profile_badges(badges: list[dict]) -> list[dict]:
                 or BADGE_LABELS.get(badge_key)
                 or badge_key.replace("_", " ").title()
             ),
-            "icon": icon_lookup.get(badge_key, "fa-award"),
+            "icon": BADGE_ICON_LOOKUP.get(badge_key, "fa-award"),
             "earned_at": earned_at,
             "earned_label": _format_short_date(earned_at) if earned_at else None,
             "earned_sort": _parse_datetime(earned_at) or datetime.min.replace(tzinfo=timezone.utc),
@@ -1715,7 +1699,7 @@ def _build_dashboard_activity_items(
         )
 
     for badge in badges:
-        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        badge_key = normalize_badge_key(badge.get("badge_key"))
         badge_label = (
             str(badge.get("label") or badge.get("badge_label") or "").strip()
             or BADGE_LABELS.get(badge_key)
@@ -1733,7 +1717,7 @@ def _build_dashboard_activity_items(
                 "type": "badge",
                 "action_type": "badge",
                 "label": "Badge",
-                "href": url_for("my_climbs"),
+                "href": url_for("achievements"),
                 "name": badge_label,
                 "description": "Badge unlocked from your climbing progress.",
                 "activity_time": activity_date,
@@ -1863,7 +1847,7 @@ def _build_dashboard_onboarding_steps() -> list[dict]:
 def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
     earned_badges = {}
     for badge in badges:
-        badge_key = str(badge.get("badge_key") or "").strip().lower()
+        badge_key = normalize_badge_key(badge.get("badge_key"))
         if badge_key:
             earned_badges[badge_key] = badge
 
