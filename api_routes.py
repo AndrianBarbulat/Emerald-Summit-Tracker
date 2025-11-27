@@ -2,8 +2,8 @@ import json
 import re
 from datetime import date, datetime, timezone
 
+from badges import check_badges, describe_new_badges
 from flask import Blueprint, current_app, jsonify, request, session, url_for
-from badges_config import AUTO_AWARD_BADGE_RULES, BADGE_LABELS, normalize_badge_key
 from time_utils import format_display_date, format_time_ago, parse_datetime_value
 
 from supabase_utils import (
@@ -14,7 +14,6 @@ from supabase_utils import (
     TABLE_USER_BADGES,
     add_comment,
     add_to_bucket_list,
-    award_badge,
     calculate_climb_streak,
     clear_shared_data_cache,
     delete_climb,
@@ -28,7 +27,6 @@ from supabase_utils import (
     get_peak_by_id,
     get_peak_statuses,
     get_profile_by_display_name,
-    get_user_badges,
     get_user_bucket_list,
     get_user_climbs,
     get_user_has_climbed,
@@ -706,27 +704,7 @@ def _remove_bucket_list_entry_if_present(user_id: str, peak_id: int) -> bool:
 
 
 def _award_new_badges_for_user(user_id: str) -> list[dict]:
-    climb_count = len(get_user_climbs(user_id))
-    existing_badges = {
-        normalize_badge_key(badge.get("badge_key"))
-        for badge in get_user_badges(user_id)
-        if badge.get("badge_key")
-    }
-
-    new_badges = []
-    for rule in AUTO_AWARD_BADGE_RULES:
-        if climb_count < rule["threshold"] or rule["key"] in existing_badges:
-            continue
-        created_badge = award_badge(user_id, rule["key"])
-        if created_badge is not None or rule["key"] in {
-            normalize_badge_key(badge.get("badge_key"))
-            for badge in get_user_badges(user_id)
-            if badge.get("badge_key")
-        }:
-            existing_badges.add(rule["key"])
-            new_badges.append({"key": rule["key"], "label": BADGE_LABELS.get(rule["key"], rule["label"])})
-
-    return new_badges
+    return describe_new_badges(check_badges(user_id))
 
 
 def _augment_peaks_for_user(peaks: list[dict], user_id: str | None) -> list[dict]:
@@ -891,6 +869,15 @@ def api_log_climb():
         return _json_error("We couldn't save that climb right now.", 500)
 
     removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
+    if removed_from_bucket_list:
+        updated_bucket_completion_climb = update_climb(
+            created_climb.get("id"),
+            user_id,
+            {"bucket_list_completion": True},
+        )
+        if updated_bucket_completion_climb is not None:
+            created_climb = updated_bucket_completion_climb
+
     clear_shared_data_cache()
     streak_data = sync_user_current_streak(user_id)
     if streak_data.get("profile") is not None:

@@ -129,7 +129,7 @@ BASE_BADGES = [
         description="Climb any peak at or above 500 metres.",
         icon="fa-arrow-up-right-dots",
         category="height",
-        criteria={"type": "height_peak", "value": 500, "unit": "m"},
+        criteria={"type": "height_min", "value": 500, "unit": "m"},
     ),
     _badge(
         key="club_750m",
@@ -137,7 +137,7 @@ BASE_BADGES = [
         description="Climb any peak at or above 750 metres.",
         icon="fa-arrow-trend-up",
         category="height",
-        criteria={"type": "height_peak", "value": 750, "unit": "m"},
+        criteria={"type": "height_min", "value": 750, "unit": "m"},
     ),
     _badge(
         key="club_1000m",
@@ -145,7 +145,7 @@ BASE_BADGES = [
         description="Climb any peak at or above 1000 metres.",
         icon="fa-mountain-sun",
         category="height",
-        criteria={"type": "height_peak", "value": 1000, "unit": "m"},
+        criteria={"type": "height_min", "value": 1000, "unit": "m"},
     ),
     _badge(
         key="munster_explorer",
@@ -185,7 +185,7 @@ BASE_BADGES = [
         description="Climb at least one tracked peak in each Irish province.",
         icon="fa-map-location-dot",
         category="provinces",
-        criteria={"type": "province_set", "provinces": ["Munster", "Leinster", "Ulster", "Connacht"], "value": 4},
+        criteria={"type": "all_provinces", "provinces": ["Munster", "Leinster", "Ulster", "Connacht"], "value": 4},
     ),
     _badge(
         key="weekend_warrior",
@@ -193,7 +193,7 @@ BASE_BADGES = [
         description="Log climbs across four consecutive weekends.",
         icon="fa-calendar-week",
         category="streaks",
-        criteria={"type": "consecutive_weekends", "value": 4},
+        criteria={"type": "streak", "mode": "weekend", "value": 4},
     ),
     _badge(
         key="month_streak",
@@ -201,7 +201,7 @@ BASE_BADGES = [
         description="Climb every week for four straight weeks.",
         icon="fa-bolt",
         category="streaks",
-        criteria={"type": "weekly_streak", "value": 4},
+        criteria={"type": "streak", "mode": "weekly", "value": 4},
     ),
     _badge(
         key="highpoint",
@@ -217,7 +217,7 @@ BASE_BADGES = [
         description="Complete ten climbs from your bucket list.",
         icon="fa-bookmark",
         category="special",
-        criteria={"type": "bucket_list_completions", "value": 10},
+        criteria={"type": "bucket_completions", "value": 10},
     ),
     _badge(
         key="photographer",
@@ -244,7 +244,7 @@ def build_county_badges(counties: tuple[str, ...] | list[str] | None = None) -> 
                 description=f"Climb every tracked peak in {normalized_county}.",
                 icon="fa-map",
                 category="counties",
-                criteria={"type": "county_completion", "county": normalized_county},
+                criteria={"type": "county_complete", "county": normalized_county},
             )
         )
     return badges
