@@ -1565,6 +1565,11 @@ function initPeakTrackingPanel(panel) {
                         showToast(result.warning, 'warning');
                     }, 320);
                 }
+                if (Array.isArray(result.new_badges) && result.new_badges.length && typeof window.showBadgeCelebration === 'function') {
+                    window.setTimeout(function() {
+                        window.showBadgeCelebration(result.new_badges);
+                    }, result.warning ? 240 : 120);
+                }
             } catch (error) {
                 applyFieldErrors(form, error.fields, getClimbFieldSelectorMap());
                 setPeakLogFormError(panel, error.message || 'We could not save this summit right now.');
@@ -2656,6 +2661,150 @@ function showSiteToast(message, type) {
     return showToast(message, type || 'success');
 }
 
+function ensureBadgeCelebrationModal() {
+    const modal = document.querySelector('[data-badge-celebration-modal]');
+    if (!modal) {
+        return null;
+    }
+
+    if (modal.dataset.badgeCelebrationReady !== 'true') {
+        modal.querySelectorAll('[data-badge-celebration-dismiss]').forEach(function(element) {
+            element.addEventListener('click', function(event) {
+                event.preventDefault();
+                closeBadgeCelebration();
+            });
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && modal.classList.contains('is-active')) {
+                closeBadgeCelebration();
+            }
+        });
+
+        modal.dataset.badgeCelebrationReady = 'true';
+    }
+
+    return {
+        modal: modal,
+        heading: modal.querySelector('[data-badge-celebration-heading]'),
+        summary: modal.querySelector('[data-badge-celebration-summary]'),
+        list: modal.querySelector('[data-badge-celebration-list]'),
+        continueButton: modal.querySelector('.badge-celebration-modal__continue')
+    };
+}
+
+function normalizeBadgeCelebrationPayload(badges) {
+    if (!Array.isArray(badges)) {
+        return [];
+    }
+
+    return badges.map(function(badge) {
+        const currentBadge = badge || {};
+        const label = String(currentBadge.label || currentBadge.name || currentBadge.key || '').trim();
+        if (!label) {
+            return null;
+        }
+
+        return {
+            key: String(currentBadge.key || '').trim(),
+            label: label,
+            description: String(currentBadge.description || 'Badge unlocked from your climbing progress.').trim(),
+            icon: String(currentBadge.icon || 'fa-award').trim() || 'fa-award'
+        };
+    }).filter(Boolean);
+}
+
+function buildBadgeCelebrationCardsMarkup(badges) {
+    return badges.map(function(badge, index) {
+        const cardClasses = ['badge-celebration-card'];
+        if (index === 0) {
+            cardClasses.push('badge-celebration-card--featured');
+        }
+
+        return ''
+            + '<article class="' + cardClasses.join(' ') + '">'
+            + '  <div class="badge-celebration-card__icon" aria-hidden="true"><i class="fas ' + escapeHtml(badge.icon) + '"></i></div>'
+            + '  <div class="badge-celebration-card__body">'
+            + '    <h3 class="badge-celebration-card__title">' + escapeHtml(badge.label) + '</h3>'
+            + '    <p class="badge-celebration-card__copy">' + escapeHtml(badge.description) + '</p>'
+            + '  </div>'
+            + '</article>';
+    }).join('');
+}
+
+function launchBadgeCelebrationConfetti(badgeCount) {
+    if (typeof window.confetti !== 'function') {
+        return;
+    }
+
+    const normalizedCount = Math.max(1, Number(badgeCount || 1));
+    const baseParticles = Math.min(220, 90 + (normalizedCount - 1) * 25);
+    const confettiOptions = {
+        colors: ['#D4A853', '#74C69D', '#1B4332', '#D8F3DC'],
+        disableForReducedMotion: true,
+        spread: 72,
+        startVelocity: 32,
+        ticks: 180
+    };
+
+    window.confetti({
+        ...confettiOptions,
+        angle: 60,
+        origin: { x: 0.15, y: 0.62 },
+        particleCount: Math.round(baseParticles / 2)
+    });
+    window.confetti({
+        ...confettiOptions,
+        angle: 120,
+        origin: { x: 0.85, y: 0.62 },
+        particleCount: Math.round(baseParticles / 2)
+    });
+}
+
+function closeBadgeCelebration() {
+    const elements = ensureBadgeCelebrationModal();
+    if (!elements || !elements.modal.classList.contains('is-active')) {
+        return;
+    }
+
+    elements.modal.classList.remove('is-active');
+    elements.modal.setAttribute('aria-hidden', 'true');
+    document.documentElement.classList.remove('is-clipped');
+}
+
+function showBadgeCelebration(badges) {
+    const normalizedBadges = normalizeBadgeCelebrationPayload(badges);
+    if (!normalizedBadges.length) {
+        return null;
+    }
+
+    const elements = ensureBadgeCelebrationModal();
+    if (!elements || !elements.list || !elements.heading || !elements.summary) {
+        return null;
+    }
+
+    const badgeCount = normalizedBadges.length;
+    elements.heading.textContent = badgeCount === 1 ? 'New badge earned' : badgeCount + ' new badges earned';
+    elements.summary.textContent = badgeCount === 1
+        ? 'That climb unlocked a new milestone. Nicely done.'
+        : 'That climb unlocked a fresh set of milestones. Keep the momentum going.';
+    elements.list.innerHTML = buildBadgeCelebrationCardsMarkup(normalizedBadges);
+    elements.list.classList.toggle('badge-celebration-modal__list--scrollable', badgeCount > 1);
+
+    elements.modal.classList.add('is-active');
+    elements.modal.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('is-clipped');
+
+    window.requestAnimationFrame(function() {
+        if (elements.continueButton) {
+            elements.continueButton.focus();
+        }
+    });
+
+    launchBadgeCelebrationConfetti(badgeCount);
+    return elements.modal;
+}
+
 window.applyFieldErrors = applyFieldErrors;
 window.buildRequestError = buildRequestError;
 window.clearFieldError = clearFieldError;
@@ -2669,6 +2818,7 @@ window.putJsonRequest = putJsonRequest;
 window.setButtonLoading = setButtonLoading;
 window.setFieldError = setFieldError;
 window.setLoadingRegion = setLoadingRegion;
+window.showBadgeCelebration = showBadgeCelebration;
 window.showToast = showToast;
 window.syncPeakLogNotesCounter = syncPeakLogNotesCounter;
 window.syncPeakLogPhotoSummary = syncPeakLogPhotoSummary;

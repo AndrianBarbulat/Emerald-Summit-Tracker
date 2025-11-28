@@ -25,7 +25,26 @@
 
     {% include 'components/footer.html' %}
     <div class="site-toast-container" data-toast-container aria-live="polite" aria-atomic="false"></div>
+    <div class="modal badge-celebration-modal" data-badge-celebration-modal aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="badge-celebration-title">
+        <div class="modal-background" data-badge-celebration-dismiss></div>
+        <div class="modal-card badge-celebration-modal__card">
+            <button class="modal-close is-large" type="button" aria-label="Close badge celebration" data-badge-celebration-dismiss></button>
+            <section class="badge-celebration-modal__body">
+                <div class="badge-celebration-modal__intro">
+                    <span class="badge-celebration-modal__eyebrow">Badge unlocked</span>
+                    <h2 class="badge-celebration-modal__title" id="badge-celebration-title" data-badge-celebration-heading>New badge earned</h2>
+                    <p class="badge-celebration-modal__copy" data-badge-celebration-summary>You are building momentum on the mountain.</p>
+                </div>
+                <div class="badge-celebration-modal__list" data-badge-celebration-list></div>
+            </section>
+            <footer class="badge-celebration-modal__actions">
+                <a class="button is-light badge-celebration-modal__view-all" href="/achievements">View All Badges</a>
+                <button class="button badge-celebration-modal__continue" type="button" data-badge-celebration-dismiss>Continue</button>
+            </footer>
+        </div>
+    </div>
 
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% block extra_js %}{% endblock %}
 </body>

@@ -317,10 +317,18 @@ def describe_new_badges(badge_keys: list[str]) -> list[dict[str, str]]:
     for badge_key in badge_keys or []:
         normalized_key = normalize_badge_key(badge_key)
         badge_definition = get_badge_definition(normalized_key) or {}
+        label = str(
+            badge_definition.get("name")
+            or BADGE_LABELS.get(normalized_key)
+            or normalized_key.replace("_", " ").title()
+        )
         descriptions.append(
             {
                 "key": normalized_key,
-                "label": str(badge_definition.get("name") or BADGE_LABELS.get(normalized_key) or normalized_key.replace("_", " ").title()),
+                "label": label,
+                "name": label,
+                "description": str(badge_definition.get("description") or "Badge unlocked from your climbing progress."),
+                "icon": str(badge_definition.get("icon") or "fa-award"),
             }
         )
     return descriptions

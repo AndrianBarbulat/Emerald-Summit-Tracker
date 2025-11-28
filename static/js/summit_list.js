@@ -660,6 +660,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (result.warning) {
                 notifyToast(result.warning, 'warning');
             }
+            if (Array.isArray(result.new_badges) && result.new_badges.length && typeof window.showBadgeCelebration === 'function') {
+                window.setTimeout(function() {
+                    window.showBadgeCelebration(result.new_badges);
+                }, result.warning ? 260 : 140);
+            }
         } catch (error) {
             rowActionState.logSubmittingPeakId = null;
             setActionError(peakKey, error.message || 'We could not save that climb.');
