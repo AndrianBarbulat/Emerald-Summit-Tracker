@@ -6,6 +6,7 @@ from flask import Flask, abort, jsonify, render_template, request, redirect, ses
 from werkzeug.exceptions import HTTPException
 
 from api_routes import api
+from badges import build_achievement_catalog, build_user_badge_stats
 from badges_config import BADGE_ICON_LOOKUP, BADGE_LABELS, DASHBOARD_BADGE_RULES, normalize_badge_key
 from supabase_utils import (
     calculate_climb_streak,
@@ -316,6 +317,11 @@ def _pluralize_weeks(value: int) -> str:
 @app.template_filter("timeago")
 def timeago_filter(value) -> str:
     return format_time_ago(value)
+
+
+@app.template_filter("display_date")
+def display_date_filter(value) -> str:
+    return format_display_date(value, fallback="Recently")
 
 
 def _current_height_unit_for_preference(unit_preference=None) -> str:
@@ -2375,18 +2381,15 @@ def achievements():
 
     _mark_badge_notifications_seen()
     user_id = context["profile"].get("id")
-    raw_dashboard = get_dashboard_context(user_id, community_limit=0)
-    climbs = raw_dashboard.get("climbs") or []
-    badges = raw_dashboard.get("badges") or []
-    dashboard_achievements = _build_dashboard_achievements(badges, len(climbs))
-    earned_badges = _build_public_profile_badges(badges)
-    dashboard_streak = _build_dashboard_streak(climbs)
+    badge_stats = build_user_badge_stats(user_id)
+    achievements_catalog = build_achievement_catalog(badge_stats)
+    climbs = badge_stats.get("climbs") or []
+    dashboard_streak = badge_stats.get("streak") or _build_dashboard_streak(climbs)
 
     _set_active_page("achievements")
     return render_template(
         "achievements.html",
-        achievements_badges=dashboard_achievements,
-        achievements_earned_badges=earned_badges,
+        achievements_catalog=achievements_catalog,
         achievements_streak=dashboard_streak,
         achievements_total_climbs=len(climbs),
     )

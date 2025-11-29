@@ -3,7 +3,6 @@
 {% block title %}Achievements | Emerald Peak Explorer{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/achievements.css') }}">
 {% endblock %}
 
@@ -12,13 +11,23 @@
     <section class="section achievements-page__hero">
         <div class="container">
             <div class="achievements-page__hero-card">
-                <div>
-                    <p class="achievements-page__eyebrow">Milestones</p>
-                    <h1 class="title is-2 achievements-page__title">
+                <div class="achievements-page__hero-copy">
+                    <p class="achievements-page__eyebrow">Your badge collection</p>
+                    <h1 class="title achievements-page__title">
                         <span class="icon"><i class="fas fa-trophy"></i></span>
                         <span>Achievements</span>
                     </h1>
-                    <p class="achievements-page__subtitle">Track the milestones you have unlocked and see which badge is coming next.</p>
+                    <p class="achievements-page__subtitle">{{ achievements_catalog.earned_count }} of {{ achievements_catalog.total_count }} badges earned.</p>
+                    <div class="achievements-page__summary-tags">
+                        <span class="tag achievements-page__summary-tag">
+                            <span class="icon"><i class="fas fa-fire"></i></span>
+                            <span>{{ achievements_streak.display_weeks or 0 }} week streak</span>
+                        </span>
+                        <span class="tag achievements-page__summary-tag">
+                            <span class="icon"><i class="fas fa-mountain"></i></span>
+                            <span>{{ achievements_total_climbs }} climbs logged</span>
+                        </span>
+                    </div>
                 </div>
                 <a href="{{ url_for('home') }}" class="button achievements-page__hero-button">
                     <span class="icon"><i class="fas fa-house"></i></span>
@@ -26,107 +35,84 @@
                 </a>
             </div>
 
-            <div class="achievements-page__stats">
-                <article class="box achievements-page__stat">
-                    <p class="achievements-page__stat-label">Badges Earned</p>
-                    <p class="achievements-page__stat-value">{{ achievements_badges.earned_count }}</p>
-                </article>
-                <article class="box achievements-page__stat">
-                    <p class="achievements-page__stat-label">Current Streak</p>
-                    <p class="achievements-page__stat-value">{{ achievements_streak.display_weeks or 0 }} {% if (achievements_streak.display_weeks or 0) == 1 %}week{% else %}weeks{% endif %}</p>
-                </article>
-                <article class="box achievements-page__stat">
-                    <p class="achievements-page__stat-label">Total Climbs</p>
-                    <p class="achievements-page__stat-value">{{ achievements_total_climbs }}</p>
-                </article>
-            </div>
+            {% if achievements_catalog.next_badge %}
+            <article class="achievements-page__next">
+                <div class="achievements-page__next-icon">
+                    <i class="fas {{ achievements_catalog.next_badge.icon }}"></i>
+                </div>
+                <div class="achievements-page__next-copy">
+                    <p class="achievements-page__next-eyebrow">Next to earn</p>
+                    <h2 class="achievements-page__next-title">{{ achievements_catalog.next_badge.label }}</h2>
+                    <p class="achievements-page__next-description">{{ achievements_catalog.next_badge.requirement_text }}</p>
+                    <progress class="progress is-warning achievements-page__progress" value="{{ achievements_catalog.next_badge.current_value if achievements_catalog.next_badge.current_value <= achievements_catalog.next_badge.target_value else achievements_catalog.next_badge.target_value }}" max="{{ achievements_catalog.next_badge.target_value if achievements_catalog.next_badge.target_value > 0 else 1 }}">{{ achievements_catalog.next_badge.progress_percent }}%</progress>
+                    <p class="achievements-page__progress-meta">{{ achievements_catalog.next_badge.progress_label }}</p>
+                </div>
+            </article>
+            {% else %}
+            <article class="achievements-page__next achievements-page__next--complete">
+                <div class="achievements-page__next-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div class="achievements-page__next-copy">
+                    <p class="achievements-page__next-eyebrow">Achievement complete</p>
+                    <h2 class="achievements-page__next-title">Every current badge earned</h2>
+                    <p class="achievements-page__next-description">You have completed the full badge set that is currently available in Emerald Peak Explorer.</p>
+                </div>
+            </article>
+            {% endif %}
         </div>
     </section>
 
-    <section class="section pt-0">
+    <section class="section achievements-page__sections">
         <div class="container">
-            <div class="columns is-variable is-5">
-                <div class="column is-12-tablet is-7-desktop">
-                    <div class="box dashboard-card achievements-page__card">
-                        <div class="achievements-page__section-head">
-                            <div>
-                                <p class="achievements-page__eyebrow">Progress</p>
-                                <h2 class="title is-4 achievements-page__section-title">Badge Progression</h2>
-                            </div>
-                        </div>
-
-                        {% if achievements_badges.next_badge %}
-                        <div class="dashboard-achievement-next achievements-page__next-badge">
-                            <p class="dashboard-achievement-next__eyebrow">Next to Earn</p>
-                            <p class="dashboard-achievement-next__title">
-                                <span class="icon"><i class="fas {{ achievements_badges.next_badge.icon }}"></i></span>
-                                {{ achievements_badges.next_badge.label }}
-                            </p>
-                            <progress class="progress is-warning dashboard-achievement-next__progress" value="{{ achievements_badges.next_badge.progress_count }}" max="{{ achievements_badges.next_badge.threshold }}">{{ achievements_badges.next_badge.progress_percent }}%</progress>
-                            <p class="dashboard-achievement-next__meta">{{ achievements_badges.next_badge.progress_label }}</p>
-                        </div>
-                        {% else %}
-                        <div class="dashboard-achievement-next dashboard-achievement-next--complete achievements-page__next-badge">
-                            <p class="dashboard-achievement-next__eyebrow">Achievement Progress</p>
-                            <p class="dashboard-achievement-next__title">
-                                <span class="icon"><i class="fas fa-trophy"></i></span>
-                                All current badges earned
-                            </p>
-                            <p class="dashboard-achievement-next__meta">You have completed the current badge progression set.</p>
-                        </div>
-                        {% endif %}
-
-                        <div class="columns is-multiline dashboard-achievement-grid">
-                            {% for badge in achievements_badges.badges %}
-                            <div class="column is-6">
-                                <div class="has-text-centered p-2 dashboard-achievement-grid__item{% if badge.is_earned %} dashboard-achievement-grid__item--earned{% elif badge.is_next %} dashboard-achievement-grid__item--next{% else %} dashboard-achievement-grid__item--locked{% endif %}">
-                                    <span class="icon is-large dashboard-achievement-grid__icon">
-                                        <i class="fas {{ badge.icon }} fa-2x"></i>
-                                    </span>
-                                    <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">{{ badge.label }}</p>
-                                    <span class="tag is-small dashboard-achievement-grid__status{% if badge.is_earned %} dashboard-achievement-grid__status--earned{% elif badge.is_next %} dashboard-achievement-grid__status--next{% else %} dashboard-achievement-grid__status--locked{% endif %}">{{ badge.earned_label }}</span>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
+            {% for category in achievements_catalog.categories %}
+            <section class="achievements-page__category">
+                <div class="achievements-page__category-head">
+                    <div>
+                        <p class="achievements-page__eyebrow">{{ category.label }}</p>
+                        <h2 class="title is-4 achievements-page__section-title">{{ category.label }}</h2>
                     </div>
+                    <p class="achievements-page__category-count">{{ category.earned_count }} / {{ category.total_count }} earned</p>
                 </div>
 
-                <div class="column is-12-tablet is-5-desktop">
-                    <div class="box dashboard-card achievements-page__card">
-                        <div class="achievements-page__section-head">
-                            <div>
-                                <p class="achievements-page__eyebrow">Recently Earned</p>
-                                <h2 class="title is-4 achievements-page__section-title">Unlocked Badges</h2>
-                            </div>
+                <div class="achievements-page__badge-grid">
+                    {% for badge in category.badges %}
+                    <article class="achievements-page__badge-card{% if badge.is_earned %} achievements-page__badge-card--earned{% elif badge.is_next %} achievements-page__badge-card--next{% else %} achievements-page__badge-card--locked{% endif %}">
+                        <div class="achievements-page__badge-top">
+                            <span class="achievements-page__badge-icon" aria-hidden="true">
+                                <i class="fas {{ badge.icon }}"></i>
+                            </span>
+                            {% if badge.is_earned %}
+                            <span class="tag achievements-page__badge-status achievements-page__badge-status--earned">Earned</span>
+                            {% elif badge.is_next %}
+                            <span class="tag achievements-page__badge-status achievements-page__badge-status--next">Up next</span>
+                            {% else %}
+                            <span class="tag achievements-page__badge-status achievements-page__badge-status--locked">Locked</span>
+                            {% endif %}
                         </div>
 
-                        {% if achievements_earned_badges %}
-                        <div class="achievements-page__earned-list">
-                            {% for badge in achievements_earned_badges %}
-                            <article class="achievements-page__earned-item">
-                                <span class="icon achievements-page__earned-icon"><i class="fas {{ badge.icon }}"></i></span>
-                                <div class="achievements-page__earned-copy">
-                                    <p class="achievements-page__earned-name">{{ badge.label }}</p>
-                                    <p class="achievements-page__earned-meta">
-                                        {% if badge.earned_at %}
-                                        <time data-timestamp="{{ badge.earned_at }}">{{ badge.earned_at | timeago }}</time>
-                                        {% else %}
-                                        Earned recently
-                                        {% endif %}
-                                    </p>
-                                </div>
-                            </article>
-                            {% endfor %}
+                        <div class="achievements-page__badge-body">
+                            <h3 class="achievements-page__badge-title">{{ badge.label }}</h3>
+                            {% if badge.is_earned %}
+                            <p class="achievements-page__badge-copy">{{ badge.description }}</p>
+                            <p class="achievements-page__badge-earned">
+                                {% if badge.earned_at %}
+                                Earned on <time datetime="{{ badge.earned_at }}">{{ badge.earned_at | display_date }}</time>
+                                {% else %}
+                                Earned recently
+                                {% endif %}
+                            </p>
+                            {% else %}
+                            <p class="achievements-page__badge-copy">{{ badge.requirement_text }}</p>
+                            <progress class="progress achievements-page__progress achievements-page__progress--card" value="{{ badge.current_value if badge.current_value <= badge.target_value else badge.target_value }}" max="{{ badge.target_value if badge.target_value > 0 else 1 }}">{{ badge.progress_percent }}%</progress>
+                            <p class="achievements-page__progress-meta">{{ badge.progress_label }}</p>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        <div class="dashboard-empty-state achievements-page__empty">
-                            Log your first climb to start unlocking badges.
-                        </div>
-                        {% endif %}
-                    </div>
+                    </article>
+                    {% endfor %}
                 </div>
-            </div>
+            </section>
+            {% endfor %}
         </div>
     </section>
 </div>

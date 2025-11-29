@@ -252,6 +252,22 @@ def build_county_badges(counties: tuple[str, ...] | list[str] | None = None) -> 
 
 COUNTY_BADGES = build_county_badges()
 BADGES = [*BASE_BADGES, *COUNTY_BADGES]
+BADGE_CATEGORY_ORDER = (
+    "milestones",
+    "height",
+    "provinces",
+    "counties",
+    "streaks",
+    "special",
+)
+BADGE_CATEGORY_LABELS = {
+    "milestones": "Milestones",
+    "height": "Heights",
+    "provinces": "Provinces",
+    "counties": "Counties",
+    "streaks": "Streaks",
+    "special": "Special",
+}
 
 BADGES_BY_KEY = {
     badge["key"]: badge

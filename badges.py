@@ -4,7 +4,14 @@ from collections import Counter
 from datetime import date, timedelta, timezone
 from typing import Any
 
-from badges_config import BADGES, BADGE_LABELS, get_badge_definition, normalize_badge_key
+from badges_config import (
+    BADGES,
+    BADGE_CATEGORY_LABELS,
+    BADGE_CATEGORY_ORDER,
+    BADGE_LABELS,
+    get_badge_definition,
+    normalize_badge_key,
+)
 from supabase_utils import (
     award_badge,
     calculate_climb_streak,
@@ -200,6 +207,7 @@ def build_user_badge_stats(user_id: str) -> dict[str, Any]:
         "climbed_peak_count": climbed_peak_count,
         "climbed_peak_names": climbed_peak_names,
         "climbed_peaks": climbed_peaks,
+        "climbs": climbs,
         "county_counts": county_counts,
         "earned_badges": earned_badges,
         "longest_weekend_streak": _longest_consecutive_run(weekend_anchors),
@@ -211,6 +219,223 @@ def build_user_badge_stats(user_id: str) -> dict[str, Any]:
         "total_peak_count": len({str((peak or {}).get("id")) for peak in all_peaks if (peak or {}).get("id") is not None}),
         "tracked_peaks_by_county": tracked_peaks_by_county,
         "user_id": user_id,
+    }
+
+
+def _badge_earned_at_value(badge: dict[str, Any]) -> str:
+    return str(
+        badge.get("earned_at")
+        or badge.get("created_at")
+        or badge.get("awarded_at")
+        or badge.get("inserted_at")
+        or badge.get("updated_at")
+        or ""
+    ).strip()
+
+
+def _format_progress_label(current: int, target: int, noun: str) -> str:
+    safe_target = max(int(target or 0), 0)
+    safe_current = max(int(current or 0), 0)
+    return f"{safe_current} / {safe_target} {noun}"
+
+
+def describe_badge_progress(criteria: dict[str, Any], stats: dict[str, Any]) -> dict[str, Any]:
+    criteria = dict(criteria or {})
+    criteria_type = _normalize_text(criteria.get("type"))
+    target_value = max(int(criteria.get("value") or 0), 0)
+    current_value = 0
+    target = target_value
+    requirement_text = str(criteria.get("description") or "").strip()
+    progress_label = ""
+
+    if criteria_type == "peak_count":
+        current_value = int(stats.get("climbed_peak_count") or 0)
+        target = target_value
+        requirement_text = requirement_text or f"Climb {target} distinct peaks."
+        progress_label = _format_progress_label(current_value, target, "peaks")
+    elif criteria_type == "all_peaks":
+        current_value = int(stats.get("climbed_peak_count") or 0)
+        target = int(stats.get("total_peak_count") or 0)
+        requirement_text = requirement_text or "Climb every tracked Irish peak."
+        progress_label = _format_progress_label(current_value, target, "peaks")
+    elif criteria_type in {"height_min", "height_peak"}:
+        target = max(int(float(criteria.get("value") or 0)), 0)
+        current_value = int(round(float(stats.get("max_height_m") or 0)))
+        requirement_text = requirement_text or f"Climb a peak at or above {target}m."
+        progress_label = _format_progress_label(current_value, target, "m")
+    elif criteria_type == "province_count":
+        province_name = str(criteria.get("province") or "").strip()
+        current_value = int((stats.get("province_counts") or {}).get(province_name, 0))
+        target = target_value or 1
+        if not requirement_text:
+            requirement_text = (
+                f"Climb {target} peak in {province_name}."
+                if target == 1
+                else f"Climb {target} peaks in {province_name}."
+            )
+        progress_label = _format_progress_label(current_value, target, "peaks")
+    elif criteria_type in {"all_provinces", "province_set"}:
+        provinces = criteria.get("provinces") or ("Munster", "Leinster", "Ulster", "Connacht")
+        province_counts = stats.get("province_counts") or {}
+        current_value = sum(1 for province in provinces if int(province_counts.get(str(province).strip(), 0)) >= 1)
+        target = target_value or len(provinces)
+        requirement_text = requirement_text or "Climb at least one peak in each province."
+        progress_label = _format_progress_label(current_value, target, "provinces")
+    elif criteria_type in {"county_complete", "county_completion"}:
+        county_name = str(criteria.get("county") or "").strip()
+        climbed_total = int((stats.get("county_counts") or {}).get(county_name, 0))
+        tracked_total = int((stats.get("tracked_peaks_by_county") or {}).get(county_name, 0))
+        current_value = climbed_total
+        target = tracked_total or 1
+        requirement_text = (
+            f"Climb every tracked peak in {county_name}."
+            if tracked_total > 0
+            else f"No tracked peaks are currently counted in {county_name}."
+        )
+        progress_label = _format_progress_label(current_value, tracked_total, "peaks") if tracked_total > 0 else "0 / 0 peaks"
+    elif criteria_type == "specific_peak":
+        peak_name = str(criteria.get("peak_name") or "").strip()
+        current_value = 1 if _normalize_text(peak_name) in (stats.get("climbed_peak_names") or set()) else 0
+        target = 1
+        requirement_text = requirement_text or f"Climb {peak_name}."
+        progress_label = _format_progress_label(current_value, target, "peak")
+    elif criteria_type in {"streak", "weekly_streak", "consecutive_weekends"}:
+        mode = _normalize_text(criteria.get("mode"))
+        if criteria_type == "weekly_streak":
+            mode = "weekly"
+        elif criteria_type == "consecutive_weekends":
+            mode = "weekend"
+
+        target = target_value or 1
+        if mode == "weekend":
+            current_value = int(stats.get("longest_weekend_streak") or 0)
+            requirement_text = requirement_text or f"Climb across {target} consecutive weekends."
+            progress_label = _format_progress_label(current_value, target, "weekends")
+        else:
+            current_value = int(stats.get("longest_weekly_streak") or 0)
+            requirement_text = requirement_text or f"Climb every week for {target} straight weeks."
+            progress_label = _format_progress_label(current_value, target, "weeks")
+    elif criteria_type == "photo_count":
+        current_value = int(stats.get("photo_count") or 0)
+        target = target_value or 1
+        requirement_text = requirement_text or f"Upload {target} climb photos."
+        progress_label = _format_progress_label(current_value, target, "photos")
+    elif criteria_type in {"bucket_completions", "bucket_list_completions"}:
+        current_value = int(stats.get("bucket_completion_count") or 0)
+        target = target_value or 1
+        requirement_text = requirement_text or f"Complete {target} climbs from your bucket list."
+        progress_label = _format_progress_label(current_value, target, "completions")
+    else:
+        current_value = 0
+        target = target_value or 1
+        requirement_text = requirement_text or "Keep climbing to unlock this badge."
+        progress_label = _format_progress_label(current_value, target, "steps")
+
+    if not requirement_text:
+        requirement_text = "Keep climbing to unlock this badge."
+
+    progress_denominator = max(int(target or 0), 1)
+    progress_percent = int(round((min(max(current_value, 0), progress_denominator) / progress_denominator) * 100))
+
+    return {
+        "current_value": max(int(current_value or 0), 0),
+        "target_value": max(int(target or 0), 0),
+        "progress_percent": max(0, min(progress_percent, 100)),
+        "progress_label": progress_label or _format_progress_label(current_value, target, "steps"),
+        "requirement_text": requirement_text,
+    }
+
+
+def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
+    earned_badges = {}
+    for badge in stats.get("earned_badges") or []:
+        badge_key = normalize_badge_key((badge or {}).get("badge_key"))
+        if not badge_key or badge_key in earned_badges:
+            continue
+        earned_badges[badge_key] = badge
+
+    badge_cards = []
+    next_badge = None
+    total_badges = len(BADGES)
+    earned_count = 0
+
+    for index, badge_definition in enumerate(BADGES):
+        badge_key = str((badge_definition or {}).get("key") or "").strip()
+        if not badge_key:
+            continue
+
+        earned_badge = earned_badges.get(badge_key)
+        is_earned = earned_badge is not None or evaluate_badge(badge_definition, stats)
+        progress = describe_badge_progress(badge_definition.get("criteria") or {}, stats)
+        earned_at = _badge_earned_at_value(earned_badge or {})
+        earned_at_value = parse_datetime_value(earned_at)
+
+        badge_card = {
+            "key": badge_key,
+            "label": str(badge_definition.get("name") or badge_key.replace("_", " ").title()),
+            "description": str(badge_definition.get("description") or progress.get("requirement_text") or ""),
+            "icon": str(badge_definition.get("icon") or "fa-award"),
+            "category": str(badge_definition.get("category") or "special"),
+            "is_earned": is_earned,
+            "is_locked": not is_earned,
+            "is_next": False,
+            "earned_at": earned_at or None,
+            "earned_sort": earned_at_value,
+            **progress,
+            "_order": index,
+        }
+        badge_cards.append(badge_card)
+        if is_earned:
+            earned_count += 1
+            continue
+
+        if next_badge is None:
+            next_badge = badge_card
+            continue
+
+        current_rank = (
+            int(next_badge.get("progress_percent") or 0),
+            int(next_badge.get("current_value") or 0),
+            -int(next_badge.get("_order") or 0),
+        )
+        candidate_rank = (
+            int(badge_card.get("progress_percent") or 0),
+            int(badge_card.get("current_value") or 0),
+            -int(badge_card.get("_order") or 0),
+        )
+        if candidate_rank > current_rank:
+            next_badge = badge_card
+
+    grouped_categories = []
+    for category_key in BADGE_CATEGORY_ORDER:
+        category_badges = [badge for badge in badge_cards if badge.get("category") == category_key]
+        if not category_badges:
+            continue
+
+        category_entry = {
+            "key": category_key,
+            "label": BADGE_CATEGORY_LABELS.get(category_key, category_key.replace("_", " ").title()),
+            "earned_count": sum(1 for badge in category_badges if badge.get("is_earned")),
+            "total_count": len(category_badges),
+            "badges": category_badges,
+        }
+        grouped_categories.append(category_entry)
+
+    if next_badge is not None:
+        next_badge["is_next"] = True
+
+    recently_earned = sorted(
+        [badge for badge in badge_cards if badge.get("is_earned")],
+        key=lambda badge: badge.get("earned_sort") or parse_datetime_value("1970-01-01T00:00:00+00:00"),
+        reverse=True,
+    )
+
+    return {
+        "categories": grouped_categories,
+        "earned_count": earned_count,
+        "next_badge": next_badge,
+        "recently_earned": recently_earned,
+        "total_count": total_badges,
     }
 
 
