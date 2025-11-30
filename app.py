@@ -6,7 +6,7 @@ from flask import Flask, abort, jsonify, render_template, request, redirect, ses
 from werkzeug.exceptions import HTTPException
 
 from api_routes import api
-from badges import build_achievement_catalog, build_user_badge_stats
+from badges import build_achievement_catalog, build_user_badge_stats, build_user_badge_stats_from_data
 from badges_config import BADGE_ICON_LOOKUP, BADGE_LABELS, DASHBOARD_BADGE_RULES, normalize_badge_key
 from supabase_utils import (
     calculate_climb_streak,
@@ -1850,7 +1850,11 @@ def _build_dashboard_onboarding_steps() -> list[dict]:
     ]
 
 
-def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
+def _build_dashboard_achievements(
+    badges: list[dict],
+    badge_progress_lookup: dict | None = None,
+    next_badge_candidate: dict | None = None,
+) -> dict:
     earned_badges = {}
     for badge in badges:
         badge_key = normalize_badge_key(badge.get("badge_key"))
@@ -1861,23 +1865,28 @@ def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
     next_badge = None
     for rule in DASHBOARD_BADGE_RULES:
         earned_badge = earned_badges.get(rule["key"])
-        is_earned = earned_badge is not None or climb_count >= rule["threshold"]
-        progress_count = min(climb_count, rule["threshold"])
-        progress_percent = int(round((progress_count / rule["threshold"]) * 100)) if rule["threshold"] else 100
-        is_next = False
-        if not is_earned and next_badge is None:
-            is_next = True
+        progress_meta = dict((badge_progress_lookup or {}).get(rule["key"]) or {})
+        progress_count = int(progress_meta.get("current") or 0)
+        progress_target = int(progress_meta.get("target") or rule["threshold"] or 0)
+        progress_percent = int(progress_meta.get("percentage") or 0)
+        is_earned = earned_badge is not None or (progress_target > 0 and progress_count >= progress_target)
+        progress_count_clamped = min(progress_count, progress_target) if progress_target > 0 else progress_count
+        is_next = (
+            not is_earned
+            and isinstance(next_badge_candidate, dict)
+            and str(next_badge_candidate.get("key") or "") == rule["key"]
+        )
 
         achievement = {
             "key": rule["key"],
             "label": rule["label"],
-            "threshold": rule["threshold"],
+            "threshold": progress_target or rule["threshold"],
             "icon": rule["icon"],
             "is_earned": is_earned,
             "is_next": is_next,
-            "progress_count": progress_count,
+            "progress_count": progress_count_clamped,
             "progress_percent": progress_percent,
-            "progress_label": f"{progress_count} / {rule['threshold']} climbs",
+            "progress_label": f"{progress_count_clamped} / {progress_target or rule['threshold']}",
             "earned_label": "Earned" if is_earned else "Up next" if is_next else "Locked",
             "earned_at": (
                 earned_badge.get("created_at")
@@ -1888,8 +1897,18 @@ def _build_dashboard_achievements(badges: list[dict], climb_count: int) -> dict:
             ),
         }
         achievement_cards.append(achievement)
-        if is_next and next_badge is None:
-            next_badge = achievement
+
+    if isinstance(next_badge_candidate, dict) and not next_badge_candidate.get("is_earned"):
+        next_badge = {
+            "key": str(next_badge_candidate.get("key") or ""),
+            "label": str(next_badge_candidate.get("label") or "Next Badge"),
+            "icon": str(next_badge_candidate.get("icon") or "fa-award"),
+            "progress_count": int(next_badge_candidate.get("current") or next_badge_candidate.get("current_value") or 0),
+            "threshold": int(next_badge_candidate.get("target") or next_badge_candidate.get("target_value") or 1),
+            "progress_percent": int(next_badge_candidate.get("percentage") or next_badge_candidate.get("progress_percent") or 0),
+            "progress_label": str(next_badge_candidate.get("progress_label") or ""),
+            "requirement_text": str(next_badge_candidate.get("requirement_text") or ""),
+        }
 
     return {
         "badges": achievement_cards,
@@ -2317,6 +2336,8 @@ def home():
     bucket_items = raw_dashboard.get("bucket_items") or []
     badges = raw_dashboard.get("badges") or []
     community_climbs = raw_dashboard.get("community_climbs") or []
+    badge_stats = build_user_badge_stats_from_data(all_peaks, climbs, badges, user_id=user_id)
+    badge_catalog = build_achievement_catalog(badge_stats)
     is_new_user_dashboard = not climbs and not bucket_items and not badges
     dashboard_community_activity = _build_dashboard_community_feed(
         community_climbs,
@@ -2324,7 +2345,11 @@ def home():
         user_id,
         limit=6,
     )
-    dashboard_achievements = _build_dashboard_achievements(badges, len(climbs))
+    dashboard_achievements = _build_dashboard_achievements(
+        badges,
+        badge_catalog.get("progress_lookup"),
+        badge_catalog.get("next_badge"),
+    )
     dashboard_recent_activity = _build_dashboard_activity_items(climbs, bucket_items, badges, peaks_by_id)
     if is_new_user_dashboard:
         dashboard_recent_activity = _build_dashboard_onboarding_steps()

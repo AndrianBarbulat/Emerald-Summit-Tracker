@@ -340,9 +340,9 @@
                                 <p class="dashboard-achievement-next__eyebrow">Achievement Progress</p>
                                 <p class="dashboard-achievement-next__title">
                                     <span class="icon"><i class="fas fa-trophy"></i></span>
-                                    All current dashboard badges earned
+                                    All current badges earned
                                 </p>
-                                <p class="dashboard-achievement-next__meta">You have unlocked every badge in the current progression set.</p>
+                                <p class="dashboard-achievement-next__meta">You have unlocked every badge in the current catalog.</p>
                             </div>
                             {% endif %}
 
@@ -355,6 +355,12 @@
                                         </span>
                                         <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">{{ badge.label }}</p>
                                         <span class="tag is-small dashboard-achievement-grid__status{% if badge.is_earned %} dashboard-achievement-grid__status--earned{% elif badge.is_next %} dashboard-achievement-grid__status--next{% else %} dashboard-achievement-grid__status--locked{% endif %}">{{ badge.earned_label }}</span>
+                                        {% if not badge.is_earned %}
+                                        <div class="dashboard-achievement-grid__progress-wrap">
+                                            <progress class="progress is-small dashboard-achievement-grid__progress" value="{{ badge.progress_count if badge.progress_count <= badge.threshold else badge.threshold }}" max="{{ badge.threshold if badge.threshold > 0 else 1 }}">{{ badge.progress_percent }}%</progress>
+                                            <p class="dashboard-achievement-grid__progress-meta">{{ badge.progress_label }}</p>
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 {% endfor %}

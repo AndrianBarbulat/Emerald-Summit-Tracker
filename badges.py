@@ -138,11 +138,16 @@ def _count_bucket_completions(climbs: list[dict]) -> int:
     return completions
 
 
-def build_user_badge_stats(user_id: str) -> dict[str, Any]:
-    all_peaks = get_all_peaks()
-    climbs = get_user_climbs(user_id)
-    earned_badges = get_user_badges(user_id)
-
+def build_user_badge_stats_from_data(
+    all_peaks: list[dict[str, Any]] | None,
+    climbs: list[dict[str, Any]] | None,
+    earned_badges: list[dict[str, Any]] | None = None,
+    *,
+    user_id: str = "",
+) -> dict[str, Any]:
+    all_peaks = list(all_peaks or [])
+    climbs = list(climbs or [])
+    earned_badges = list(earned_badges or [])
     peaks_by_id = {
         _peak_key(peak.get("id")): dict(peak)
         for peak in all_peaks
@@ -220,6 +225,15 @@ def build_user_badge_stats(user_id: str) -> dict[str, Any]:
         "tracked_peaks_by_county": tracked_peaks_by_county,
         "user_id": user_id,
     }
+
+
+def build_user_badge_stats(user_id: str) -> dict[str, Any]:
+    return build_user_badge_stats_from_data(
+        get_all_peaks(),
+        get_user_climbs(user_id),
+        get_user_badges(user_id),
+        user_id=user_id,
+    )
 
 
 def _badge_earned_at_value(badge: dict[str, Any]) -> str:
@@ -346,6 +360,25 @@ def describe_badge_progress(criteria: dict[str, Any], stats: dict[str, Any]) -> 
     }
 
 
+def build_badge_progress_lookup(stats: dict[str, Any]) -> dict[str, dict[str, int]]:
+    progress_lookup: dict[str, dict[str, int]] = {}
+    for badge_definition in BADGES:
+        badge_key = str((badge_definition or {}).get("key") or "").strip()
+        if not badge_key:
+            continue
+        progress = describe_badge_progress((badge_definition or {}).get("criteria") or {}, stats)
+        progress_lookup[badge_key] = {
+            "current": int(progress.get("current_value") or 0),
+            "target": int(progress.get("target_value") or 0),
+            "percentage": int(progress.get("progress_percent") or 0),
+        }
+    return progress_lookup
+
+
+def get_all_badge_progress(user_id: str) -> dict[str, dict[str, int]]:
+    return build_badge_progress_lookup(build_user_badge_stats(user_id))
+
+
 def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
     earned_badges = {}
     for badge in stats.get("earned_badges") or []:
@@ -354,6 +387,7 @@ def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
             continue
         earned_badges[badge_key] = badge
 
+    progress_lookup = build_badge_progress_lookup(stats)
     badge_cards = []
     next_badge = None
     total_badges = len(BADGES)
@@ -367,6 +401,7 @@ def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
         earned_badge = earned_badges.get(badge_key)
         is_earned = earned_badge is not None or evaluate_badge(badge_definition, stats)
         progress = describe_badge_progress(badge_definition.get("criteria") or {}, stats)
+        progress_numbers = progress_lookup.get(badge_key) or {}
         earned_at = _badge_earned_at_value(earned_badge or {})
         earned_at_value = parse_datetime_value(earned_at)
 
@@ -382,6 +417,9 @@ def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
             "earned_at": earned_at or None,
             "earned_sort": earned_at_value,
             **progress,
+            "current": int(progress_numbers.get("current") or 0),
+            "target": int(progress_numbers.get("target") or 0),
+            "percentage": int(progress_numbers.get("percentage") or 0),
             "_order": index,
         }
         badge_cards.append(badge_card)
@@ -434,6 +472,7 @@ def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
         "categories": grouped_categories,
         "earned_count": earned_count,
         "next_badge": next_badge,
+        "progress_lookup": progress_lookup,
         "recently_earned": recently_earned,
         "total_count": total_badges,
     }
