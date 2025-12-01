@@ -298,7 +298,8 @@ def describe_badge_progress(criteria: dict[str, Any], stats: dict[str, Any]) -> 
     elif criteria_type in {"county_complete", "county_completion"}:
         county_name = str(criteria.get("county") or "").strip()
         climbed_total = int((stats.get("county_counts") or {}).get(county_name, 0))
-        tracked_total = int((stats.get("tracked_peaks_by_county") or {}).get(county_name, 0))
+        configured_total = max(int(criteria.get("value") or 0), 0)
+        tracked_total = int((stats.get("tracked_peaks_by_county") or {}).get(county_name, 0)) or configured_total
         current_value = climbed_total
         target = tracked_total or 1
         requirement_text = (
@@ -449,6 +450,11 @@ def build_achievement_catalog(stats: dict[str, Any]) -> dict[str, Any]:
         category_badges = [badge for badge in badge_cards if badge.get("category") == category_key]
         if not category_badges:
             continue
+        if category_key == "counties":
+            category_badges = sorted(
+                category_badges,
+                key=lambda badge: str(badge.get("label") or "").lower(),
+            )
 
         category_entry = {
             "key": category_key,
@@ -506,7 +512,8 @@ def evaluate_badge_criteria(criteria: dict[str, Any], stats: dict[str, Any]) -> 
 
     if criteria_type in {"county_complete", "county_completion"}:
         county_name = str(criteria.get("county") or "").strip()
-        tracked_total = int((stats.get("tracked_peaks_by_county") or {}).get(county_name, 0))
+        configured_total = max(int(criteria.get("value") or 0), 0)
+        tracked_total = int((stats.get("tracked_peaks_by_county") or {}).get(county_name, 0)) or configured_total
         climbed_total = int((stats.get("county_counts") or {}).get(county_name, 0))
         return tracked_total > 0 and climbed_total >= tracked_total
 

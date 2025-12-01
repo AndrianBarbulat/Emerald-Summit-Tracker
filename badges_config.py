@@ -233,25 +233,64 @@ BASE_BADGES = [
 def build_county_badges(counties: tuple[str, ...] | list[str] | None = None) -> list[dict]:
     resolved_counties = counties or IRELAND_COUNTIES
     badges = []
-    for county in resolved_counties:
+    for county in sorted(resolved_counties, key=lambda value: str(value or "").strip().lower()):
         normalized_county = str(county or "").strip()
         if not normalized_county:
             continue
+        county_slug = _slugify(normalized_county)
         badges.append(
             _badge(
-                key=f"all_peaks_{_slugify(normalized_county)}",
+                key=f"{county_slug}_complete",
                 name=f"All Peaks in {normalized_county}",
                 description=f"Climb every tracked peak in {normalized_county}.",
                 icon="fa-map",
                 category="counties",
-                criteria={"type": "county_complete", "county": normalized_county},
+                criteria={"type": "county_complete", "county": normalized_county, "value": 0},
+                legacy_keys=(f"all_peaks_{county_slug}",),
             )
         )
     return badges
 
 
-COUNTY_BADGES = build_county_badges()
-BADGES = [*BASE_BADGES, *COUNTY_BADGES]
+def build_county_badges_from_counts(county_peak_counts: dict[str, int] | None = None) -> list[dict]:
+    normalized_counts = {}
+    for county_name, peak_count in (county_peak_counts or {}).items():
+        normalized_county = str(county_name or "").strip()
+        if not normalized_county:
+            continue
+        try:
+            normalized_counts[normalized_county] = max(int(peak_count or 0), 0)
+        except (TypeError, ValueError):
+            normalized_counts[normalized_county] = 0
+
+    if not normalized_counts:
+        return build_county_badges()
+
+    badges = []
+    for county_name in sorted(normalized_counts.keys(), key=lambda value: value.lower()):
+        peak_count = normalized_counts[county_name]
+        county_slug = _slugify(county_name)
+        badges.append(
+            _badge(
+                key=f"{county_slug}_complete",
+                name=f"All Peaks in {county_name}",
+                description=(
+                    f"Climb all {peak_count} tracked peaks in {county_name}."
+                    if peak_count > 0
+                    else f"Climb every tracked peak in {county_name}."
+                ),
+                icon="fa-map",
+                category="counties",
+                criteria={"type": "county_complete", "county": county_name, "value": peak_count},
+                legacy_keys=(f"all_peaks_{county_slug}",),
+            )
+        )
+    return badges
+
+
+COUNTY_PEAK_COUNTS: dict[str, int] = {}
+COUNTY_BADGES: list[dict] = []
+BADGES: list[dict] = []
 BADGE_CATEGORY_ORDER = (
     "milestones",
     "height",
@@ -269,15 +308,8 @@ BADGE_CATEGORY_LABELS = {
     "special": "Special",
 }
 
-BADGES_BY_KEY = {
-    badge["key"]: badge
-    for badge in BADGES
-}
-BADGE_ALIASES = {
-    legacy_key: badge["key"]
-    for badge in BADGES
-    for legacy_key in badge.get("legacy_keys", [])
-}
+BADGES_BY_KEY: dict[str, dict] = {}
+BADGE_ALIASES: dict[str, str] = {}
 
 
 def normalize_badge_key(value: str | None) -> str:
@@ -291,26 +323,62 @@ def get_badge_definition(value: str | None) -> dict | None:
     return BADGES_BY_KEY.get(normalize_badge_key(value))
 
 
-BADGE_LABELS = {}
-BADGE_ICON_LOOKUP = {}
-for badge in BADGES:
-    badge_key = badge["key"]
-    BADGE_LABELS[badge_key] = badge["name"]
-    BADGE_ICON_LOOKUP[badge_key] = badge["icon"]
-    for legacy_key in badge.get("legacy_keys", []):
-        BADGE_LABELS[legacy_key] = badge["name"]
-        BADGE_ICON_LOOKUP[legacy_key] = badge["icon"]
+BADGE_LABELS: dict[str, str] = {}
+BADGE_ICON_LOOKUP: dict[str, str] = {}
+DASHBOARD_BADGE_RULES: list[dict] = []
+AUTO_AWARD_BADGE_RULES: list[dict] = []
 
 
-DASHBOARD_BADGE_RULES = [
-    {
-        "key": badge["key"],
-        "label": badge["name"],
-        "threshold": int(badge["criteria"]["value"]),
-        "icon": badge["icon"],
-    }
-    for badge in BASE_BADGES
-    if badge["criteria"].get("type") == "peak_count"
-]
+def configure_county_badges(county_peak_counts: dict[str, int] | None = None) -> dict[str, int]:
+    COUNTY_PEAK_COUNTS.clear()
 
-AUTO_AWARD_BADGE_RULES = list(DASHBOARD_BADGE_RULES)
+    for county_name, peak_count in (county_peak_counts or {}).items():
+        normalized_county = str(county_name or "").strip()
+        if not normalized_county:
+            continue
+        try:
+            COUNTY_PEAK_COUNTS[normalized_county] = max(int(peak_count or 0), 0)
+        except (TypeError, ValueError):
+            COUNTY_PEAK_COUNTS[normalized_county] = 0
+
+    COUNTY_BADGES[:] = build_county_badges_from_counts(COUNTY_PEAK_COUNTS)
+    BADGES[:] = [*BASE_BADGES, *COUNTY_BADGES]
+
+    BADGES_BY_KEY.clear()
+    BADGES_BY_KEY.update({
+        badge["key"]: badge
+        for badge in BADGES
+    })
+
+    BADGE_ALIASES.clear()
+    BADGE_ALIASES.update({
+        legacy_key: badge["key"]
+        for badge in BADGES
+        for legacy_key in badge.get("legacy_keys", [])
+    })
+
+    BADGE_LABELS.clear()
+    BADGE_ICON_LOOKUP.clear()
+    for badge in BADGES:
+        badge_key = badge["key"]
+        BADGE_LABELS[badge_key] = badge["name"]
+        BADGE_ICON_LOOKUP[badge_key] = badge["icon"]
+        for legacy_key in badge.get("legacy_keys", []):
+            BADGE_LABELS[legacy_key] = badge["name"]
+            BADGE_ICON_LOOKUP[legacy_key] = badge["icon"]
+
+    DASHBOARD_BADGE_RULES[:] = [
+        {
+            "key": badge["key"],
+            "label": badge["name"],
+            "threshold": int(badge["criteria"]["value"]),
+            "icon": badge["icon"],
+        }
+        for badge in BASE_BADGES
+        if badge["criteria"].get("type") == "peak_count"
+    ]
+    AUTO_AWARD_BADGE_RULES[:] = list(DASHBOARD_BADGE_RULES)
+    return dict(COUNTY_PEAK_COUNTS)
+
+
+configure_county_badges()

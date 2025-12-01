@@ -7,10 +7,18 @@ from werkzeug.exceptions import HTTPException
 
 from api_routes import api
 from badges import build_achievement_catalog, build_user_badge_stats, build_user_badge_stats_from_data
-from badges_config import BADGE_ICON_LOOKUP, BADGE_LABELS, DASHBOARD_BADGE_RULES, normalize_badge_key
+from badges_config import (
+    BADGE_ICON_LOOKUP,
+    BADGE_LABELS,
+    COUNTY_PEAK_COUNTS,
+    DASHBOARD_BADGE_RULES,
+    configure_county_badges,
+    normalize_badge_key,
+)
 from supabase_utils import (
     calculate_climb_streak,
     get_all_peaks,
+    get_county_peak_counts,
     get_peak_average_difficulty,
     get_peak_count,
     get_community_recent_climbs,
@@ -55,6 +63,12 @@ def _prime_total_peak_count_cache() -> None:
     if cached_count is None:
         cached_count = len(get_all_peaks())
     app.config["TOTAL_PEAK_COUNT"] = max(int(cached_count or 0), 0)
+
+
+def _prime_county_peak_count_cache() -> None:
+    county_peak_counts = get_county_peak_counts()
+    configure_county_badges(county_peak_counts)
+    app.config["COUNTY_PEAK_COUNTS"] = dict(COUNTY_PEAK_COUNTS)
 
 
 def _set_active_page(page_name: str | None) -> None:
@@ -111,6 +125,7 @@ def _get_badge_notification_state(profile: dict | None) -> dict:
 
 
 _prime_total_peak_count_cache()
+_prime_county_peak_count_cache()
 
 
 def _is_api_request() -> bool:

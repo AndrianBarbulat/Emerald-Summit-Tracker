@@ -397,6 +397,32 @@ def get_peak_count() -> Optional[int]:
         return None
 
 
+def get_county_peak_counts() -> Dict[str, int]:
+    county_counts: Dict[str, int] = {}
+
+    try:
+        query = _table(TABLE_PEAKS)
+        if query is not None:
+            response = query.select("county").execute()
+            for peak in response.data or []:
+                county_name = str((peak or {}).get("county") or "").strip()
+                if not county_name:
+                    continue
+                county_counts[county_name] = county_counts.get(county_name, 0) + 1
+            if county_counts:
+                return county_counts
+    except Exception:
+        county_counts = {}
+
+    for peak in get_all_peaks():
+        county_name = str((peak or {}).get("county") or "").strip()
+        if not county_name:
+            continue
+        county_counts[county_name] = county_counts.get(county_name, 0) + 1
+
+    return county_counts
+
+
 def get_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_PROFILES)
