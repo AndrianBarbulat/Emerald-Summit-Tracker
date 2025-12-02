@@ -134,13 +134,58 @@
                 </div>
 
                 {% if public_profile_badges %}
-                <div class="public-profile-badges__row">
-                    {% for badge in public_profile_badges %}
-                    <div class="public-profile-badge" title="{{ badge.label }}{% if badge.earned_label %} - {{ badge.earned_label }}{% endif %}">
-                        <span class="icon public-profile-badge__icon"><i class="fas {{ badge.icon }}"></i></span>
-                        <span class="public-profile-badge__label">{{ badge.label }}</span>
+                {% set visible_badges = public_profile_badges[:8] %}
+                {% set hidden_badges = public_profile_badges[8:] %}
+                <div class="public-profile-badges__rail" data-public-profile-badges>
+                    <div class="public-profile-badges__row">
+                        {% for badge in visible_badges %}
+                        <span class="public-profile-badge" tabindex="0" aria-label="{{ badge.label }}{% if badge.earned_at %}, earned on {{ badge.earned_at | display_date }}{% endif %}">
+                            <span class="icon public-profile-badge__icon"><i class="fas {{ badge.icon }}"></i></span>
+                            <span class="public-profile-badge__tooltip" role="tooltip">
+                                <span class="public-profile-badge__tooltip-title">{{ badge.label }}</span>
+                                <span class="public-profile-badge__tooltip-meta">
+                                    {% if badge.earned_at %}
+                                    Earned on {{ badge.earned_at | display_date }}
+                                    {% else %}
+                                    Earned recently
+                                    {% endif %}
+                                </span>
+                            </span>
+                        </span>
+                        {% endfor %}
+                        {% if hidden_badges %}
+                        <button
+                            type="button"
+                            class="button is-text public-profile-badges__toggle"
+                            data-public-profile-badges-toggle
+                            data-collapsed-label="+{{ hidden_badges|length }} more"
+                            data-expanded-label="Show fewer"
+                            aria-expanded="false"
+                        >
+                            +{{ hidden_badges|length }} more
+                        </button>
+                        {% endif %}
                     </div>
-                    {% endfor %}
+
+                    {% if hidden_badges %}
+                    <div class="public-profile-badges__row public-profile-badges__row--expanded is-hidden" data-public-profile-badges-overflow hidden>
+                        {% for badge in hidden_badges %}
+                        <span class="public-profile-badge" tabindex="0" aria-label="{{ badge.label }}{% if badge.earned_at %}, earned on {{ badge.earned_at | display_date }}{% endif %}">
+                            <span class="icon public-profile-badge__icon"><i class="fas {{ badge.icon }}"></i></span>
+                            <span class="public-profile-badge__tooltip" role="tooltip">
+                                <span class="public-profile-badge__tooltip-title">{{ badge.label }}</span>
+                                <span class="public-profile-badge__tooltip-meta">
+                                    {% if badge.earned_at %}
+                                    Earned on {{ badge.earned_at | display_date }}
+                                    {% else %}
+                                    Earned recently
+                                    {% endif %}
+                                </span>
+                            </span>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% else %}
                 <p class="public-profile-badges__empty">No badges earned yet.</p>

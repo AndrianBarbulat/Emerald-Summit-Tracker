@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initPeakCommunitySection(section);
     });
 
+    initPublicProfileBadges();
     initProfilePreviewTooltips();
 
     refreshTimeAgo(document);
@@ -424,6 +425,29 @@ function initProfilePreviewTooltips() {
 
     document.addEventListener('scroll', hideTooltip, true);
     window.addEventListener('resize', hideTooltip);
+}
+
+function initPublicProfileBadges() {
+    document.querySelectorAll('[data-public-profile-badges]').forEach(function(section) {
+        const toggleButton = section.querySelector('[data-public-profile-badges-toggle]');
+        const overflowRow = section.querySelector('[data-public-profile-badges-overflow]');
+        if (!toggleButton || !overflowRow) {
+            return;
+        }
+
+        toggleButton.addEventListener('click', function() {
+            const isExpanded = toggleButton.getAttribute('aria-expanded') === 'true';
+            const nextExpanded = !isExpanded;
+            const nextLabel = nextExpanded
+                ? String(toggleButton.getAttribute('data-expanded-label') || 'Show fewer')
+                : String(toggleButton.getAttribute('data-collapsed-label') || '').trim();
+
+            toggleButton.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+            toggleButton.textContent = nextLabel || (nextExpanded ? 'Show fewer' : 'Show more');
+            overflowRow.hidden = !nextExpanded;
+            overflowRow.classList.toggle('is-hidden', !nextExpanded);
+        });
+    });
 }
 
 function createProfilePreviewTooltip() {
