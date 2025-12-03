@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ badge_share_title }}{% endblock %}
+
+{% block extra_meta %}
+<meta name="description" content="{{ badge_share_description }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Emerald Peak Explorer">
+<meta property="og:title" content="{{ badge_share_title }}">
+<meta property="og:description" content="{{ badge_share_description }}">
+<meta property="og:url" content="{{ badge_share_url }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ badge_share_title }}">
+<meta name="twitter:description" content="{{ badge_share_description }}">
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/badge_share.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section badge-share-page">
+    <div class="container">
+        <div class="badge-share-page__card">
+            <div class="badge-share-page__icon" aria-hidden="true">
+                <i class="fas {{ badge_share_badge.icon }}"></i>
+            </div>
+            <p class="badge-share-page__eyebrow">Badge unlocked</p>
+            <h1 class="title badge-share-page__title">{{ badge_share_badge.label }}</h1>
+            <p class="badge-share-page__headline">{{ badge_share_display_name }} earned {{ badge_share_badge.label }} on Emerald Peak Explorer.</p>
+            {% if badge_share_badge.description %}
+            <p class="badge-share-page__description">{{ badge_share_badge.description }}</p>
+            {% endif %}
+            <p class="badge-share-page__meta">Earned on {{ badge_share_earned_date }}</p>
+
+            <div class="badge-share-page__actions">
+                <a href="{{ badge_share_cta_url }}" class="button badge-share-page__cta">
+                    <span class="icon"><i class="fas fa-mountain"></i></span>
+                    <span>Join the adventure</span>
+                </a>
+                <a href="{{ url_for('achievements') if profile else url_for('index') }}" class="button is-light badge-share-page__secondary">
+                    <span class="icon"><i class="fas fa-compass"></i></span>
+                    <span>Explore Emerald Peak Explorer</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

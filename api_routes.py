@@ -704,7 +704,22 @@ def _remove_bucket_list_entry_if_present(user_id: str, peak_id: int) -> bool:
 
 
 def _award_new_badges_for_user(user_id: str) -> list[dict]:
-    return describe_new_badges(check_badges(user_id))
+    new_badges = describe_new_badges(check_badges(user_id))
+    display_name = str((session.get("profile") or {}).get("display_name") or "").strip()
+    if not display_name:
+        return new_badges
+
+    for badge in new_badges:
+        badge_key = str((badge or {}).get("key") or "").strip()
+        if not badge_key:
+            continue
+        badge["share_url"] = url_for(
+            "badge_share",
+            badge_key=badge_key,
+            display_name=display_name,
+            _external=True,
+        )
+    return new_badges
 
 
 def _augment_peaks_for_user(peaks: list[dict], user_id: str | None) -> list[dict]:

@@ -1505,8 +1505,20 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
 }
 
 .badge-celebration-modal__view-all,
+.badge-celebration-modal__share,
 .badge-celebration-modal__continue {
     min-width: 9.75rem;
+}
+
+.badge-celebration-modal__share {
+    border-color: rgba(82, 121, 111, 0.22);
+    color: var(--color-sage);
+}
+
+.badge-celebration-modal__share:hover,
+.badge-celebration-modal__share:focus-visible {
+    border-color: rgba(82, 121, 111, 0.34);
+    color: var(--color-forest);
 }
 
 .badge-celebration-modal__continue {

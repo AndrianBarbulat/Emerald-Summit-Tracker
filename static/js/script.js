@@ -2713,7 +2713,8 @@ function ensureBadgeCelebrationModal() {
         heading: modal.querySelector('[data-badge-celebration-heading]'),
         summary: modal.querySelector('[data-badge-celebration-summary]'),
         list: modal.querySelector('[data-badge-celebration-list]'),
-        continueButton: modal.querySelector('.badge-celebration-modal__continue')
+        continueButton: modal.querySelector('.badge-celebration-modal__continue'),
+        shareButton: modal.querySelector('[data-badge-celebration-share]')
     };
 }
 
@@ -2733,7 +2734,8 @@ function normalizeBadgeCelebrationPayload(badges) {
             key: String(currentBadge.key || '').trim(),
             label: label,
             description: String(currentBadge.description || 'Badge unlocked from your climbing progress.').trim(),
-            icon: String(currentBadge.icon || 'fa-award').trim() || 'fa-award'
+            icon: String(currentBadge.icon || 'fa-award').trim() || 'fa-award',
+            shareUrl: String(currentBadge.share_url || currentBadge.shareUrl || '').trim()
         };
     }).filter(Boolean);
 }
@@ -2794,6 +2796,51 @@ function closeBadgeCelebration() {
     elements.modal.classList.remove('is-active');
     elements.modal.setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove('is-clipped');
+    if (elements.shareButton) {
+        elements.shareButton.hidden = true;
+        elements.shareButton.removeAttribute('data-share-url');
+        elements.shareButton.removeAttribute('data-share-title');
+    }
+}
+
+async function triggerBadgeShare(button) {
+    if (!button) {
+        return;
+    }
+
+    const shareUrl = String(button.getAttribute('data-share-url') || '').trim();
+    const shareTitle = String(button.getAttribute('data-share-title') || 'Badge unlocked').trim();
+    if (!shareUrl) {
+        showToast('We could not generate a badge share link yet.', 'warning');
+        return;
+    }
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: shareTitle,
+                text: shareTitle + ' on Emerald Peak Explorer',
+                url: shareUrl
+            });
+            return;
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                return;
+            }
+        }
+    }
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+            await navigator.clipboard.writeText(shareUrl);
+            showToast('Badge share link copied.', 'success');
+            return;
+        } catch (error) {
+            // Fall through to opening the share page.
+        }
+    }
+
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
 }
 
 function showBadgeCelebration(badges) {
@@ -2814,6 +2861,24 @@ function showBadgeCelebration(badges) {
         : 'That climb unlocked a fresh set of milestones. Keep the momentum going.';
     elements.list.innerHTML = buildBadgeCelebrationCardsMarkup(normalizedBadges);
     elements.list.classList.toggle('badge-celebration-modal__list--scrollable', badgeCount > 1);
+    if (elements.shareButton) {
+        const shareBadge = normalizedBadges[0];
+        if (shareBadge && shareBadge.shareUrl) {
+            elements.shareButton.hidden = false;
+            elements.shareButton.setAttribute('data-share-url', shareBadge.shareUrl);
+            elements.shareButton.setAttribute('data-share-title', shareBadge.label);
+        } else {
+            elements.shareButton.hidden = true;
+            elements.shareButton.removeAttribute('data-share-url');
+            elements.shareButton.removeAttribute('data-share-title');
+        }
+        if (elements.shareButton.dataset.badgeCelebrationBound !== 'true') {
+            elements.shareButton.addEventListener('click', function() {
+                triggerBadgeShare(elements.shareButton);
+            });
+            elements.shareButton.dataset.badgeCelebrationBound = 'true';
+        }
+    }
 
     elements.modal.classList.add('is-active');
     elements.modal.setAttribute('aria-hidden', 'false');

@@ -13,6 +13,7 @@ from badges_config import (
     COUNTY_PEAK_COUNTS,
     DASHBOARD_BADGE_RULES,
     configure_county_badges,
+    get_badge_definition,
     normalize_badge_key,
 )
 from supabase_utils import (
@@ -2785,6 +2786,52 @@ def public_profile(display_name: str):
         compare_with_me_url=compare_with_me_url,
         is_profile_owner=is_owner,
         is_private_profile=is_private_profile,
+    )
+
+
+@app.route("/badge/<badge_key>/<display_name>")
+def badge_share(badge_key: str, display_name: str):
+    profile_record = get_profile_by_display_name(display_name)
+    if profile_record is None:
+        abort(404)
+
+    profile_user_id = str(profile_record.get("id") or "").strip()
+    normalized_badge_key = normalize_badge_key(badge_key)
+    badge_definition = get_badge_definition(normalized_badge_key)
+    if not profile_user_id or badge_definition is None:
+        abort(404)
+
+    earned_badges = _build_public_profile_badges(get_user_badges(profile_user_id))
+    earned_badge = next(
+        (badge for badge in earned_badges if str(badge.get("key") or "") == normalized_badge_key),
+        None,
+    )
+    if earned_badge is None:
+        abort(404)
+
+    badge_label = str(earned_badge.get("label") or badge_definition.get("name") or "Badge").strip()
+    display_name_value = str(profile_record.get("display_name") or display_name or "Climber").strip() or "Climber"
+    earned_date_label = (
+        format_display_date(earned_badge.get("earned_at"), fallback="Recently")
+        if earned_badge.get("earned_at")
+        else "Recently"
+    )
+    share_description = f"{display_name_value} earned the {badge_label} badge on Emerald Peak Explorer."
+    share_title = f"{badge_label} | Emerald Peak Explorer"
+
+    _set_active_page("")
+    return render_template(
+        "badge_share.html",
+        badge_share_badge={
+            **earned_badge,
+            "description": str(badge_definition.get("description") or ""),
+        },
+        badge_share_cta_url=url_for("home") if session.get("profile") else url_for("index"),
+        badge_share_description=share_description,
+        badge_share_display_name=display_name_value,
+        badge_share_earned_date=earned_date_label,
+        badge_share_title=share_title,
+        badge_share_url=request.url,
     )
 
 
