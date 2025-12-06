@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% from 'macros/user_avatar.html' import user_avatar %}
+
+{% block title %}Leaderboard | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/leaderboard.css') }}">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/leaderboard.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="leaderboard-page" data-leaderboard-page data-initial-tab="{{ active_leaderboard_tab }}">
+    <section class="section leaderboard-page__hero">
+        <div class="container">
+            <div class="leaderboard-page__hero-card">
+                <div class="leaderboard-page__hero-copy">
+                    <p class="leaderboard-page__eyebrow">Community Rankings</p>
+                    <h1 class="title is-2 leaderboard-page__title">
+                        <span class="icon"><i class="fas fa-trophy"></i></span>
+                        <span>Leaderboard</span>
+                    </h1>
+                    <p class="leaderboard-page__subtitle">
+                        See the public climbers leading the way by distinct peaks, total elevation, and current streak.
+                    </p>
+                    <div class="leaderboard-page__summary-tags">
+                        <span class="tag leaderboard-page__summary-tag">
+                            <span class="icon"><i class="fas fa-user-group"></i></span>
+                            <span>Public profiles only</span>
+                        </span>
+                        <span class="tag leaderboard-page__summary-tag">
+                            <span class="icon"><i class="fas fa-list-ol"></i></span>
+                            <span>Top 25 per ranking</span>
+                        </span>
+                        <span class="tag leaderboard-page__summary-tag">
+                            <span class="icon"><i class="fas fa-bolt"></i></span>
+                            <span>Shared cache, fast to load</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0 leaderboard-page__content">
+        <div class="container">
+            <div class="box leaderboard-page__shell">
+                <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard views">
+                    {% for tab in leaderboard_tabs %}
+                    <button
+                        type="button"
+                        class="leaderboard-tabs__button{% if active_leaderboard_tab == tab.key %} is-active{% endif %}"
+                        data-leaderboard-tab-control="{{ tab.key }}"
+                        role="tab"
+                        aria-selected="{% if active_leaderboard_tab == tab.key %}true{% else %}false{% endif %}"
+                        aria-controls="leaderboard-panel-{{ tab.key }}"
+                        id="leaderboard-tab-{{ tab.key }}"
+                    >
+                        <span class="icon"><i class="fas {{ tab.icon }}"></i></span>
+                        <span>{{ tab.label }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+
+                {% for tab in leaderboard_tabs %}
+                <section
+                    id="leaderboard-panel-{{ tab.key }}"
+                    class="leaderboard-panel{% if active_leaderboard_tab == tab.key %} is-active{% endif %}"
+                    data-leaderboard-tab-panel="{{ tab.key }}"
+                    role="tabpanel"
+                    aria-labelledby="leaderboard-tab-{{ tab.key }}"
+                    {% if active_leaderboard_tab != tab.key %}hidden{% endif %}
+                >
+                    <div class="leaderboard-panel__header">
+                        <div>
+                            <h2 class="title is-4 leaderboard-panel__title">{{ tab.label }}</h2>
+                            <p class="leaderboard-panel__copy">{{ tab.description }}</p>
+                        </div>
+                        <p class="leaderboard-panel__count">{{ tab.total_ranked }} public climbers ranked</p>
+                    </div>
+
+                    {% if tab.entries %}
+                    <div class="leaderboard-list">
+                        {% for entry in tab.entries %}
+                        {% set podium_tone = 'gold' if entry.rank == 1 else 'silver' if entry.rank == 2 else 'bronze' if entry.rank == 3 else 'default' %}
+                        <article class="leaderboard-entry{% if entry.rank <= 3 %} leaderboard-entry--{{ podium_tone }}{% endif %}{% if entry.is_current_user %} is-current-user{% endif %}">
+                            <div class="leaderboard-entry__rank">
+                                <span class="leaderboard-entry__rank-badge leaderboard-entry__rank-badge--{{ podium_tone }}">
+                                    {% if entry.rank == 1 %}
+                                    <i class="fas fa-trophy"></i>
+                                    {% elif entry.rank in [2, 3] %}
+                                    <i class="fas fa-medal"></i>
+                                    {% else %}
+                                    {{ entry.rank }}
+                                    {% endif %}
+                                </span>
+                                <span class="leaderboard-entry__rank-label">#{{ entry.rank }}</span>
+                            </div>
+
+                            <div class="leaderboard-entry__identity">
+                                <span class="leaderboard-entry__avatar">
+                                    {{ user_avatar(entry.profile, '42') }}
+                                </span>
+                                <div class="leaderboard-entry__copy">
+                                    <div class="leaderboard-entry__name-row">
+                                        <a
+                                            href="{{ entry.profile_url }}"
+                                            class="user-profile-link leaderboard-entry__name"
+                                            {% if entry.profile_preview_name %}data-profile-preview-name="{{ entry.profile_preview_name }}"{% endif %}
+                                        >
+                                            {{ entry.display_name }}
+                                        </a>
+                                        {% if entry.is_current_user %}
+                                        <span class="tag leaderboard-entry__you-tag">You</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="leaderboard-entry__secondary">
+                                        {% if entry.highest_peak.label %}
+                                        Highest peak:
+                                        {% if entry.highest_peak.url %}
+                                        <a href="{{ entry.highest_peak.url }}" class="leaderboard-entry__peak-link">{{ entry.highest_peak.label }}</a>
+                                        {% else %}
+                                        <span class="leaderboard-entry__peak-text">{{ entry.highest_peak.label }}</span>
+                                        {% endif %}
+                                        {% else %}
+                                        Highest peak not logged yet
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="leaderboard-entry__stat">
+                                {{ entry.metric_label }}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+
+                    {% if tab.own_entry %}
+                    <div class="leaderboard-panel__own-position">
+                        <div class="leaderboard-panel__divider">...</div>
+                        <article class="leaderboard-entry leaderboard-entry--own-callout is-current-user">
+                            <div class="leaderboard-entry__rank">
+                                <span class="leaderboard-entry__rank-badge leaderboard-entry__rank-badge--default">
+                                    {{ tab.own_entry.rank }}
+                                </span>
+                                <span class="leaderboard-entry__rank-label">#{{ tab.own_entry.rank }}</span>
+                            </div>
+
+                            <div class="leaderboard-entry__identity">
+                                <span class="leaderboard-entry__avatar">
+                                    {{ user_avatar(tab.own_entry.profile, '42') }}
+                                </span>
+                                <div class="leaderboard-entry__copy">
+                                    <div class="leaderboard-entry__name-row">
+                                        <a href="{{ tab.own_entry.profile_url }}" class="user-profile-link leaderboard-entry__name">{{ tab.own_entry.display_name }}</a>
+                                        <span class="tag leaderboard-entry__you-tag">You</span>
+                                    </div>
+                                    <p class="leaderboard-entry__secondary leaderboard-entry__secondary--compact">
+                                        ... #{{ tab.own_entry.rank }} - {{ tab.own_entry.display_name }} - {{ tab.own_entry.metric_summary }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="leaderboard-entry__stat">
+                                {{ tab.own_entry.metric_label }}
+                            </div>
+                        </article>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="leaderboard-empty-state">
+                        No public leaderboard entries yet. Once climbers start logging summits with public profiles, the rankings will appear here.
+                    </div>
+                    {% endif %}
+                </section>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

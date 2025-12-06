@@ -20,6 +20,9 @@ from supabase_utils import (
     calculate_climb_streak,
     get_all_peaks,
     get_county_peak_counts,
+    get_leaderboard_elevation,
+    get_leaderboard_peaks,
+    get_leaderboard_streaks,
     get_peak_average_difficulty,
     get_peak_count,
     get_community_recent_climbs,
@@ -1839,6 +1842,140 @@ def _build_dashboard_streak(climbs: list[dict]) -> dict:
     }
 
 
+def _build_leaderboard_profile_record(row: dict | None) -> dict:
+    current_row = dict(row or {})
+    profile = dict(current_row.get("profile") or {})
+    return {
+        **profile,
+        "id": profile.get("id") or current_row.get("user_id"),
+        "display_name": profile.get("display_name") or current_row.get("display_name"),
+        "avatar_url": profile.get("avatar_url") or current_row.get("avatar_url"),
+    }
+
+
+def _leaderboard_height_label(height_m, height_unit: str, height_ft=None, fallback: str = "-") -> str:
+    value, unit = _height_display_value(height_m, height_unit, height_ft)
+    if value is None:
+        return fallback
+    return f"{value:,}{unit}"
+
+
+def _leaderboard_metric_meta(row: dict, tab_key: str, height_unit: str) -> dict:
+    if tab_key == "elevation":
+        return {
+            "label": _leaderboard_height_label(row.get("total_elevation_m"), height_unit),
+            "summary": _leaderboard_height_label(row.get("total_elevation_m"), height_unit),
+        }
+
+    if tab_key == "streaks":
+        streak_weeks = max(int(row.get("current_streak") or 0), 0)
+        streak_label = _pluralize_weeks(streak_weeks)
+        return {
+            "label": streak_label,
+            "summary": streak_label,
+        }
+
+    peak_count = max(int(row.get("peak_count") or 0), 0)
+    peak_label = f"{peak_count:,} peak" if peak_count == 1 else f"{peak_count:,} peaks"
+    return {
+        "label": peak_label,
+        "summary": peak_label,
+    }
+
+
+def _prepare_public_leaderboard_rows(rows: list[dict]) -> list[dict]:
+    public_rows = []
+    for row in rows:
+        profile_record = _build_leaderboard_profile_record(row)
+        if not _is_profile_public(profile_record):
+            continue
+        public_rows.append(
+            {
+                **dict(row or {}),
+                "profile": profile_record,
+            }
+        )
+
+    return [
+        {
+            **row,
+            "rank": index + 1,
+        }
+        for index, row in enumerate(public_rows)
+    ]
+
+
+def _build_leaderboard_entry(row: dict, tab_key: str, current_user_id: str | None, height_unit: str) -> dict:
+    current_row = dict(row or {})
+    profile = _build_leaderboard_profile_record(current_row)
+    user_id = str(current_row.get("user_id") or profile.get("id") or "").strip()
+    display_name = str(current_row.get("display_name") or profile.get("display_name") or "Climber").strip() or "Climber"
+    is_current_user = bool(current_user_id and user_id == str(current_user_id))
+    highest_peak = dict(current_row.get("highest_peak") or {})
+    highest_peak_name = str(highest_peak.get("name") or "").strip()
+    highest_peak_height_label = _leaderboard_height_label(
+        highest_peak.get("height_m"),
+        height_unit,
+        highest_peak.get("height_ft"),
+        fallback="",
+    )
+    metric_meta = _leaderboard_metric_meta(current_row, tab_key, height_unit)
+
+    return {
+        **current_row,
+        "display_name": display_name,
+        "highest_peak": {
+            **highest_peak,
+            "label": (
+                f"{highest_peak_name} ({highest_peak_height_label})"
+                if highest_peak_name and highest_peak_height_label
+                else highest_peak_name
+            ),
+            "url": url_for("peak_detail", peak_id=highest_peak.get("id"))
+            if highest_peak.get("id") is not None
+            else None,
+        },
+        "is_current_user": is_current_user,
+        "metric_label": metric_meta["label"],
+        "metric_summary": metric_meta["summary"],
+        "profile": profile,
+        "profile_preview_name": None if is_current_user else display_name,
+        "profile_url": url_for("my_profile") if is_current_user else url_for("public_profile", display_name=display_name),
+        "user_id": user_id,
+    }
+
+
+def _build_leaderboard_tab_context(
+    rows: list[dict],
+    tab_key: str,
+    current_user_id: str | None,
+    height_unit: str,
+    limit: int = 25,
+) -> dict:
+    public_rows = _prepare_public_leaderboard_rows(rows)
+    top_rows = public_rows[:limit]
+    current_user_row = None
+
+    if current_user_id:
+        current_user_row = next(
+            (row for row in public_rows if str(row.get("user_id") or "") == str(current_user_id)),
+            None,
+        )
+
+    return {
+        "entries": [
+            _build_leaderboard_entry(row, tab_key, current_user_id, height_unit)
+            for row in top_rows
+        ],
+        "own_entry": (
+            _build_leaderboard_entry(current_user_row, tab_key, current_user_id, height_unit)
+            if current_user_row and int(current_user_row.get("rank") or 0) > limit
+            else None
+        ),
+        "total_ranked": len(public_rows),
+    }
+
+
 def _build_dashboard_onboarding_steps() -> list[dict]:
     return [
         {
@@ -2433,6 +2570,60 @@ def achievements():
         achievements_catalog=achievements_catalog,
         achievements_streak=dashboard_streak,
         achievements_total_climbs=len(climbs),
+    )
+
+
+@app.route("/leaderboard")
+def leaderboard():
+    context = get_session_context()
+    current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
+    height_unit = _current_height_unit_for_preference(context["profile"])
+    tab_definitions = [
+        {
+            "description": "Distinct public peaks climbed across Ireland.",
+            "icon": "fa-mountain",
+            "key": "peaks",
+            "label": "Most Peaks",
+            "loader": get_leaderboard_peaks,
+        },
+        {
+            "description": "Total elevation gained from distinct climbed peaks.",
+            "icon": "fa-chart-column",
+            "key": "elevation",
+            "label": "Most Elevation",
+            "loader": get_leaderboard_elevation,
+        },
+        {
+            "description": "Longest current climbing streak measured in weeks.",
+            "icon": "fa-fire",
+            "key": "streaks",
+            "label": "Longest Streak",
+            "loader": get_leaderboard_streaks,
+        },
+    ]
+    allowed_tabs = {definition["key"] for definition in tab_definitions}
+    requested_tab = str(request.args.get("tab") or "peaks").strip().lower() or "peaks"
+    active_tab = requested_tab if requested_tab in allowed_tabs else "peaks"
+
+    leaderboard_tabs = []
+    for definition in tab_definitions:
+        leaderboard_tabs.append(
+            {
+                **definition,
+                **_build_leaderboard_tab_context(
+                    definition["loader"](limit=None),
+                    definition["key"],
+                    current_user_id,
+                    height_unit,
+                ),
+            }
+        )
+
+    _set_active_page("leaderboard")
+    return render_template(
+        "leaderboard.html",
+        active_leaderboard_tab=active_tab,
+        leaderboard_tabs=leaderboard_tabs,
     )
 
 

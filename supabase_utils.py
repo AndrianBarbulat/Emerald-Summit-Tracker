@@ -907,11 +907,91 @@ def _coerce_float(value: Any) -> Optional[float]:
         return None
 
 
+def _coerce_int(value: Any) -> Optional[int]:
+    try:
+        return int(float(value))
+    except (TypeError, ValueError):
+        return None
+
+
 def _timestamp_sort_value(value: Any) -> float:
     parsed_value = parse_datetime_value(value)
     if parsed_value is None:
         return 0.0
     return parsed_value.timestamp()
+
+
+def _profile_visibility_value(profile: dict | None) -> str:
+    if not isinstance(profile, dict):
+        return ""
+
+    candidate_values = [
+        profile.get("profile_visibility"),
+        profile.get("public_profile"),
+        profile.get("is_public"),
+        profile.get("show_profile"),
+    ]
+
+    preferences = profile.get("preferences")
+    if isinstance(preferences, dict):
+        candidate_values.extend(
+            [
+                preferences.get("profile_visibility"),
+                preferences.get("public_profile"),
+                preferences.get("is_public"),
+                preferences.get("show_profile"),
+            ]
+        )
+
+    for value in candidate_values:
+        if isinstance(value, bool):
+            return "public" if value else "private"
+
+        normalized = str(value or "").strip().lower()
+        if normalized:
+            return normalized
+
+    return ""
+
+
+def _is_profile_public(profile: dict | None) -> bool:
+    visibility = _profile_visibility_value(profile)
+    if visibility in {"private", "only me", "me", "hidden", "off", "false", "0", "none", "friends", "only friends"}:
+        return False
+    if visibility in {"public", "everyone", "all", "true", "1", "on", "yes"}:
+        return True
+    return bool(str((profile or {}).get("display_name") or "").strip())
+
+
+def _copy_leaderboard_rows(rows: List[Dict[str, Any]], limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
+    copied_rows = []
+    for row in selected_rows:
+        current_row = dict(row or {})
+        copied_rows.append(
+            {
+                **current_row,
+                "highest_peak": dict(current_row.get("highest_peak") or {}),
+                "profile": dict(current_row.get("profile") or {}),
+            }
+        )
+    return copied_rows
+
+
+def _normalize_leaderboard_category(category: str | None) -> str:
+    normalized = str(category or "").strip().lower()
+    category_lookup = {
+        "peak_count": "leaderboard_peaks",
+        "peaks": "leaderboard_peaks",
+        "leaderboard_peaks": "leaderboard_peaks",
+        "elevation": "leaderboard_elevation",
+        "height": "leaderboard_elevation",
+        "leaderboard_elevation": "leaderboard_elevation",
+        "streak": "leaderboard_streaks",
+        "streaks": "leaderboard_streaks",
+        "leaderboard_streaks": "leaderboard_streaks",
+    }
+    return category_lookup.get(normalized, "leaderboard_peaks")
 
 
 def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
@@ -942,6 +1022,9 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
                 continue
 
             profile = profiles_by_id.get(user_id) or {}
+            if not _is_profile_public(profile):
+                continue
+
             display_name = (
                 profile.get("display_name")
                 or climb.get("display_name")
@@ -957,6 +1040,7 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
                     "distinct_peak_ids": set(),
                     "total_climbs": 0,
                     "total_elevation_m": 0.0,
+                    "highest_peak": None,
                     "climbs": [],
                     "last_climb_at": None,
                 },
@@ -969,8 +1053,26 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
                 stats["distinct_peak_ids"].add(peak_id)
                 peak = peaks_by_id.get(peak_id) or {}
                 peak_height = _coerce_float(peak.get("height_m") or peak.get("height"))
+                peak_height_ft = _coerce_float(peak.get("height_ft"))
+                peak_name = str(peak.get("name") or climb.get("peak_name") or f"Peak #{peak_id}").strip() or f"Peak #{peak_id}"
                 if peak_height is not None:
                     stats["total_elevation_m"] += peak_height
+                    highest_peak = stats.get("highest_peak") or {}
+                    highest_peak_height = _coerce_float(highest_peak.get("height_m"))
+                    if (
+                        highest_peak_height is None
+                        or peak_height > highest_peak_height
+                        or (
+                            peak_height == highest_peak_height
+                            and peak_name.lower() < str(highest_peak.get("name") or "").lower()
+                        )
+                    ):
+                        stats["highest_peak"] = {
+                            "id": peak.get("id") or climb.get("peak_id") or peak_id,
+                            "name": peak_name,
+                            "height_m": int(round(peak_height)),
+                            "height_ft": int(round(peak_height_ft)) if peak_height_ft is not None else None,
+                        }
 
             climb_time = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
             if _timestamp_sort_value(climb_time) >= _timestamp_sort_value(stats["last_climb_at"]):
@@ -978,7 +1080,8 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
 
         leaderboard_rows = []
         for stats in user_stats.values():
-            streak_data = calculate_climb_streak(stats["climbs"])
+            profile_current_streak = _coerce_int((stats.get("profile") or {}).get("current_streak"))
+            fallback_streak_data = calculate_climb_streak(stats["climbs"]) if profile_current_streak is None else {}
             leaderboard_rows.append(
                 {
                     "user_id": stats["user_id"],
@@ -988,7 +1091,8 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
                     "peak_count": len(stats["distinct_peak_ids"]),
                     "total_climbs": int(stats["total_climbs"] or 0),
                     "total_elevation_m": int(round(stats["total_elevation_m"] or 0)),
-                    "current_streak": int(streak_data.get("current_streak") or 0),
+                    "current_streak": max(int(profile_current_streak or fallback_streak_data.get("current_streak") or 0), 0),
+                    "highest_peak": dict(stats.get("highest_peak") or {}),
                     "last_climb_at": stats["last_climb_at"],
                 }
             )
@@ -1056,40 +1160,44 @@ def _get_cached_leaderboard_payload() -> Dict[str, List[Dict[str, Any]]]:
     return payload
 
 
-def get_cached_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+def get_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
     rows = _get_cached_leaderboard_payload().get("leaderboard_peaks") or []
-    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
-    return [
-        {
-            **row,
-            "profile": dict(row.get("profile") or {}),
-        }
-        for row in selected_rows
-    ]
+    return _copy_leaderboard_rows(rows, limit=limit)
+
+
+def get_leaderboard_elevation(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_elevation") or []
+    return _copy_leaderboard_rows(rows, limit=limit)
+
+
+def get_leaderboard_streaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_streaks") or []
+    return _copy_leaderboard_rows(rows, limit=limit)
+
+
+def get_user_rank(user_id: str, category: str) -> Optional[int]:
+    normalized_user_id = str(user_id or "").strip()
+    if not normalized_user_id:
+        return None
+
+    rows = _get_cached_leaderboard_payload().get(_normalize_leaderboard_category(category)) or []
+    for row in rows:
+        if str((row or {}).get("user_id") or "").strip() == normalized_user_id:
+            rank_value = _coerce_int((row or {}).get("rank"))
+            return max(rank_value or 0, 1) if rank_value is not None else None
+    return None
+
+
+def get_cached_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
+    return get_leaderboard_peaks(limit=limit)
 
 
 def get_cached_leaderboard_elevation(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
-    rows = _get_cached_leaderboard_payload().get("leaderboard_elevation") or []
-    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
-    return [
-        {
-            **row,
-            "profile": dict(row.get("profile") or {}),
-        }
-        for row in selected_rows
-    ]
+    return get_leaderboard_elevation(limit=limit)
 
 
 def get_cached_leaderboard_streaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
-    rows = _get_cached_leaderboard_payload().get("leaderboard_streaks") or []
-    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
-    return [
-        {
-            **row,
-            "profile": dict(row.get("profile") or {}),
-        }
-        for row in selected_rows
-    ]
+    return get_leaderboard_streaks(limit=limit)
 
 
 def get_dashboard_context(user_id: str, community_limit: int = 250) -> Dict[str, Any]:
