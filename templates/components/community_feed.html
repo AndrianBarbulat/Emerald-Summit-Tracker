@@ -1,0 +1,59 @@
+{% from 'macros/user_avatar.html' import user_avatar %}
+
+<div class="community-feed">
+    {% for activity in activities %}
+    <article class="community-feed__item">
+        <div class="community-feed__identity">
+            {% if activity.profile_url %}
+            <a
+                class="community-feed__avatar"
+                href="{{ activity.profile_url }}"
+                aria-label="{{ activity.display_name or 'Climber' }}"
+            >
+                {{ user_avatar(activity.profile if activity.profile else activity, '32') }}
+            </a>
+            {% else %}
+            <span class="community-feed__avatar" aria-hidden="true">
+                {{ user_avatar(activity.profile if activity.profile else activity, '32') }}
+            </span>
+            {% endif %}
+        </div>
+
+        <div class="community-feed__content">
+            <p class="community-feed__line">
+                <span class="community-feed__action-icon community-feed__action-icon--{{ activity.icon_tone_class or 'is-success' }}" aria-hidden="true">
+                    <i class="fas {{ activity.icon_class or 'fa-mountain' }}"></i>
+                </span>
+
+                {% if activity.profile_url %}
+                <a
+                    class="community-feed__profile-link user-profile-link"
+                    href="{{ activity.profile_url }}"
+                    {% if activity.profile_preview_name %}data-profile-preview-name="{{ activity.profile_preview_name }}"{% endif %}
+                >
+                    {{ activity.display_name }}
+                </a>
+                {% else %}
+                <span class="community-feed__profile-name">{{ activity.display_name }}</span>
+                {% endif %}
+
+                <span class="community-feed__action-text">{{ activity.action_text }}</span>
+
+                {% if activity.target_url %}
+                <a class="community-feed__target-link" href="{{ activity.target_url }}">{{ activity.target_name }}</a>
+                {% else %}
+                <span class="community-feed__target-name">{{ activity.target_name }}</span>
+                {% endif %}
+            </p>
+
+            {% if activity.activity_time %}
+            <time class="community-feed__time" data-timestamp="{{ activity.activity_time or '' }}">{{ activity.activity_time | timeago }}</time>
+            {% endif %}
+        </div>
+    </article>
+    {% else %}
+    <div class="community-feed__empty">
+        {{ community_feed_empty_message or 'Recent community activity will show up here soon.' }}
+    </div>
+    {% endfor %}
+</div>

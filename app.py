@@ -2249,40 +2249,68 @@ def _build_dashboard_suggestions(
     return suggestions[:limit]
 
 
-def _build_dashboard_community_feed(climbs: list[dict], peaks_by_id: dict[int, dict], current_user_id: str, limit: int = 6) -> list[dict]:
-    community_items = []
-    peak_lookup = {
-        _peak_key(peak_id): peak
-        for peak_id, peak in (peaks_by_id or {}).items()
+def _build_dashboard_community_feed(activities: list[dict], current_user_id: str, limit: int = 6) -> list[dict]:
+    action_meta = {
+        "badge": {
+            "icon_class": "fa-trophy",
+            "icon_tone_class": "is-gold",
+            "text": "earned",
+        },
+        "bucket_list": {
+            "icon_class": "fa-bookmark",
+            "icon_tone_class": "is-warning",
+            "text": "saved",
+        },
+        "climb": {
+            "icon_class": "fa-mountain",
+            "icon_tone_class": "is-success",
+            "text": "climbed",
+        },
     }
-    for climb in climbs:
-        profile = dict(climb.get("profile") or {})
+    community_items = []
+    for activity in activities:
+        profile = dict(activity.get("profile") or {})
         if not _is_profile_public(profile):
             continue
 
-        peak_id = climb.get("peak_id")
-        peak = dict(peak_lookup.get(_peak_key(peak_id)) or {})
+        action_type = str(activity.get("action_type") or "climb").strip().lower() or "climb"
+        meta = action_meta.get(action_type, action_meta["climb"])
+        peak_id = activity.get("peak_id")
         display_name = str(
-            climb.get("display_name")
+            activity.get("display_name")
             or profile.get("display_name")
             or "Climber"
         ).strip() or "Climber"
-        peak_name = str(
-            climb.get("peak_name")
-            or peak.get("name")
-            or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
-        ).strip() or "Unknown peak"
-        initials = "".join(part[:1].upper() for part in display_name.split()[:2]) or "C"
-        activity_time = climb.get("date_climbed") or climb.get("climbed_at") or climb.get("created_at")
+        target_name = str(
+            activity.get("target_name")
+            or activity.get("peak_name")
+            or activity.get("badge_name")
+            or (f"Peak #{peak_id}" if peak_id is not None else "Achievement")
+        ).strip() or "Activity"
+        activity_time = activity.get("activity_time") or activity.get("created_at")
+        user_id = str(activity.get("user_id") or profile.get("id") or "").strip()
+
+        if action_type in {"climb", "bucket_list"} and peak_id is not None:
+            target_url = url_for("peak_detail", peak_id=peak_id)
+        elif action_type == "badge":
+            target_url = url_for("achievements")
+        else:
+            target_url = None
+
         community_items.append(
             {
+                "action_text": str(activity.get("action_text") or meta["text"]).strip() or meta["text"],
+                "action_type": action_type,
                 "display_name": display_name,
-                "initials": initials,
-                "peak_name": peak_name,
-                "peak_url": url_for("peak_detail", peak_id=peak_id) if peak_id is not None else None,
+                "icon_class": meta["icon_class"],
+                "icon_tone_class": meta["icon_tone_class"],
                 "profile_url": _profile_url_for(profile, current_user_id),
+                "profile_preview_name": None if current_user_id and user_id == str(current_user_id) else display_name,
+                "profile": profile,
                 "activity_time": activity_time,
                 "relative_time": _relative_time(activity_time),
+                "target_name": target_name,
+                "target_url": target_url,
             }
         )
         if len(community_items) >= limit:
@@ -2488,13 +2516,13 @@ def home():
     climbs = raw_dashboard.get("climbs") or []
     bucket_items = raw_dashboard.get("bucket_items") or []
     badges = raw_dashboard.get("badges") or []
+    community_feed = raw_dashboard.get("community_feed") or []
     community_climbs = raw_dashboard.get("community_climbs") or []
     badge_stats = build_user_badge_stats_from_data(all_peaks, climbs, badges, user_id=user_id)
     badge_catalog = build_achievement_catalog(badge_stats)
     is_new_user_dashboard = not climbs and not bucket_items and not badges
     dashboard_community_activity = _build_dashboard_community_feed(
-        community_climbs,
-        peaks_by_id,
+        community_feed,
         user_id,
         limit=6,
     )

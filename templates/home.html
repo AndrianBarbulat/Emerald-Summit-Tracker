@@ -261,7 +261,13 @@
                                 <span class="icon has-text-danger"><i class="fas fa-users"></i></span>
                                 Latest Community Activity
                             </h2>
-                            
+
+                            {% with activities=dashboard_community_activity, community_feed_empty_message='Community activity from public profiles will show up here as climbers log summits or save future adventures.' %}
+                            {% include 'components/community_feed.html' %}
+                            {% endwith %}
+
+                            {% if false %}
+                             
                             <div class="community-list dashboard-community-feed">
                                 {% for climb in dashboard_community_activity %}
                                 <div class="columns is-mobile{% if not loop.last %} mb-3{% endif %} dashboard-community-feed__item">
@@ -312,6 +318,7 @@
                                 </div>
                                 {% endfor %}
                             </div>
+                            {% endif %}
                         </div>
                     </div>
 

@@ -117,6 +117,111 @@ select.field-error {
     text-decoration: underline;
 }
 
+.community-feed {
+    display: grid;
+    gap: 0.9rem;
+}
+
+.community-feed__item {
+    align-items: center;
+    background: rgba(245, 241, 235, 0.62);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 0.9rem;
+}
+
+.community-feed__identity {
+    align-self: start;
+}
+
+.community-feed__avatar {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    line-height: 1;
+    min-height: 2rem;
+    text-decoration: none;
+}
+
+.community-feed__content {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.community-feed__line {
+    color: var(--color-slate);
+    line-height: 1.6;
+    margin: 0;
+}
+
+.community-feed__action-icon {
+    align-items: center;
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.85rem;
+    height: 1.8rem;
+    justify-content: center;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    width: 1.8rem;
+}
+
+.community-feed__action-icon--is-success {
+    background: rgba(116, 198, 157, 0.18);
+    color: var(--color-forest);
+}
+
+.community-feed__action-icon--is-warning {
+    background: rgba(230, 126, 34, 0.16);
+    color: #b55e10;
+}
+
+.community-feed__action-icon--is-gold {
+    background: rgba(212, 168, 83, 0.18);
+    color: #b7851f;
+}
+
+.community-feed__profile-link,
+.community-feed__profile-name,
+.community-feed__target-link,
+.community-feed__target-name {
+    font-weight: 600;
+}
+
+.community-feed__profile-link {
+    color: var(--color-sage);
+}
+
+.community-feed__target-link,
+.community-feed__target-name {
+    color: var(--color-forest);
+}
+
+.community-feed__target-link:hover,
+.community-feed__target-link:focus-visible {
+    color: var(--color-sage);
+    text-decoration: underline;
+}
+
+.community-feed__time {
+    color: var(--color-grey);
+    font-size: 0.875rem;
+    white-space: nowrap;
+}
+
+.community-feed__empty {
+    background: rgba(245, 241, 235, 0.62);
+    border: 1px dashed rgba(27, 67, 50, 0.14);
+    border-radius: var(--radius-md);
+    color: var(--color-grey);
+    padding: 1rem;
+    text-align: center;
+}
+
 .profile-preview-tooltip {
     background: rgba(255, 255, 255, 0.98);
     border: 1px solid rgba(27, 67, 50, 0.08);

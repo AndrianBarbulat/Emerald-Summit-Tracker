@@ -937,6 +937,7 @@ def api_bucket_list_add():
         if created_bucket_item is None and is_bucket_listed(user_id, peak_id) is None:
             return _json_error("We couldn't add that peak to your bucket list.", 500)
 
+    clear_shared_data_cache()
     return _json_success(
         {
             "peak_id": peak_id,
@@ -964,6 +965,7 @@ def api_bucket_list_remove():
         if is_bucket_listed(user_id, peak_id) is not None:
             return _json_error("We couldn't update your bucket list right now.", 500)
 
+    clear_shared_data_cache()
     return _json_success(
         {
             "peak_id": peak_id,

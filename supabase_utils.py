@@ -846,23 +846,125 @@ def get_user_has_climbed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]
         return None
 
 
-def _query_community_recent_climbs_with_profiles(limit: int) -> List[Dict[str, Any]]:
-    try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return []
-        response = query.select("*, profiles(*)").order("climbed_at", desc=True).limit(limit).execute()
-        enriched_climbs = _enrich_user_records(response.data or [])
-        normalized_climbs = []
-        for climb in enriched_climbs:
-            current_climb = _normalize_climb_record(climb)
-            current_climb["profile"] = dict(climb.get("profile") or {})
-            current_climb["display_name"] = climb.get("display_name") or current_climb.get("display_name")
-            current_climb["avatar_url"] = climb.get("avatar_url") or current_climb.get("avatar_url")
-            normalized_climbs.append(current_climb)
-        return normalized_climbs
-    except Exception:
+def _query_recent_rows_with_profiles(
+    table_name: str,
+    order_fields: tuple[str, ...],
+    limit: int,
+) -> List[Dict[str, Any]]:
+    normalized_limit = max(int(limit or 0), 0)
+    if normalized_limit <= 0:
         return []
+
+    select_variants = ("*, profiles(*)", "*")
+    for select_clause in select_variants:
+        for order_field in order_fields:
+            try:
+                query = _table(table_name)
+                if query is None:
+                    return []
+                response = query.select(select_clause).order(order_field, desc=True).limit(normalized_limit).execute()
+                return _enrich_user_records(response.data or [])
+            except Exception:
+                continue
+
+    return []
+
+
+def _build_community_feed_item(record: Dict[str, Any], action_type: str, peaks_by_id: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    current_record = dict(record or {})
+    profile = dict(current_record.get("profile") or {})
+    if not profile or not _is_profile_public(profile):
+        return None
+
+    user_id = str(current_record.get("user_id") or profile.get("id") or "").strip()
+    display_name = str(
+        current_record.get("display_name")
+        or profile.get("display_name")
+        or (user_id[:8] if user_id else "Climber")
+    ).strip() or "Climber"
+
+    peak_id = current_record.get("peak_id")
+    peak = dict(peaks_by_id.get(str(peak_id)) or {})
+    peak_name = str(
+        current_record.get("peak_name")
+        or peak.get("name")
+        or (f"Peak #{peak_id}" if peak_id is not None else "Unknown peak")
+    ).strip() or "Unknown peak"
+
+    if action_type == "bucket_list":
+        activity_time = (
+            current_record.get("created_at")
+            or current_record.get("added_at")
+            or current_record.get("date_added")
+            or current_record.get("inserted_at")
+        )
+        action_text = "saved"
+    else:
+        activity_time = (
+            current_record.get("date_climbed")
+            or current_record.get("climbed_at")
+            or current_record.get("created_at")
+        )
+        action_text = "climbed"
+
+    if not activity_time:
+        return None
+
+    return {
+        "action_text": action_text,
+        "action_type": action_type,
+        "activity_time": activity_time,
+        "avatar_url": current_record.get("avatar_url") or profile.get("avatar_url"),
+        "display_name": display_name,
+        "peak_id": peak_id,
+        "peak_name": peak_name,
+        "profile": profile,
+        "target_name": peak_name,
+        "timestamp": _timestamp_sort_value(activity_time),
+        "user_id": user_id,
+    }
+
+
+def _build_community_feed(limit: int) -> List[Dict[str, Any]]:
+    normalized_limit = max(int(limit or 0), 0)
+    if normalized_limit <= 0:
+        return []
+
+    peaks_by_id = {
+        str(peak.get("id")): peak
+        for peak in get_all_peaks()
+        if peak.get("id") is not None
+    }
+    climb_rows = _query_recent_rows_with_profiles(
+        TABLE_CLIMBS,
+        ("date_climbed", "climbed_at", "created_at"),
+        normalized_limit,
+    )
+    bucket_rows = _query_recent_rows_with_profiles(
+        TABLE_BUCKET_LIST,
+        ("created_at", "added_at", "date_added", "inserted_at"),
+        normalized_limit,
+    )
+
+    activity_items = []
+    for climb in climb_rows:
+        community_item = _build_community_feed_item(climb, "climb", peaks_by_id)
+        if community_item is not None:
+            activity_items.append(community_item)
+
+    for bucket_item in bucket_rows:
+        community_item = _build_community_feed_item(bucket_item, "bucket_list", peaks_by_id)
+        if community_item is not None:
+            activity_items.append(community_item)
+
+    activity_items.sort(
+        key=lambda item: (
+            -float(item.get("timestamp") or 0.0),
+            str(item.get("display_name") or "").lower(),
+            str(item.get("target_name") or "").lower(),
+        )
+    )
+    return activity_items[:normalized_limit]
 
 
 def _get_cached_community_feed(limit: int = 10) -> List[Dict[str, Any]]:
@@ -877,21 +979,58 @@ def _get_cached_community_feed(limit: int = 10) -> List[Dict[str, Any]]:
         return list(cached_feed[:normalized_limit])
 
     requested_limit = max(normalized_limit, SHARED_COMMUNITY_CACHE_LIMIT)
-    fresh_feed = _query_community_recent_climbs_with_profiles(requested_limit)
-    _set_cached_shared_value("community_feed", fresh_feed, limit=requested_limit)
+    cached_feed_limit = max(requested_limit * 2, 100)
+    fresh_feed = _build_community_feed(cached_feed_limit)
+    _set_cached_shared_value("community_feed", fresh_feed, limit=cached_feed_limit)
     return list(fresh_feed[:normalized_limit])
 
 
-def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
+def get_community_feed(limit: int = 20) -> List[Dict[str, Any]]:
     return [
-        _normalize_climb_record(climb)
-        for climb in _get_cached_community_feed(limit)
+        {
+            **dict(activity or {}),
+            "profile": dict((activity or {}).get("profile") or {}),
+        }
+        for activity in _get_cached_community_feed(limit)
     ]
+
+
+def _community_feed_activity_to_climb_record(activity: Dict[str, Any]) -> Dict[str, Any]:
+    current_activity = dict(activity or {})
+    activity_time = current_activity.get("activity_time")
+    return _normalize_climb_record(
+        {
+            "avatar_url": current_activity.get("avatar_url"),
+            "climbed_at": activity_time,
+            "created_at": activity_time,
+            "date_climbed": activity_time,
+            "display_name": current_activity.get("display_name"),
+            "peak_id": current_activity.get("peak_id"),
+            "peak_name": current_activity.get("peak_name") or current_activity.get("target_name"),
+            "profile": dict(current_activity.get("profile") or {}),
+            "user_id": current_activity.get("user_id"),
+        }
+    )
+
+
+def get_community_recent_climbs(limit: int = 10) -> List[Dict[str, Any]]:
+    normalized_limit = max(int(limit or 0), 0)
+    if normalized_limit <= 0:
+        return []
+
+    climb_records = []
+    for activity in _get_cached_community_feed(max(normalized_limit * 2, SHARED_COMMUNITY_CACHE_LIMIT)):
+        if str((activity or {}).get("action_type") or "").strip().lower() != "climb":
+            continue
+        climb_records.append(_community_feed_activity_to_climb_record(activity))
+        if len(climb_records) >= normalized_limit:
+            break
+    return climb_records
 
 
 def get_community_recent_climbs_with_profiles(limit: int = 10) -> List[Dict[str, Any]]:
     normalized_climbs = []
-    for climb in _get_cached_community_feed(limit):
+    for climb in get_community_recent_climbs(limit):
         current_climb = _normalize_climb_record(climb)
         current_climb["profile"] = dict(climb.get("profile") or {})
         current_climb["display_name"] = climb.get("display_name") or current_climb.get("display_name")
@@ -1205,6 +1344,7 @@ def get_dashboard_context(user_id: str, community_limit: int = 250) -> Dict[str,
     climbs = get_user_climbs(user_id)
     bucket_items = get_user_bucket_list(user_id)
     badges = get_user_badges(user_id)
+    community_feed = get_community_feed(limit=community_limit)
     community_climbs = get_community_recent_climbs_with_profiles(limit=community_limit)
 
     peaks_by_id = {
@@ -1242,6 +1382,7 @@ def get_dashboard_context(user_id: str, community_limit: int = 250) -> Dict[str,
         "badges": badges,
         "bucket_items": bucket_items,
         "climbs": climbs,
+        "community_feed": community_feed,
         "community_climbs": community_climbs,
         "peak_statuses": peak_statuses,
         "peaks_by_id": peaks_by_id,
