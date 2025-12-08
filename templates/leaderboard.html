@@ -47,6 +47,25 @@
     <section class="section pt-0 leaderboard-page__content">
         <div class="container">
             <div class="box leaderboard-page__shell">
+                <div class="leaderboard-community-stats" aria-label="Overall community statistics">
+                    {% for stat in leaderboard_community_stats %}
+                    <article class="leaderboard-community-stat">
+                        <p class="leaderboard-community-stat__label">
+                            <span class="icon"><i class="fas {{ stat.icon }}"></i></span>
+                            <span>{{ stat.label }}</span>
+                        </p>
+                        {% if stat.url %}
+                        <a href="{{ stat.url }}" class="leaderboard-community-stat__value leaderboard-community-stat__value--link">
+                            {{ stat.value }}
+                        </a>
+                        {% else %}
+                        <p class="leaderboard-community-stat__value">{{ stat.value }}</p>
+                        {% endif %}
+                        <p class="leaderboard-community-stat__meta">{{ stat.meta }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+
                 <div class="leaderboard-tabs" role="tablist" aria-label="Leaderboard views">
                     {% for tab in leaderboard_tabs %}
                     <button

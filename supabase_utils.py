@@ -27,11 +27,13 @@ SHARED_CACHE_TTL_SECONDS = 300
 SHARED_COMMUNITY_CACHE_LIMIT = 250
 SHARED_CACHE_KEYS = (
     "community_feed",
+    "leaderboard_community_stats",
     "leaderboard_peaks",
     "leaderboard_elevation",
     "leaderboard_streaks",
 )
 SHARED_LEADERBOARD_CACHE_KEYS = (
+    "leaderboard_community_stats",
     "leaderboard_peaks",
     "leaderboard_elevation",
     "leaderboard_streaks",
@@ -1117,6 +1119,40 @@ def _copy_leaderboard_rows(rows: List[Dict[str, Any]], limit: Optional[int] = 25
     return copied_rows
 
 
+def _copy_leaderboard_community_stats(stats: Dict[str, Any] | None) -> Dict[str, Any]:
+    current_stats = dict(stats or {})
+    return {
+        **current_stats,
+        "most_popular_peak": dict(current_stats.get("most_popular_peak") or {}),
+    }
+
+
+def _empty_leaderboard_cache_payload() -> Dict[str, Any]:
+    return {
+        "leaderboard_community_stats": {
+            "most_popular_peak": {},
+            "total_climbs_logged": 0,
+            "total_elevation_m": 0,
+            "total_registered_users": 0,
+        },
+        "leaderboard_peaks": [],
+        "leaderboard_elevation": [],
+        "leaderboard_streaks": [],
+    }
+
+
+def _copy_leaderboard_cache_payload(payload: Dict[str, Any] | None) -> Dict[str, Any]:
+    current_payload = dict(payload or {})
+    return {
+        "leaderboard_community_stats": _copy_leaderboard_community_stats(
+            current_payload.get("leaderboard_community_stats")
+        ),
+        "leaderboard_peaks": _copy_leaderboard_rows(current_payload.get("leaderboard_peaks") or [], limit=None),
+        "leaderboard_elevation": _copy_leaderboard_rows(current_payload.get("leaderboard_elevation") or [], limit=None),
+        "leaderboard_streaks": _copy_leaderboard_rows(current_payload.get("leaderboard_streaks") or [], limit=None),
+    }
+
+
 def _normalize_leaderboard_category(category: str | None) -> str:
     normalized = str(category or "").strip().lower()
     category_lookup = {
@@ -1133,12 +1169,12 @@ def _normalize_leaderboard_category(category: str | None) -> str:
     return category_lookup.get(normalized, "leaderboard_peaks")
 
 
-def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
+def _build_leaderboard_cache_payload() -> Dict[str, Any]:
     try:
         climbs_query = _table(TABLE_CLIMBS)
         profiles_query = _table(TABLE_PROFILES)
         if climbs_query is None or profiles_query is None:
-            return {key: [] for key in SHARED_LEADERBOARD_CACHE_KEYS}
+            return _empty_leaderboard_cache_payload()
 
         climbs_response = climbs_query.select("*").execute()
         profiles_response = profiles_query.select("*").execute()
@@ -1154,8 +1190,38 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
             if peak.get("id") is not None
         }
 
+        total_elevation_logged_m = 0.0
+        peak_climb_counts: Dict[str, Dict[str, Any]] = {}
         user_stats: Dict[str, Dict[str, Any]] = {}
         for climb in all_climbs:
+            peak_id = str(climb.get("peak_id") or "").strip()
+            peak = peaks_by_id.get(peak_id) or {}
+            peak_height = _coerce_float(peak.get("height_m") or peak.get("height"))
+            peak_height_ft = _coerce_float(peak.get("height_ft"))
+            peak_name = str(peak.get("name") or climb.get("peak_name") or f"Peak #{peak_id}").strip() if peak_id else ""
+
+            if peak_height is not None:
+                total_elevation_logged_m += peak_height
+
+            if peak_id:
+                peak_stats = peak_climb_counts.setdefault(
+                    peak_id,
+                    {
+                        "height_ft": int(round(peak_height_ft)) if peak_height_ft is not None else None,
+                        "height_m": int(round(peak_height)) if peak_height is not None else None,
+                        "id": peak.get("id") or climb.get("peak_id") or peak_id,
+                        "name": peak_name or f"Peak #{peak_id}",
+                        "total_climbs": 0,
+                    },
+                )
+                peak_stats["total_climbs"] += 1
+                if peak_stats.get("height_ft") is None and peak_height_ft is not None:
+                    peak_stats["height_ft"] = int(round(peak_height_ft))
+                if peak_stats.get("height_m") is None and peak_height is not None:
+                    peak_stats["height_m"] = int(round(peak_height))
+                if not str(peak_stats.get("name") or "").strip() and peak_name:
+                    peak_stats["name"] = peak_name
+
             user_id = str(climb.get("user_id") or "").strip()
             if not user_id:
                 continue
@@ -1187,13 +1253,9 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
             stats["total_climbs"] += 1
             stats["climbs"].append(climb)
 
-            peak_id = str(climb.get("peak_id") or "").strip()
             if peak_id and peak_id not in stats["distinct_peak_ids"]:
                 stats["distinct_peak_ids"].add(peak_id)
-                peak = peaks_by_id.get(peak_id) or {}
-                peak_height = _coerce_float(peak.get("height_m") or peak.get("height"))
-                peak_height_ft = _coerce_float(peak.get("height_ft"))
-                peak_name = str(peak.get("name") or climb.get("peak_name") or f"Peak #{peak_id}").strip() or f"Peak #{peak_id}"
+                peak_name = peak_name or f"Peak #{peak_id}"
                 if peak_height is not None:
                     stats["total_elevation_m"] += peak_height
                     highest_peak = stats.get("highest_peak") or {}
@@ -1264,10 +1326,27 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
             ),
         )
 
-        payload: Dict[str, List[Dict[str, Any]]] = {
-            "leaderboard_peaks": [],
-            "leaderboard_elevation": [],
-            "leaderboard_streaks": [],
+        most_popular_peak = (
+            dict(
+                sorted(
+                    peak_climb_counts.values(),
+                    key=lambda peak: (
+                        -int(peak.get("total_climbs") or 0),
+                        str(peak.get("name") or "").lower(),
+                        str(peak.get("id") or ""),
+                    ),
+                )[0]
+            )
+            if peak_climb_counts
+            else {}
+        )
+
+        payload = _empty_leaderboard_cache_payload()
+        payload["leaderboard_community_stats"] = {
+            "most_popular_peak": most_popular_peak,
+            "total_climbs_logged": len(all_climbs),
+            "total_elevation_m": int(round(total_elevation_logged_m or 0)),
+            "total_registered_users": len(profiles_by_id),
         }
         for key, rows in (
             ("leaderboard_peaks", leaderboard_peaks),
@@ -1283,20 +1362,28 @@ def _build_leaderboard_cache_payload() -> Dict[str, List[Dict[str, Any]]]:
             ]
         return payload
     except Exception:
-        return {key: [] for key in SHARED_LEADERBOARD_CACHE_KEYS}
+        return _empty_leaderboard_cache_payload()
 
 
-def _get_cached_leaderboard_payload() -> Dict[str, List[Dict[str, Any]]]:
+def _get_cached_leaderboard_payload() -> Dict[str, Any]:
     if all(_cache_is_fresh(_SHARED_QUERY_CACHE.get(key)) for key in SHARED_LEADERBOARD_CACHE_KEYS):
-        return {
-            key: list(_SHARED_QUERY_CACHE.get(key, {}).get("data") or [])
-            for key in SHARED_LEADERBOARD_CACHE_KEYS
-        }
+        return _copy_leaderboard_cache_payload(
+            {
+                key: _SHARED_QUERY_CACHE.get(key, {}).get("data")
+                for key in SHARED_LEADERBOARD_CACHE_KEYS
+            }
+        )
 
     payload = _build_leaderboard_cache_payload()
     for key in SHARED_LEADERBOARD_CACHE_KEYS:
         _set_cached_shared_value(key, payload.get(key) or [])
-    return payload
+    return _copy_leaderboard_cache_payload(payload)
+
+
+def get_leaderboard_community_stats() -> Dict[str, Any]:
+    return _copy_leaderboard_community_stats(
+        _get_cached_leaderboard_payload().get("leaderboard_community_stats")
+    )
 
 
 def get_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:

@@ -20,6 +20,7 @@ from supabase_utils import (
     calculate_climb_streak,
     get_all_peaks,
     get_county_peak_counts,
+    get_leaderboard_community_stats,
     get_leaderboard_elevation,
     get_leaderboard_peaks,
     get_leaderboard_streaks,
@@ -1976,6 +1977,58 @@ def _build_leaderboard_tab_context(
     }
 
 
+def _build_leaderboard_community_stat_cards(stats: dict, height_unit: str) -> list[dict]:
+    community_stats = dict(stats or {})
+    most_popular_peak = dict(community_stats.get("most_popular_peak") or {})
+    total_registered_users = max(int(community_stats.get("total_registered_users") or 0), 0)
+    total_climbs_logged = max(int(community_stats.get("total_climbs_logged") or 0), 0)
+    popular_peak_name = str(most_popular_peak.get("name") or "").strip()
+    popular_peak_climbs = max(int(most_popular_peak.get("total_climbs") or 0), 0)
+
+    if popular_peak_climbs == 1:
+        popular_peak_meta = "1 climb logged"
+    elif popular_peak_climbs > 1:
+        popular_peak_meta = f"{popular_peak_climbs:,} climbs logged"
+    else:
+        popular_peak_meta = "Waiting for the first climb log"
+
+    return [
+        {
+            "icon": "fa-user-group",
+            "label": "Registered Users",
+            "meta": "Climbers with accounts",
+            "value": f"{total_registered_users:,}",
+        },
+        {
+            "icon": "fa-shoe-prints",
+            "label": "Climbs Logged",
+            "meta": "Every summit entry recorded",
+            "value": f"{total_climbs_logged:,}",
+        },
+        {
+            "icon": "fa-mountain",
+            "label": "Most Popular Peak",
+            "meta": popular_peak_meta,
+            "url": (
+                url_for("peak_detail", peak_id=most_popular_peak.get("id"))
+                if most_popular_peak.get("id") is not None
+                else None
+            ),
+            "value": popular_peak_name or "No climbs yet",
+        },
+        {
+            "icon": "fa-chart-column",
+            "label": "Total Elevation Logged",
+            "meta": "Across every recorded climb",
+            "value": _leaderboard_height_label(
+                community_stats.get("total_elevation_m"),
+                height_unit,
+                fallback=f"0{height_unit}",
+            ),
+        },
+    ]
+
+
 def _build_dashboard_onboarding_steps() -> list[dict]:
     return [
         {
@@ -2606,6 +2659,10 @@ def leaderboard():
     context = get_session_context()
     current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
     height_unit = _current_height_unit_for_preference(context["profile"])
+    leaderboard_community_stats = _build_leaderboard_community_stat_cards(
+        get_leaderboard_community_stats(),
+        height_unit,
+    )
     tab_definitions = [
         {
             "description": "Distinct public peaks climbed across Ireland.",
@@ -2651,6 +2708,7 @@ def leaderboard():
     return render_template(
         "leaderboard.html",
         active_leaderboard_tab=active_tab,
+        leaderboard_community_stats=leaderboard_community_stats,
         leaderboard_tabs=leaderboard_tabs,
     )
 
