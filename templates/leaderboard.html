@@ -1,7 +1,19 @@
 {% extends "base.html" %}
 {% from 'macros/user_avatar.html' import user_avatar %}
 
-{% block title %}Leaderboard | Emerald Peak Explorer{% endblock %}
+{% block title %}{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}{% endblock %}
+
+{% block extra_meta %}
+<meta name="description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Emerald Peak Explorer">
+<meta property="og:title" content="{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}">
+<meta property="og:description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
+<meta property="og:url" content="{{ leaderboard_share_meta.url if leaderboard_share_meta else request.url }}">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}">
+<meta name="twitter:description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
+{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/leaderboard.css') }}">
@@ -104,7 +116,7 @@
                     <div class="leaderboard-list">
                         {% for entry in tab.entries %}
                         {% set podium_tone = 'gold' if entry.rank == 1 else 'silver' if entry.rank == 2 else 'bronze' if entry.rank == 3 else 'default' %}
-                        <article class="leaderboard-entry{% if entry.rank <= 3 %} leaderboard-entry--{{ podium_tone }}{% endif %}{% if entry.is_current_user %} is-current-user{% endif %}">
+                        <article class="leaderboard-entry{% if entry.rank <= 3 %} leaderboard-entry--{{ podium_tone }}{% endif %}{% if entry.is_current_user %} is-current-user{% endif %}{% if entry.is_highlighted %} is-highlighted{% endif %}" {% if entry.is_highlighted %}data-leaderboard-highlighted="true"{% endif %}>
                             <div class="leaderboard-entry__rank">
                                 <span class="leaderboard-entry__rank-badge leaderboard-entry__rank-badge--{{ podium_tone }}">
                                     {% if entry.rank == 1 %}
@@ -134,6 +146,9 @@
                                         {% if entry.is_current_user %}
                                         <span class="tag leaderboard-entry__you-tag">You</span>
                                         {% endif %}
+                                        {% if entry.is_highlighted and not entry.is_current_user %}
+                                        <span class="tag leaderboard-entry__highlight-tag">Shared Rank</span>
+                                        {% endif %}
                                     </div>
                                     <p class="leaderboard-entry__secondary">
                                         {% if entry.highest_peak.label %}
@@ -150,8 +165,33 @@
                                 </div>
                             </div>
 
-                            <div class="leaderboard-entry__stat">
-                                {{ entry.metric_label }}
+                            <div class="leaderboard-entry__stat-block">
+                                <div class="leaderboard-entry__stat">
+                                    {{ entry.metric_label }}
+                                </div>
+                                {% if entry.is_current_user and entry.share %}
+                                <div class="leaderboard-entry__share-actions">
+                                    <button
+                                        type="button"
+                                        class="button is-small leaderboard-entry__share-button"
+                                        data-leaderboard-share-button
+                                        data-share-title="{{ entry.share.title }}"
+                                        data-share-text="{{ entry.share.text }}"
+                                        data-share-url="{{ entry.share.url }}"
+                                    >
+                                        <span class="icon"><i class="fas fa-arrow-up-from-bracket"></i></span>
+                                        <span>Share</span>
+                                    </button>
+                                    <a href="{{ entry.share.twitter_url }}" class="button is-small is-light leaderboard-entry__share-link" target="_blank" rel="noopener noreferrer">
+                                        <span class="icon"><i class="fab fa-x-twitter"></i></span>
+                                        <span>X</span>
+                                    </a>
+                                    <a href="{{ entry.share.linkedin_url }}" class="button is-small is-light leaderboard-entry__share-link" target="_blank" rel="noopener noreferrer">
+                                        <span class="icon"><i class="fab fa-linkedin-in"></i></span>
+                                        <span>LinkedIn</span>
+                                    </a>
+                                </div>
+                                {% endif %}
                             </div>
                         </article>
                         {% endfor %}
@@ -160,7 +200,7 @@
                     {% if tab.own_entry %}
                     <div class="leaderboard-panel__own-position">
                         <div class="leaderboard-panel__divider">...</div>
-                        <article class="leaderboard-entry leaderboard-entry--own-callout is-current-user">
+                        <article class="leaderboard-entry leaderboard-entry--own-callout is-current-user{% if tab.own_entry.is_highlighted %} is-highlighted{% endif %}" {% if tab.own_entry.is_highlighted %}data-leaderboard-highlighted="true"{% endif %}>
                             <div class="leaderboard-entry__rank">
                                 <span class="leaderboard-entry__rank-badge leaderboard-entry__rank-badge--default">
                                     {{ tab.own_entry.rank }}
@@ -176,6 +216,9 @@
                                     <div class="leaderboard-entry__name-row">
                                         <a href="{{ tab.own_entry.profile_url }}" class="user-profile-link leaderboard-entry__name">{{ tab.own_entry.display_name }}</a>
                                         <span class="tag leaderboard-entry__you-tag">You</span>
+                                        {% if tab.own_entry.is_highlighted %}
+                                        <span class="tag leaderboard-entry__highlight-tag">Shared Rank</span>
+                                        {% endif %}
                                     </div>
                                     <p class="leaderboard-entry__secondary leaderboard-entry__secondary--compact">
                                         ... #{{ tab.own_entry.rank }} - {{ tab.own_entry.display_name }} - {{ tab.own_entry.metric_summary }}
@@ -183,8 +226,68 @@
                                 </div>
                             </div>
 
-                            <div class="leaderboard-entry__stat">
-                                {{ tab.own_entry.metric_label }}
+                            <div class="leaderboard-entry__stat-block">
+                                <div class="leaderboard-entry__stat">
+                                    {{ tab.own_entry.metric_label }}
+                                </div>
+                                {% if tab.own_entry.share %}
+                                <div class="leaderboard-entry__share-actions">
+                                    <button
+                                        type="button"
+                                        class="button is-small leaderboard-entry__share-button"
+                                        data-leaderboard-share-button
+                                        data-share-title="{{ tab.own_entry.share.title }}"
+                                        data-share-text="{{ tab.own_entry.share.text }}"
+                                        data-share-url="{{ tab.own_entry.share.url }}"
+                                    >
+                                        <span class="icon"><i class="fas fa-arrow-up-from-bracket"></i></span>
+                                        <span>Share</span>
+                                    </button>
+                                    <a href="{{ tab.own_entry.share.twitter_url }}" class="button is-small is-light leaderboard-entry__share-link" target="_blank" rel="noopener noreferrer">
+                                        <span class="icon"><i class="fab fa-x-twitter"></i></span>
+                                        <span>X</span>
+                                    </a>
+                                    <a href="{{ tab.own_entry.share.linkedin_url }}" class="button is-small is-light leaderboard-entry__share-link" target="_blank" rel="noopener noreferrer">
+                                        <span class="icon"><i class="fab fa-linkedin-in"></i></span>
+                                        <span>LinkedIn</span>
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </article>
+                    </div>
+                    {% endif %}
+
+                    {% if tab.highlight_entry %}
+                    <div class="leaderboard-panel__highlight-position">
+                        <div class="leaderboard-panel__divider">...</div>
+                        <article class="leaderboard-entry leaderboard-entry--highlight-callout is-highlighted" data-leaderboard-highlighted="true">
+                            <div class="leaderboard-entry__rank">
+                                <span class="leaderboard-entry__rank-badge leaderboard-entry__rank-badge--default">
+                                    {{ tab.highlight_entry.rank }}
+                                </span>
+                                <span class="leaderboard-entry__rank-label">#{{ tab.highlight_entry.rank }}</span>
+                            </div>
+
+                            <div class="leaderboard-entry__identity">
+                                <span class="leaderboard-entry__avatar">
+                                    {{ user_avatar(tab.highlight_entry.profile, '42') }}
+                                </span>
+                                <div class="leaderboard-entry__copy">
+                                    <div class="leaderboard-entry__name-row">
+                                        <a href="{{ tab.highlight_entry.profile_url }}" class="user-profile-link leaderboard-entry__name">{{ tab.highlight_entry.display_name }}</a>
+                                        <span class="tag leaderboard-entry__highlight-tag">Shared Rank</span>
+                                    </div>
+                                    <p class="leaderboard-entry__secondary leaderboard-entry__secondary--compact">
+                                        ... #{{ tab.highlight_entry.rank }} - {{ tab.highlight_entry.display_name }} - {{ tab.highlight_entry.metric_summary }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="leaderboard-entry__stat-block">
+                                <div class="leaderboard-entry__stat">
+                                    {{ tab.highlight_entry.metric_label }}
+                                </div>
                             </div>
                         </article>
                     </div>
@@ -196,6 +299,40 @@
                     {% endif %}
                 </section>
                 {% endfor %}
+
+                <section class="leaderboard-popular-peaks-section" aria-labelledby="leaderboard-popular-peaks-title">
+                    <div class="leaderboard-popular-peaks-section__header">
+                        <div>
+                            <h2 id="leaderboard-popular-peaks-title" class="title is-4 leaderboard-popular-peaks-section__title">Most Popular Peaks</h2>
+                            <p class="leaderboard-popular-peaks-section__copy">
+                                The summits logged most often across the community.
+                            </p>
+                        </div>
+                        <p class="leaderboard-popular-peaks-section__count">Top {{ leaderboard_popular_peaks|length }} peaks</p>
+                    </div>
+
+                    {% if leaderboard_popular_peaks %}
+                    <ol class="leaderboard-popular-peaks-list">
+                        {% for peak in leaderboard_popular_peaks %}
+                        <li class="leaderboard-popular-peaks-item">
+                            <span class="leaderboard-popular-peaks-item__rank">#{{ peak.rank }}</span>
+                            <div class="leaderboard-popular-peaks-item__content">
+                                {% if peak.url %}
+                                <a href="{{ peak.url }}" class="leaderboard-popular-peaks-item__name">{{ peak.name }}</a>
+                                {% else %}
+                                <span class="leaderboard-popular-peaks-item__name leaderboard-popular-peaks-item__name--text">{{ peak.name }}</span>
+                                {% endif %}
+                            </div>
+                            <span class="leaderboard-popular-peaks-item__count">{{ peak.count_label }}</span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <div class="leaderboard-empty-state">
+                        No climb logs yet. Once summits are recorded, the most popular peaks will appear here.
+                    </div>
+                    {% endif %}
+                </section>
             </div>
         </div>
     </section>

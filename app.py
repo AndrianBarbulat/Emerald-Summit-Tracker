@@ -1,6 +1,7 @@
 import re
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 
 from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for, g
 from werkzeug.exceptions import HTTPException
@@ -22,6 +23,7 @@ from supabase_utils import (
     get_county_peak_counts,
     get_leaderboard_community_stats,
     get_leaderboard_elevation,
+    get_leaderboard_popular_peaks,
     get_leaderboard_peaks,
     get_leaderboard_streaks,
     get_peak_average_difficulty,
@@ -1884,6 +1886,53 @@ def _leaderboard_metric_meta(row: dict, tab_key: str, height_unit: str) -> dict:
     }
 
 
+def _build_leaderboard_share_payload(
+    row: dict,
+    tab_key: str,
+    display_name: str,
+    metric_meta: dict,
+) -> dict:
+    current_row = dict(row or {})
+    rank_value = max(int(current_row.get("rank") or 0), 0)
+    share_display_name = str(display_name or "").strip()
+    if rank_value <= 0 or not share_display_name:
+        return {}
+
+    if tab_key == "elevation":
+        share_summary = f"with {metric_meta.get('summary') or '0m'} of elevation logged!"
+    elif tab_key == "streaks":
+        streak_weeks = max(int(current_row.get("current_streak") or 0), 0)
+        share_summary = f"with a current streak of {_pluralize_weeks(streak_weeks)}!"
+    else:
+        peak_count = max(int(current_row.get("peak_count") or 0), 0)
+        share_summary = (
+            "with 1 peak climbed!"
+            if peak_count == 1
+            else f"with {peak_count:,} peaks climbed!"
+        )
+
+    share_url = url_for(
+        "leaderboard",
+        highlight=share_display_name,
+        tab=tab_key,
+        _external=True,
+    )
+    share_text = f"{share_display_name} is ranked #{rank_value} on Emerald Peak Explorer {share_summary}"
+    share_title = f"{share_display_name} is ranked #{rank_value} on Emerald Peak Explorer"
+    return {
+        "linkedin_url": "https://www.linkedin.com/sharing/share-offsite/?" + urlencode({"url": share_url}),
+        "text": share_text,
+        "title": share_title,
+        "twitter_url": "https://twitter.com/intent/tweet?" + urlencode(
+            {
+                "text": share_text,
+                "url": share_url,
+            }
+        ),
+        "url": share_url,
+    }
+
+
 def _prepare_public_leaderboard_rows(rows: list[dict]) -> list[dict]:
     public_rows = []
     for row in rows:
@@ -1906,12 +1955,19 @@ def _prepare_public_leaderboard_rows(rows: list[dict]) -> list[dict]:
     ]
 
 
-def _build_leaderboard_entry(row: dict, tab_key: str, current_user_id: str | None, height_unit: str) -> dict:
+def _build_leaderboard_entry(
+    row: dict,
+    tab_key: str,
+    current_user_id: str | None,
+    height_unit: str,
+    highlighted_user_id: str | None = None,
+) -> dict:
     current_row = dict(row or {})
     profile = _build_leaderboard_profile_record(current_row)
     user_id = str(current_row.get("user_id") or profile.get("id") or "").strip()
     display_name = str(current_row.get("display_name") or profile.get("display_name") or "Climber").strip() or "Climber"
     is_current_user = bool(current_user_id and user_id == str(current_user_id))
+    is_highlighted = bool(highlighted_user_id and user_id == str(highlighted_user_id))
     highest_peak = dict(current_row.get("highest_peak") or {})
     highest_peak_name = str(highest_peak.get("name") or "").strip()
     highest_peak_height_label = _leaderboard_height_label(
@@ -1921,6 +1977,12 @@ def _build_leaderboard_entry(row: dict, tab_key: str, current_user_id: str | Non
         fallback="",
     )
     metric_meta = _leaderboard_metric_meta(current_row, tab_key, height_unit)
+    share_payload = _build_leaderboard_share_payload(
+        current_row,
+        tab_key,
+        str(profile.get("display_name") or display_name).strip() or display_name,
+        metric_meta,
+    )
 
     return {
         **current_row,
@@ -1937,11 +1999,13 @@ def _build_leaderboard_entry(row: dict, tab_key: str, current_user_id: str | Non
             else None,
         },
         "is_current_user": is_current_user,
+        "is_highlighted": is_highlighted,
         "metric_label": metric_meta["label"],
         "metric_summary": metric_meta["summary"],
         "profile": profile,
         "profile_preview_name": None if is_current_user else display_name,
         "profile_url": url_for("my_profile") if is_current_user else url_for("public_profile", display_name=display_name),
+        "share": share_payload,
         "user_id": user_id,
     }
 
@@ -1951,28 +2015,53 @@ def _build_leaderboard_tab_context(
     tab_key: str,
     current_user_id: str | None,
     height_unit: str,
+    highlighted_user_id: str | None = None,
     limit: int = 25,
 ) -> dict:
     public_rows = _prepare_public_leaderboard_rows(rows)
     top_rows = public_rows[:limit]
     current_user_row = None
+    highlighted_row = None
 
     if current_user_id:
         current_user_row = next(
             (row for row in public_rows if str(row.get("user_id") or "") == str(current_user_id)),
             None,
         )
+    if highlighted_user_id:
+        highlighted_row = next(
+            (row for row in public_rows if str(row.get("user_id") or "") == str(highlighted_user_id)),
+            None,
+        )
+
+    entries = [
+        _build_leaderboard_entry(row, tab_key, current_user_id, height_unit, highlighted_user_id)
+        for row in top_rows
+    ]
+    own_entry = (
+        _build_leaderboard_entry(current_user_row, tab_key, current_user_id, height_unit, highlighted_user_id)
+        if current_user_row and int(current_user_row.get("rank") or 0) > limit
+        else None
+    )
+    highlight_entry = (
+        _build_leaderboard_entry(highlighted_row, tab_key, current_user_id, height_unit, highlighted_user_id)
+        if highlighted_row and int(highlighted_row.get("rank") or 0) > limit
+        else None
+    )
+    if own_entry and highlight_entry and str(own_entry.get("user_id") or "") == str(highlight_entry.get("user_id") or ""):
+        highlight_entry = None
+
+    highlighted_entry = next((entry for entry in entries if entry.get("is_highlighted")), None)
+    if highlighted_entry is None and own_entry and own_entry.get("is_highlighted"):
+        highlighted_entry = own_entry
+    if highlighted_entry is None and highlight_entry and highlight_entry.get("is_highlighted"):
+        highlighted_entry = highlight_entry
 
     return {
-        "entries": [
-            _build_leaderboard_entry(row, tab_key, current_user_id, height_unit)
-            for row in top_rows
-        ],
-        "own_entry": (
-            _build_leaderboard_entry(current_user_row, tab_key, current_user_id, height_unit)
-            if current_user_row and int(current_user_row.get("rank") or 0) > limit
-            else None
-        ),
+        "entries": entries,
+        "highlight_entry": highlight_entry,
+        "highlighted_entry": highlighted_entry,
+        "own_entry": own_entry,
         "total_ranked": len(public_rows),
     }
 
@@ -2027,6 +2116,47 @@ def _build_leaderboard_community_stat_cards(stats: dict, height_unit: str) -> li
             ),
         },
     ]
+
+
+def _build_leaderboard_popular_peak_entries(rows: list[dict], limit: int = 10) -> list[dict]:
+    entries = []
+    for row in rows[:max(int(limit or 0), 0)]:
+        current_row = dict(row or {})
+        climb_count = max(int(current_row.get("total_climbs") or 0), 0)
+        peak_name = str(current_row.get("name") or "").strip() or "Unnamed peak"
+        entries.append(
+            {
+                **current_row,
+                "count_label": "1 climb logged" if climb_count == 1 else f"{climb_count:,} climbs logged",
+                "name": peak_name,
+                "url": (
+                    url_for("peak_detail", peak_id=current_row.get("id"))
+                    if current_row.get("id") is not None
+                    else None
+                ),
+            }
+        )
+    return entries
+
+
+def _build_leaderboard_page_meta(active_tab: str, leaderboard_tabs: list[dict]) -> dict:
+    description = "See the public climbers leading the way by distinct peaks, total elevation, and current streak."
+    meta = {
+        "description": description,
+        "title": "Leaderboard | Emerald Peak Explorer",
+        "url": request.url,
+    }
+    active_tab_context = next(
+        (tab for tab in leaderboard_tabs if str(tab.get("key") or "") == str(active_tab or "")),
+        None,
+    )
+    highlighted_entry = dict((active_tab_context or {}).get("highlighted_entry") or {})
+    highlighted_share = dict(highlighted_entry.get("share") or {})
+    if highlighted_share:
+        meta["description"] = str(highlighted_share.get("text") or description).strip() or description
+        meta["title"] = str(highlighted_share.get("title") or meta["title"]).strip() or meta["title"]
+        meta["url"] = str(highlighted_share.get("url") or meta["url"]).strip() or meta["url"]
+    return meta
 
 
 def _build_dashboard_onboarding_steps() -> list[dict]:
@@ -2659,9 +2789,19 @@ def leaderboard():
     context = get_session_context()
     current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
     height_unit = _current_height_unit_for_preference(context["profile"])
+    highlight_display_name = str(request.args.get("highlight") or "").strip()
+    highlighted_profile = (
+        get_profile_by_display_name(highlight_display_name)
+        if highlight_display_name
+        else None
+    )
+    highlighted_user_id = str((highlighted_profile or {}).get("id") or "").strip() or None
     leaderboard_community_stats = _build_leaderboard_community_stat_cards(
         get_leaderboard_community_stats(),
         height_unit,
+    )
+    leaderboard_popular_peaks = _build_leaderboard_popular_peak_entries(
+        get_leaderboard_popular_peaks(limit=10)
     )
     tab_definitions = [
         {
@@ -2700,15 +2840,19 @@ def leaderboard():
                     definition["key"],
                     current_user_id,
                     height_unit,
+                    highlighted_user_id,
                 ),
             }
         )
 
+    leaderboard_share_meta = _build_leaderboard_page_meta(active_tab, leaderboard_tabs)
     _set_active_page("leaderboard")
     return render_template(
         "leaderboard.html",
         active_leaderboard_tab=active_tab,
         leaderboard_community_stats=leaderboard_community_stats,
+        leaderboard_popular_peaks=leaderboard_popular_peaks,
+        leaderboard_share_meta=leaderboard_share_meta,
         leaderboard_tabs=leaderboard_tabs,
     )
 

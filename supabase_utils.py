@@ -28,12 +28,14 @@ SHARED_COMMUNITY_CACHE_LIMIT = 250
 SHARED_CACHE_KEYS = (
     "community_feed",
     "leaderboard_community_stats",
+    "leaderboard_popular_peaks",
     "leaderboard_peaks",
     "leaderboard_elevation",
     "leaderboard_streaks",
 )
 SHARED_LEADERBOARD_CACHE_KEYS = (
     "leaderboard_community_stats",
+    "leaderboard_popular_peaks",
     "leaderboard_peaks",
     "leaderboard_elevation",
     "leaderboard_streaks",
@@ -1127,6 +1129,11 @@ def _copy_leaderboard_community_stats(stats: Dict[str, Any] | None) -> Dict[str,
     }
 
 
+def _copy_leaderboard_popular_peaks(rows: List[Dict[str, Any]], limit: Optional[int] = 10) -> List[Dict[str, Any]]:
+    selected_rows = rows if limit is None else rows[:max(int(limit or 0), 0)]
+    return [dict(row or {}) for row in selected_rows]
+
+
 def _empty_leaderboard_cache_payload() -> Dict[str, Any]:
     return {
         "leaderboard_community_stats": {
@@ -1135,6 +1142,7 @@ def _empty_leaderboard_cache_payload() -> Dict[str, Any]:
             "total_elevation_m": 0,
             "total_registered_users": 0,
         },
+        "leaderboard_popular_peaks": [],
         "leaderboard_peaks": [],
         "leaderboard_elevation": [],
         "leaderboard_streaks": [],
@@ -1146,6 +1154,10 @@ def _copy_leaderboard_cache_payload(payload: Dict[str, Any] | None) -> Dict[str,
     return {
         "leaderboard_community_stats": _copy_leaderboard_community_stats(
             current_payload.get("leaderboard_community_stats")
+        ),
+        "leaderboard_popular_peaks": _copy_leaderboard_popular_peaks(
+            current_payload.get("leaderboard_popular_peaks") or [],
+            limit=None,
         ),
         "leaderboard_peaks": _copy_leaderboard_rows(current_payload.get("leaderboard_peaks") or [], limit=None),
         "leaderboard_elevation": _copy_leaderboard_rows(current_payload.get("leaderboard_elevation") or [], limit=None),
@@ -1326,20 +1338,22 @@ def _build_leaderboard_cache_payload() -> Dict[str, Any]:
             ),
         )
 
-        most_popular_peak = (
-            dict(
-                sorted(
-                    peak_climb_counts.values(),
-                    key=lambda peak: (
-                        -int(peak.get("total_climbs") or 0),
-                        str(peak.get("name") or "").lower(),
-                        str(peak.get("id") or ""),
-                    ),
-                )[0]
-            )
-            if peak_climb_counts
-            else {}
+        sorted_peak_counts = sorted(
+            peak_climb_counts.values(),
+            key=lambda peak: (
+                -int(peak.get("total_climbs") or 0),
+                str(peak.get("name") or "").lower(),
+                str(peak.get("id") or ""),
+            ),
         )
+        popular_peaks = [
+            {
+                **dict(peak or {}),
+                "rank": index + 1,
+            }
+            for index, peak in enumerate(sorted_peak_counts)
+        ]
+        most_popular_peak = dict(popular_peaks[0]) if popular_peaks else {}
 
         payload = _empty_leaderboard_cache_payload()
         payload["leaderboard_community_stats"] = {
@@ -1348,6 +1362,7 @@ def _build_leaderboard_cache_payload() -> Dict[str, Any]:
             "total_elevation_m": int(round(total_elevation_logged_m or 0)),
             "total_registered_users": len(profiles_by_id),
         }
+        payload["leaderboard_popular_peaks"] = popular_peaks
         for key, rows in (
             ("leaderboard_peaks", leaderboard_peaks),
             ("leaderboard_elevation", leaderboard_elevation),
@@ -1384,6 +1399,11 @@ def get_leaderboard_community_stats() -> Dict[str, Any]:
     return _copy_leaderboard_community_stats(
         _get_cached_leaderboard_payload().get("leaderboard_community_stats")
     )
+
+
+def get_leaderboard_popular_peaks(limit: Optional[int] = 10) -> List[Dict[str, Any]]:
+    rows = _get_cached_leaderboard_payload().get("leaderboard_popular_peaks") or []
+    return _copy_leaderboard_popular_peaks(rows, limit=limit)
 
 
 def get_leaderboard_peaks(limit: Optional[int] = 25) -> List[Dict[str, Any]]:
