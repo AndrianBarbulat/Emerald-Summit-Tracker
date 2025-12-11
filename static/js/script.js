@@ -1432,6 +1432,16 @@ function updatePeakTrackingPanel(panel, status) {
     }
 }
 
+function showLeaderboardRankImprovementToast(result, delayMs) {
+    if (!result || !result.rank_improved || !result.new_rank) {
+        return;
+    }
+
+    window.setTimeout(function() {
+        showToast('You moved up to #' + result.new_rank + ' on the leaderboard!', 'success');
+    }, Math.max(Number(delayMs) || 0, 0));
+}
+
 function initPeakTrackingPanel(panel) {
     if (!panel) {
         return;
@@ -1584,6 +1594,7 @@ function initPeakTrackingPanel(panel) {
                         : 'Summit logged successfully.');
                 setPeakTrackingMessage(panel, successMessage, false);
                 showToast(successMessage, 'success');
+                showLeaderboardRankImprovementToast(result, result.warning ? 520 : 220);
                 if (result.warning) {
                     window.setTimeout(function() {
                         showToast(result.warning, 'warning');
@@ -1751,6 +1762,7 @@ function initUserClimbLogSection(section) {
                 updatePeakTrackingPanel(panel, result.user_status);
             }
             showToast('Climb log updated.', 'success');
+            showLeaderboardRankImprovementToast(result, 220);
         } catch (error) {
             applyFieldErrors(form, error.fields, getClimbFieldSelectorMap());
             setUserClimbFormError(item, error.message || 'We could not save that climb log right now.');
@@ -2908,6 +2920,7 @@ window.setButtonLoading = setButtonLoading;
 window.setFieldError = setFieldError;
 window.setLoadingRegion = setLoadingRegion;
 window.showBadgeCelebration = showBadgeCelebration;
+window.showLeaderboardRankImprovementToast = showLeaderboardRankImprovementToast;
 window.showToast = showToast;
 window.syncPeakLogNotesCounter = syncPeakLogNotesCounter;
 window.syncPeakLogPhotoSummary = syncPeakLogPhotoSummary;

@@ -657,6 +657,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 result.already_climbed ? 'This summit is already logged.' : 'Summit logged successfully.',
                 'success'
             );
+            if (typeof window.showLeaderboardRankImprovementToast === 'function') {
+                window.showLeaderboardRankImprovementToast(result, result.warning ? 520 : 220);
+            }
             if (result.warning) {
                 notifyToast(result.warning, 'warning');
             }

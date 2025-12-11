@@ -182,6 +182,9 @@ async function handleMyClimbEditSubmit(table, form, tablePanel, emptyState) {
         updateMyClimbStats(table, tablePanel, emptyState);
         setClimbDetailMode(detailRow, 'view');
         showMyClimbToast('Climb updated.', 'success');
+        if (typeof window.showLeaderboardRankImprovementToast === 'function') {
+            window.showLeaderboardRankImprovementToast(result, 220);
+        }
     } catch (error) {
         applyMyClimbFieldErrors(form, error && error.fields ? error.fields : {});
         const message = error && error.message ? error.message : 'We could not save that climb.';

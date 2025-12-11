@@ -232,6 +232,10 @@ function initDashboardClimbModal() {
                     showDashboardToast('This summit is already logged.', 'warning');
                 }
 
+                if (typeof window.showLeaderboardRankImprovementToast === 'function') {
+                    window.showLeaderboardRankImprovementToast(result, result.warning ? 520 : 220);
+                }
+
                 if (result.warning) {
                     window.setTimeout(function() {
                         showDashboardToast(result.warning, 'warning');

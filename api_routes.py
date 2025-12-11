@@ -27,6 +27,7 @@ from supabase_utils import (
     get_peak_by_id,
     get_peak_statuses,
     get_profile_by_display_name,
+    get_user_rank,
     get_user_bucket_list,
     get_user_climbs,
     get_user_has_climbed,
@@ -96,6 +97,8 @@ PROFILE_SCALAR_TEXT_UPDATE_FIELDS = PROFILE_UPDATE_FIELDS - {
     "profile_visibility",
     "unit_preference",
 }
+LEADERBOARD_RANK_SESSION_KEY = "leaderboard_ranks"
+LEADERBOARD_RANK_CATEGORIES = ("peaks", "elevation", "streaks")
 
 
 @api.route("/health", methods=["GET"])
@@ -202,6 +205,68 @@ def _require_login():
     if not user_id:
         return None, _json_error("You need to log in first.", 401)
     return user_id, None
+
+
+def _normalize_leaderboard_rank(value) -> int | None:
+    try:
+        rank_value = int(value)
+    except (TypeError, ValueError):
+        return None
+    return rank_value if rank_value > 0 else None
+
+
+def _get_user_leaderboard_ranks(user_id: str) -> dict:
+    normalized_user_id = str(user_id or "").strip()
+    if not normalized_user_id:
+        return {category: None for category in LEADERBOARD_RANK_CATEGORIES}
+
+    return {
+        category: _normalize_leaderboard_rank(get_user_rank(normalized_user_id, category))
+        for category in LEADERBOARD_RANK_CATEGORIES
+    }
+
+
+def _store_session_leaderboard_ranks(ranks: dict | None) -> None:
+    session[LEADERBOARD_RANK_SESSION_KEY] = {
+        category: _normalize_leaderboard_rank((ranks or {}).get(category))
+        for category in LEADERBOARD_RANK_CATEGORIES
+    }
+
+
+def _build_rank_improvement_payload(previous_ranks: dict | None, new_ranks: dict | None) -> dict:
+    candidates = []
+    for category_index, category in enumerate(LEADERBOARD_RANK_CATEGORIES):
+        previous_rank = _normalize_leaderboard_rank((previous_ranks or {}).get(category))
+        new_rank = _normalize_leaderboard_rank((new_ranks or {}).get(category))
+        if new_rank is None:
+            continue
+        if previous_rank is not None and new_rank >= previous_rank:
+            continue
+
+        candidates.append(
+            {
+                "category": category,
+                "new_rank": new_rank,
+                "previous_rank": previous_rank,
+                "score": (
+                    1 if previous_rank is not None else 0,
+                    (previous_rank - new_rank) if previous_rank is not None else 0,
+                    -new_rank,
+                    -category_index,
+                ),
+            }
+        )
+
+    if not candidates:
+        return {}
+
+    best_candidate = max(candidates, key=lambda candidate: candidate["score"])
+    return {
+        "new_rank": best_candidate["new_rank"],
+        "previous_rank": best_candidate["previous_rank"],
+        "rank_category": best_candidate["category"],
+        "rank_improved": True,
+    }
 
 
 def _parse_int(value) -> int | None:
@@ -839,6 +904,7 @@ def api_log_climb():
     if existing_climb is not None:
         removed_from_bucket_list = _remove_bucket_list_entry_if_present(user_id, peak_id)
         streak = _serialize_streak(calculate_climb_streak(get_user_climbs(user_id)))
+        _store_session_leaderboard_ranks(_get_user_leaderboard_ranks(user_id))
         return _json_success(
             {
                 "already_climbed": True,
@@ -857,6 +923,7 @@ def api_log_climb():
     if photo_error:
         return _json_error(photo_error, 400, fields={"photos": photo_error})
 
+    previous_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
     warning_messages = []
     uploaded_photo_urls = []
     uploaded_storage_paths = []
@@ -893,8 +960,14 @@ def api_log_climb():
         if updated_bucket_completion_climb is not None:
             created_climb = updated_bucket_completion_climb
 
-    clear_shared_data_cache()
     streak_data = sync_user_current_streak(user_id)
+    clear_shared_data_cache()
+    current_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
+    _store_session_leaderboard_ranks(current_leaderboard_ranks)
+    rank_improvement_payload = _build_rank_improvement_payload(
+        previous_leaderboard_ranks,
+        current_leaderboard_ranks,
+    )
     if streak_data.get("profile") is not None:
         session["profile"] = streak_data["profile"]
     else:
@@ -911,6 +984,7 @@ def api_log_climb():
         "streak": _serialize_streak(streak_data),
         **_current_user_status(user_id, peak_id),
     }
+    success_payload.update(rank_improvement_payload)
     if warning_messages:
         success_payload["warning"] = warning_messages[0]
         success_payload["warnings"] = warning_messages
@@ -1022,8 +1096,10 @@ def api_climb(climb_id: int):
             return _json_error("We couldn't delete that climb right now.", 500)
 
         photos_deleted = delete_climb_photo_uploads(photo_storage_paths)
-        clear_shared_data_cache()
         streak_data = sync_user_current_streak(user_id)
+        clear_shared_data_cache()
+        current_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
+        _store_session_leaderboard_ranks(current_leaderboard_ranks)
         if streak_data.get("profile") is not None:
             session["profile"] = streak_data["profile"]
         else:
@@ -1057,12 +1133,19 @@ def api_climb(climb_id: int):
     if all(value is _UNSET for value in fields.values()):
         return _json_error("Provide at least one climb field to update.", 400)
 
+    previous_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
     updated_climb, saved_payload = _try_update_climb(climb_id, user_id, fields)
     if updated_climb is None:
         return _json_error("We couldn't update that climb right now.", 500)
 
-    clear_shared_data_cache()
     streak_data = sync_user_current_streak(user_id)
+    clear_shared_data_cache()
+    current_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
+    _store_session_leaderboard_ranks(current_leaderboard_ranks)
+    rank_improvement_payload = _build_rank_improvement_payload(
+        previous_leaderboard_ranks,
+        current_leaderboard_ranks,
+    )
     if streak_data.get("profile") is not None:
         session["profile"] = streak_data["profile"]
     else:
@@ -1073,6 +1156,7 @@ def api_climb(climb_id: int):
             "climb": updated_climb,
             "climb_id": updated_climb.get("id", climb_id),
             "peak_id": peak_id,
+            **rank_improvement_payload,
             "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
             "streak": _serialize_streak(streak_data),
             **(_current_user_status(user_id, peak_id) if peak_id is not None else {}),

@@ -169,6 +169,9 @@ function initBucketListPage() {
             }
 
             notifyBucketToast(successMessage, result.removed_from_bucket_list ? 'success' : 'warning');
+            if (typeof window.showLeaderboardRankImprovementToast === 'function') {
+                window.showLeaderboardRankImprovementToast(result, result.warning ? 520 : 220);
+            }
             if (result.warning) {
                 notifyBucketToast(result.warning, 'warning');
             }
