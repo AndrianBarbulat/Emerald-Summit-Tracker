@@ -56,6 +56,7 @@ EMAIL_PATTERN = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 BADGE_NOTIFICATION_SEEN_SESSION_KEY = "badge_notifications_last_seen_at"
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
 RECENTLY_VIEWED_LIMIT = 3
+PROVINCE_ORDER = ("Munster", "Leinster", "Ulster", "Connacht")
 
 
 def get_session_context() -> dict:
@@ -844,9 +845,8 @@ def _build_public_profile_view_data(
 
 
 def _build_dashboard_progress_data(climbs: list[dict], peaks_by_id: dict, total_peaks: int) -> dict:
-    province_order = ("Munster", "Leinster", "Ulster", "Connacht")
-    province_lookup = {province.lower(): province for province in province_order}
-    province_counts = {province: 0 for province in province_order}
+    province_lookup = {province.lower(): province for province in PROVINCE_ORDER}
+    province_counts = {province: 0 for province in PROVINCE_ORDER}
     extra_province_counts: dict[str, int] = {}
     distinct_peak_entries: dict[str, dict] = {}
     fallback_date = datetime.min.replace(tzinfo=timezone.utc)
@@ -939,7 +939,7 @@ def _build_dashboard_progress_data(climbs: list[dict], peaks_by_id: dict, total_
             "count": province_counts.get(province_name, 0),
             "key": province_name.lower(),
         }
-        for province_name in province_order
+        for province_name in PROVINCE_ORDER
     ]
     province_breakdown.extend(
         {
@@ -1108,7 +1108,7 @@ def _build_profile_compare_province_rows(left_view: dict, right_view: dict) -> l
     right_lookup = {str(row.get("name") or "").strip(): row for row in right_breakdown}
     ordered_names = []
 
-    for province_name in ("Munster", "Leinster", "Ulster", "Connacht"):
+    for province_name in PROVINCE_ORDER:
         if province_name in left_lookup or province_name in right_lookup:
             ordered_names.append(province_name)
 
@@ -1636,6 +1636,92 @@ def _build_height_filter_range(peaks: list[dict], unit: str) -> dict[str, int | 
         "min": int(round(minimum_height)),
         "max": int(round(maximum_height)),
     }
+
+
+def _build_county_groups(peaks: list[dict], climbed_peak_ids: set[str] | None = None) -> list[dict]:
+    climbed_peak_keys = {
+        _peak_key(peak_id)
+        for peak_id in (climbed_peak_ids or set())
+        if _peak_key(peak_id)
+    }
+    province_lookup = {province.lower(): province for province in PROVINCE_ORDER}
+    counties_by_key: dict[str, dict] = {}
+
+    for peak in peaks:
+        county_name = str(peak.get("county") or "").strip()
+        if not county_name:
+            continue
+
+        raw_province_name = str(peak.get("province") or "").strip()
+        province_name = province_lookup.get(raw_province_name.lower(), raw_province_name or "Unknown Province")
+        county_key = county_name.lower()
+        current_county = counties_by_key.get(county_key)
+        if current_county is None:
+            current_county = {
+                "name": county_name,
+                "province": province_name,
+                "total_peaks": 0,
+                "climbed_peak_keys": set(),
+                "url": url_for("summit_list", county=county_name),
+            }
+            counties_by_key[county_key] = current_county
+
+        current_county["total_peaks"] += 1
+        peak_key = _peak_key(peak.get("id"))
+        if peak_key and peak_key in climbed_peak_keys:
+            current_county["climbed_peak_keys"].add(peak_key)
+
+    grouped_counties: dict[str, list[dict]] = {}
+    for current_county in counties_by_key.values():
+        total_peaks = int(current_county.get("total_peaks") or 0)
+        climbed_count = len(current_county.get("climbed_peak_keys") or set())
+        completion_percent = int(round((climbed_count / total_peaks) * 100)) if total_peaks else 0
+        county_entry = {
+            "name": current_county.get("name"),
+            "province": current_county.get("province"),
+            "total_peaks": total_peaks,
+            "climbed_count": climbed_count,
+            "completion_percent": completion_percent,
+            "is_completed": bool(total_peaks and climbed_count >= total_peaks),
+            "url": current_county.get("url"),
+        }
+        grouped_counties.setdefault(str(county_entry["province"] or "Unknown Province"), []).append(county_entry)
+
+    ordered_provinces = [
+        province_name
+        for province_name in PROVINCE_ORDER
+        if province_name in grouped_counties
+    ]
+    ordered_provinces.extend(
+        sorted(
+            province_name
+            for province_name in grouped_counties
+            if province_name not in PROVINCE_ORDER
+        )
+    )
+
+    county_groups = []
+    for province_name in ordered_provinces:
+        province_counties = sorted(
+            grouped_counties.get(province_name) or [],
+            key=lambda county: str(county.get("name") or "").lower(),
+        )
+        total_peaks = sum(int(county.get("total_peaks") or 0) for county in province_counties)
+        climbed_count = sum(int(county.get("climbed_count") or 0) for county in province_counties)
+        completion_percent = int(round((climbed_count / total_peaks) * 100)) if total_peaks else 0
+        county_groups.append(
+            {
+                "name": province_name,
+                "counties": province_counties,
+                "county_count": len(province_counties),
+                "completed_counties": sum(1 for county in province_counties if county.get("is_completed")),
+                "total_peaks": total_peaks,
+                "climbed_count": climbed_count,
+                "completion_percent": completion_percent,
+            }
+        )
+
+    return county_groups
 
 
 def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[dict]:
@@ -2854,6 +2940,43 @@ def leaderboard():
         leaderboard_popular_peaks=leaderboard_popular_peaks,
         leaderboard_share_meta=leaderboard_share_meta,
         leaderboard_tabs=leaderboard_tabs,
+    )
+
+
+@app.route("/counties")
+def counties():
+    context = get_session_context()
+    peaks = get_all_peaks(sort_by="county")
+    user_id = str((context["profile"] or {}).get("id") or "").strip()
+    climbed_peak_ids = set()
+
+    if user_id:
+        climbed_peak_ids = {
+            climb.get("peak_id")
+            for climb in get_user_climbs(user_id)
+            if climb.get("peak_id") is not None
+        }
+
+    county_groups = _build_county_groups(peaks, climbed_peak_ids=climbed_peak_ids)
+    county_rows = [
+        county
+        for province in county_groups
+        for county in (province.get("counties") or [])
+    ]
+    counted_peaks_total = sum(int(county.get("total_peaks") or 0) for county in county_rows)
+
+    county_overview = {
+        "climbed_peaks": len({_peak_key(peak_id) for peak_id in climbed_peak_ids if _peak_key(peak_id)}),
+        "completed_counties": sum(1 for county in county_rows if county.get("is_completed")),
+        "total_counties": len(county_rows),
+        "total_peaks": counted_peaks_total,
+    }
+
+    _set_active_page("counties")
+    return render_template(
+        "counties.html",
+        county_groups=county_groups,
+        county_overview=county_overview,
     )
 
 

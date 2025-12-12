@@ -39,6 +39,12 @@
                 >
                     Summit List
                 </a>
+                <a
+                    href="{{ url_for('counties') }}"
+                    class="navbar-item {% if active_page == 'counties' %}is-active{% endif %}"
+                >
+                    Counties
+                </a>
                 <div class="navbar-item">
                     <div class="buttons site-navbar__actions">
                         <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">

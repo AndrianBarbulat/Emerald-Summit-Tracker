@@ -31,6 +31,7 @@
                 <a href="/home" class="navbar-item {{ 'is-active' if active_page == 'dashboard' else '' }}">Dashboard</a>
                 <a href="{{ url_for('explore_map') }}" class="navbar-item {{ 'is-active' if active_page == 'map' else '' }}">Map</a>
                 <a href="/summit-list" class="navbar-item {{ 'is-active' if active_page in ['summits', 'summit_list'] else '' }}">Summit List</a>
+                <a href="{{ url_for('counties') }}" class="navbar-item {{ 'is-active' if active_page == 'counties' else '' }}">Counties</a>
                 <a href="/leaderboard" class="navbar-item {{ 'is-active' if active_page == 'leaderboard' else '' }}">Leaderboard</a>
             </div>
 

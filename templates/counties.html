@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Peaks by County | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/counties.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="counties-page">
+    <section class="section counties-page__hero">
+        <div class="container">
+            <div class="counties-page__hero-card">
+                <div class="counties-page__hero-copy">
+                    <p class="counties-page__eyebrow">County Explorer</p>
+                    <h1 class="title is-2 counties-page__title">
+                        <span class="icon" aria-hidden="true"><i class="fas fa-map-signs"></i></span>
+                        <span>Peaks by County</span>
+                    </h1>
+                    <p class="counties-page__subtitle">
+                        See how Ireland's peaks are spread across each county and track how close you are to completing every local list.
+                    </p>
+                </div>
+
+                <div class="counties-page__overview">
+                    <article class="counties-page__overview-card">
+                        <p class="counties-page__overview-label">Counties</p>
+                        <p class="counties-page__overview-value">{{ county_overview.total_counties }}</p>
+                        <p class="counties-page__overview-meta">Grouped under {{ county_groups|length }} provinces</p>
+                    </article>
+                    <article class="counties-page__overview-card">
+                        <p class="counties-page__overview-label">Mapped Peaks</p>
+                        <p class="counties-page__overview-value">{{ county_overview.total_peaks }}</p>
+                        <p class="counties-page__overview-meta">Every county links into the summit list</p>
+                    </article>
+                    <article class="counties-page__overview-card">
+                        <p class="counties-page__overview-label">
+                            {% if profile %}Completed Counties{% else %}Track Progress{% endif %}
+                        </p>
+                        {% if profile %}
+                        <p class="counties-page__overview-value">{{ county_overview.completed_counties }}</p>
+                        <p class="counties-page__overview-meta">
+                            {{ county_overview.climbed_peaks }} distinct peaks logged across Ireland
+                        </p>
+                        {% else %}
+                        <p class="counties-page__overview-value">Log in</p>
+                        <p class="counties-page__overview-meta">See climbed counts and completion percentages here</p>
+                        {% endif %}
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0 counties-page__content">
+        <div class="container">
+            {% if not profile %}
+            <div class="box counties-page__prompt">
+                <div>
+                    <p class="counties-page__prompt-title">Sign in to turn this into a completion tracker</p>
+                    <p class="counties-page__prompt-copy">
+                        Logged-in climbers see climbed counts, completion percentages, and completed counties marked with a star.
+                    </p>
+                </div>
+                <div class="buttons counties-page__prompt-actions">
+                    <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">Sign Up</button>
+                    <button type="button" class="button site-navbar__login" onclick="openModal('login')">Login</button>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if county_groups %}
+                {% for province in county_groups %}
+                <section class="box counties-group" aria-labelledby="county-group-{{ province.name|lower|replace(' ', '-') }}">
+                    <div class="counties-group__header">
+                        <div>
+                            <p class="counties-group__eyebrow">Province</p>
+                            <h2 id="county-group-{{ province.name|lower|replace(' ', '-') }}" class="title is-4 counties-group__title">{{ province.name }}</h2>
+                        </div>
+                        <div class="counties-group__summary">
+                            <span>{{ province.county_count }} counties</span>
+                            <span>{{ province.total_peaks }} peaks</span>
+                            {% if profile %}
+                            <span>{{ province.completed_counties }} completed</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="counties-group__rows">
+                        {% for county in province.counties %}
+                        <a href="{{ county.url }}" class="counties-row{% if county.is_completed %} is-complete{% endif %}">
+                            <div class="counties-row__primary">
+                                <div class="counties-row__name-wrap">
+                                    <span class="counties-row__name">{{ county.name }}</span>
+                                    {% if county.is_completed %}
+                                    <span class="counties-row__completed-badge" aria-label="County completed" title="County completed">
+                                        <i class="fas fa-star" aria-hidden="true"></i>
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <p class="counties-row__meta">{{ county.total_peaks }} peaks</p>
+                            </div>
+
+                            <div class="counties-row__stats">
+                                {% if profile %}
+                                <div class="counties-row__progress-line">
+                                    <span>{{ county.climbed_count }}/{{ county.total_peaks }} climbed</span>
+                                    <span>{{ county.completion_percent }}%</span>
+                                </div>
+                                <progress class="progress is-success counties-row__progress-bar" value="{{ county.climbed_count }}" max="{{ county.total_peaks or 1 }}">{{ county.completion_percent }}%</progress>
+                                {% else %}
+                                <div class="counties-row__progress-line counties-row__progress-line--public">
+                                    <span>Open county list</span>
+                                    <span>{{ county.total_peaks }} peaks</span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <span class="counties-row__arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endfor %}
+            {% else %}
+            <div class="box has-text-centered">
+                <p class="title is-5">No county data yet</p>
+                <p class="has-text-grey">Once peaks are available with county information, this explorer will populate automatically.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

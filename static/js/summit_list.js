@@ -74,7 +74,11 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     });
 
+    applyInitialFiltersFromUrl(peaks);
     populateCountyOptions(peaks, state.province);
+    if (state.county) {
+        elements.county.value = state.county;
+    }
     updateHeightInputPlaceholders(peaks);
 
     elements.search.addEventListener('input', function() {
@@ -421,6 +425,41 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             elements.county.value = '';
         }
+    }
+
+    function applyInitialFiltersFromUrl(allPeaks) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const requestedProvince = findExactFieldValue(allPeaks, 'province', normalizeValue(searchParams.get('province')));
+        const requestedCounty = findExactFieldValue(allPeaks, 'county', normalizeValue(searchParams.get('county')));
+
+        state.province = requestedProvince || findProvinceForCounty(allPeaks, requestedCounty);
+        state.county = requestedCounty;
+
+        if (state.province) {
+            elements.province.value = state.province;
+        }
+    }
+
+    function findExactFieldValue(allPeaks, field, normalizedValue) {
+        if (!normalizedValue) {
+            return '';
+        }
+
+        const match = allPeaks.find(function(peak) {
+            return normalizeValue(peak[field]) === normalizedValue;
+        });
+        return match ? String(match[field] || '') : '';
+    }
+
+    function findProvinceForCounty(allPeaks, countyName) {
+        if (!countyName) {
+            return '';
+        }
+
+        const match = allPeaks.find(function(peak) {
+            return peak.county === countyName;
+        });
+        return match ? String(match.province || '') : '';
     }
 
     function updateHeightInputPlaceholders(allPeaks) {
