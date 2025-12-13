@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -425,6 +426,215 @@ def get_county_peak_counts() -> Dict[str, int]:
         county_counts[county_name] = county_counts.get(county_name, 0) + 1
 
     return county_counts
+
+
+def _normalize_search_query(query: Any) -> str:
+    return re.sub(r"\s+", " ", str(query or "").strip())
+
+
+def _search_sort_key(label: Any, query: str) -> tuple[int, int, int, str]:
+    normalized_label = str(label or "").strip().lower()
+    normalized_query = str(query or "").strip().lower()
+    if not normalized_label:
+        return (1, 9999, 9999, "")
+
+    match_index = normalized_label.find(normalized_query) if normalized_query else -1
+    starts_with_query = 0 if normalized_query and normalized_label.startswith(normalized_query) else 1
+    return (
+        starts_with_query,
+        match_index if match_index >= 0 else 9999,
+        len(normalized_label),
+        normalized_label,
+    )
+
+
+def search_peaks_by_name(query: Any, limit: Optional[int] = 5) -> List[Dict[str, Any]]:
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        return []
+
+    peaks: List[Dict[str, Any]] = []
+    query_pattern = f"%{normalized_query}%"
+
+    try:
+        peak_query = _table(TABLE_PEAKS)
+        if peak_query is not None:
+            response = (
+                peak_query
+                .select("id,name,county,province,height_m,height_ft,height")
+                .ilike("name", query_pattern)
+                .execute()
+            )
+            peaks = response.data or []
+    except Exception:
+        peaks = []
+
+    if not peaks:
+        peaks = [
+            peak
+            for peak in get_all_peaks()
+            if normalized_query.lower() in str((peak or {}).get("name") or "").lower()
+        ]
+
+    normalized_query_key = normalized_query.lower()
+    peak_results = [
+        {
+            "id": peak.get("id"),
+            "name": str(peak.get("name") or "").strip() or f"Peak #{peak.get('id')}",
+            "county": str(peak.get("county") or "").strip(),
+            "province": str(peak.get("province") or "").strip(),
+            "height_m": peak.get("height_m") or peak.get("height"),
+            "height_ft": peak.get("height_ft"),
+        }
+        for peak in peaks
+        if peak.get("id") is not None and normalized_query_key in str(peak.get("name") or "").lower()
+    ]
+    peak_results.sort(
+        key=lambda peak: (
+            _search_sort_key(peak.get("name"), normalized_query_key),
+            str(peak.get("county") or "").lower(),
+            str(peak.get("province") or "").lower(),
+        )
+    )
+    return peak_results[:limit] if limit is not None else peak_results
+
+
+def search_public_profiles(query: Any, limit: Optional[int] = 5) -> List[Dict[str, Any]]:
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        return []
+
+    profiles: List[Dict[str, Any]] = []
+    query_pattern = f"%{normalized_query}%"
+
+    try:
+        profile_query = _table(TABLE_PROFILES)
+        if profile_query is not None:
+            response = (
+                profile_query
+                .select("id,display_name,avatar_url,location,profile_visibility,public_profile,is_public,show_profile,preferences")
+                .ilike("display_name", query_pattern)
+                .execute()
+            )
+            profiles = response.data or []
+    except Exception:
+        profiles = []
+
+    if not profiles:
+        try:
+            profile_query = _table(TABLE_PROFILES)
+            if profile_query is not None:
+                response = profile_query.select("id,display_name,avatar_url,location,profile_visibility,public_profile,is_public,show_profile,preferences").execute()
+                profiles = response.data or []
+        except Exception:
+            profiles = []
+
+    normalized_query_key = normalized_query.lower()
+    public_profiles = []
+    for profile in profiles:
+        display_name = str((profile or {}).get("display_name") or "").strip()
+        if not display_name or normalized_query_key not in display_name.lower():
+            continue
+        if not _is_profile_public(profile):
+            continue
+
+        public_profiles.append(
+            {
+                "id": profile.get("id"),
+                "display_name": display_name,
+                "avatar_url": profile.get("avatar_url"),
+                "location": str(profile.get("location") or "").strip(),
+            }
+        )
+
+    public_profiles.sort(
+        key=lambda profile: (
+            _search_sort_key(profile.get("display_name"), normalized_query_key),
+            str(profile.get("location") or "").lower(),
+        )
+    )
+    return public_profiles[:limit] if limit is not None else public_profiles
+
+
+def search_counties(query: Any, limit: Optional[int] = 5) -> List[Dict[str, Any]]:
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        return []
+
+    matching_peaks: List[Dict[str, Any]] = []
+    query_pattern = f"%{normalized_query}%"
+
+    try:
+        peak_query = _table(TABLE_PEAKS)
+        if peak_query is not None:
+            response = (
+                peak_query
+                .select("county,province")
+                .ilike("county", query_pattern)
+                .execute()
+            )
+            matching_peaks = response.data or []
+    except Exception:
+        matching_peaks = []
+
+    if not matching_peaks:
+        matching_peaks = [
+            peak
+            for peak in get_all_peaks()
+            if normalized_query.lower() in str((peak or {}).get("county") or "").lower()
+        ]
+
+    counties_by_key: Dict[str, Dict[str, Any]] = {}
+    normalized_query_key = normalized_query.lower()
+    for peak in matching_peaks:
+        county_name = str((peak or {}).get("county") or "").strip()
+        if not county_name or normalized_query_key not in county_name.lower():
+            continue
+
+        county_key = county_name.lower()
+        county_entry = counties_by_key.setdefault(
+            county_key,
+            {
+                "name": county_name,
+                "province": str((peak or {}).get("province") or "").strip(),
+                "peak_count": 0,
+            },
+        )
+        county_entry["peak_count"] += 1
+        if not county_entry.get("province"):
+            county_entry["province"] = str((peak or {}).get("province") or "").strip()
+
+    county_results = list(counties_by_key.values())
+    county_results.sort(
+        key=lambda county: (
+            _search_sort_key(county.get("name"), normalized_query_key),
+            str(county.get("province") or "").lower(),
+        )
+    )
+    return county_results[:limit] if limit is not None else county_results
+
+
+def search_site_catalog(
+    query: Any,
+    peak_limit: Optional[int] = 5,
+    user_limit: Optional[int] = 5,
+    county_limit: Optional[int] = 5,
+) -> Dict[str, Any]:
+    normalized_query = _normalize_search_query(query)
+    if not normalized_query:
+        return {
+            "query": "",
+            "peaks": [],
+            "users": [],
+            "counties": [],
+        }
+
+    return {
+        "query": normalized_query,
+        "peaks": search_peaks_by_name(normalized_query, limit=peak_limit),
+        "users": search_public_profiles(normalized_query, limit=user_limit),
+        "counties": search_counties(normalized_query, limit=county_limit),
+    }
 
 
 def get_user_profile(user_id: str) -> Optional[Dict[str, Any]]:

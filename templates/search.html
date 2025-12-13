@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if search_query %}Search: {{ search_query }} | Emerald Peak Explorer{% else %}Search | Emerald Peak Explorer{% endif %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="section search-page">
+    <div class="container">
+        <div class="search-page__hero">
+            <p class="search-page__eyebrow">Site Search</p>
+            <h1 class="title is-2 search-page__title">Search peaks, people, and places</h1>
+            <p class="search-page__subtitle">
+                Find summit pages, public climber profiles, and county explorer links from one place.
+            </p>
+        </div>
+
+        <div class="box search-page__form-card">
+            <form action="{{ url_for('site_search') }}" method="get" class="search-page__form">
+                <div class="control has-icons-left search-page__input-wrap">
+                    <input
+                        class="input search-page__input"
+                        type="search"
+                        name="q"
+                        maxlength="80"
+                        placeholder="Search peaks, users, counties..."
+                        value="{{ search_query }}"
+                    >
+                    <span class="icon is-left" aria-hidden="true"><i class="fas fa-search"></i></span>
+                </div>
+                <button type="submit" class="button search-page__submit">Search</button>
+            </form>
+        </div>
+
+        {% if search_query %}
+        <div class="search-page__summary">
+            <p class="search-page__summary-text">
+                {{ total_search_results }} result{% if total_search_results != 1 %}s{% endif %} for
+                <strong>"{{ search_query }}"</strong>
+            </p>
+        </div>
+
+        {% if total_search_results %}
+            {% for section in search_sections if section.results %}
+            <section class="box search-page__section" aria-labelledby="search-section-{{ section.key }}">
+                <div class="search-page__section-header">
+                    <h2 id="search-section-{{ section.key }}" class="title is-5 search-page__section-title">
+                        <span class="icon" aria-hidden="true"><i class="fas {{ section.icon }}"></i></span>
+                        <span>{{ section.label }}</span>
+                    </h2>
+                    <span class="search-page__section-count">{{ section.count }}</span>
+                </div>
+
+                <div class="site-search__list search-page__results-list">
+                    {% for result in section.results %}
+                    <a
+                        href="{{ result.url }}"
+                        class="site-search-result{% if result.kind == 'user' %} user-profile-link{% endif %}"
+                        {% if result.kind == 'user' and result.profile_preview_name %}data-profile-preview-name="{{ result.profile_preview_name }}"{% endif %}
+                    >
+                        {% if result.kind == 'user' %}
+                            {% if result.avatar_url %}
+                            <span class="site-search-result__avatar">
+                                <img src="{{ result.avatar_url }}" alt="{{ result.title }} avatar">
+                            </span>
+                            {% else %}
+                            <span class="site-search-result__avatar" aria-hidden="true"><i class="fas fa-user"></i></span>
+                            {% endif %}
+                        {% elif result.kind == 'county' %}
+                        <span class="site-search-result__marker site-search-result__marker--county" aria-hidden="true"><i class="fas fa-map-pin"></i></span>
+                        {% else %}
+                        <span class="site-search-result__marker" aria-hidden="true"><i class="fas fa-mountain"></i></span>
+                        {% endif %}
+
+                        <span class="site-search-result__copy">
+                            <span class="site-search-result__title">{{ result.title }}</span>
+                            <span class="site-search-result__meta">{{ result.meta }}</span>
+                        </span>
+                        <span class="site-search-result__arrow" aria-hidden="true"><i class="fas fa-arrow-right"></i></span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        {% else %}
+        <div class="box search-page__empty">
+            <p class="title is-5">No results found</p>
+            <p class="has-text-grey">
+                Try a different peak name, display name, or county spelling and we'll search again.
+            </p>
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="box search-page__empty">
+            <p class="title is-5">Start with a name, county, or person</p>
+            <p class="has-text-grey">
+                Search works across peak pages, public user profiles, and county explorer links.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

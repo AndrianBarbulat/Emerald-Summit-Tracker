@@ -12,6 +12,10 @@
                 </span>
             </a>
 
+            <button type="button" class="button site-search-trigger site-search-trigger--mobile" data-site-search-open aria-label="Search the site" aria-expanded="false">
+                <span class="icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+            </button>
+
             <a
                 role="button"
                 class="navbar-burger"
@@ -36,6 +40,11 @@
             </div>
 
             <div class="navbar-end">
+                <div class="navbar-item site-navbar__search-item">
+                    <button type="button" class="button site-search-trigger site-search-trigger--desktop" data-site-search-open aria-label="Search the site" aria-expanded="false">
+                        <span class="icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                    </button>
+                </div>
                 <div class="navbar-item has-dropdown is-hoverable site-navbar__user-dropdown">
                     <a
                         class="navbar-link site-navbar__user-trigger"
@@ -75,3 +84,4 @@
         </div>
     </div>
 </nav>
+{% include 'components/site_search.html' %}

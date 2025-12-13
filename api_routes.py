@@ -35,6 +35,7 @@ from supabase_utils import (
     is_bucket_listed,
     log_climb,
     remove_from_bucket_list,
+    search_site_catalog,
     supabase,
     sync_user_current_streak,
     upload_climb_photos,
@@ -104,6 +105,49 @@ LEADERBOARD_RANK_CATEGORIES = ("peaks", "elevation", "streaks")
 @api.route("/health", methods=["GET"])
 def api_health():
     return _json_success({"status": "ok"})
+
+
+@api.route("/search", methods=["GET"])
+def api_search():
+    search_query = str(request.args.get("q") or "").strip()
+    search_catalog = search_site_catalog(search_query, peak_limit=5, user_limit=5, county_limit=5)
+    current_user_id = _get_current_user_id()
+
+    peaks = [
+        serialized_peak
+        for serialized_peak in (
+            _serialize_search_peak_result(peak)
+            for peak in (search_catalog.get("peaks") or [])
+        )
+        if serialized_peak is not None
+    ]
+    users = [
+        serialized_profile
+        for serialized_profile in (
+            _serialize_search_profile_result(profile, current_user_id)
+            for profile in (search_catalog.get("users") or [])
+        )
+        if serialized_profile is not None
+    ]
+    counties = [
+        serialized_county
+        for serialized_county in (
+            _serialize_search_county_result(county)
+            for county in (search_catalog.get("counties") or [])
+        )
+        if serialized_county is not None
+    ]
+
+    normalized_query = str(search_catalog.get("query") or "")
+    return _json_success(
+        {
+            "query": normalized_query,
+            "peaks": peaks,
+            "users": users,
+            "counties": counties,
+            "view_all_url": url_for("site_search", q=normalized_query) if normalized_query else url_for("site_search"),
+        }
+    )
 
 
 def _json_success(payload: dict | None = None, status: int = 200):
@@ -575,6 +619,59 @@ def _profile_url_for(profile: dict | None, current_user_id: str | None) -> str |
         return url_for("my_profile")
 
     return url_for("public_profile", display_name=display_name)
+
+
+def _build_site_search_meta(*parts: str) -> str:
+    return " · ".join(part for part in (str(part or "").strip() for part in parts) if part)
+
+
+def _serialize_search_peak_result(peak: dict | None) -> dict | None:
+    current_peak = dict(peak or {})
+    peak_id = current_peak.get("id")
+    if peak_id is None:
+        return None
+
+    return {
+        "meta": _build_site_search_meta(current_peak.get("county"), current_peak.get("province")),
+        "name": str(current_peak.get("name") or f"Peak #{peak_id}").strip() or f"Peak #{peak_id}",
+        "url": url_for("peak_detail", peak_id=peak_id),
+    }
+
+
+def _serialize_search_profile_result(profile: dict | None, current_user_id: str | None) -> dict | None:
+    current_profile = dict(profile or {})
+    display_name = str(current_profile.get("display_name") or "").strip()
+    if not display_name:
+        return None
+
+    profile_record = {
+        "id": current_profile.get("id"),
+        "display_name": display_name,
+    }
+    return {
+        "avatar_url": current_profile.get("avatar_url"),
+        "display_name": display_name,
+        "meta": str(current_profile.get("location") or "").strip() or "Public profile",
+        "profile_preview_name": None if str(current_profile.get("id") or "").strip() == str(current_user_id or "").strip() else display_name,
+        "url": _profile_url_for(profile_record, current_user_id),
+    }
+
+
+def _serialize_search_county_result(county: dict | None) -> dict | None:
+    current_county = dict(county or {})
+    county_name = str(current_county.get("name") or "").strip()
+    if not county_name:
+        return None
+
+    peak_count = int(current_county.get("peak_count") or 0)
+    return {
+        "meta": _build_site_search_meta(
+            current_county.get("province"),
+            f"{peak_count} peak" if peak_count == 1 else f"{peak_count} peaks",
+        ),
+        "name": county_name,
+        "url": url_for("summit_list", county=county_name),
+    }
 
 
 def _serialize_comment(comment: dict | None, current_user_id: str | None) -> dict:

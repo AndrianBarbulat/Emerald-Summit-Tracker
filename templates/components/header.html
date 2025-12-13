@@ -11,6 +11,10 @@
                 </span>
             </a>
 
+            <button type="button" class="button site-search-trigger site-search-trigger--mobile" data-site-search-open aria-label="Search the site" aria-expanded="false">
+                <span class="icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+            </button>
+
             <a
                 role="button"
                 class="navbar-burger"
@@ -45,6 +49,11 @@
                 >
                     Counties
                 </a>
+                <div class="navbar-item site-navbar__search-item">
+                    <button type="button" class="button site-search-trigger site-search-trigger--desktop" data-site-search-open aria-label="Search the site" aria-expanded="false">
+                        <span class="icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+                    </button>
+                </div>
                 <div class="navbar-item">
                     <div class="buttons site-navbar__actions">
                         <button type="button" class="button site-navbar__signup" onclick="openModal('signup')">
@@ -59,3 +68,4 @@
         </div>
     </div>
 </nav>
+{% include 'components/site_search.html' %}

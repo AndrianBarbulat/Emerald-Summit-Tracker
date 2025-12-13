@@ -1,0 +1,25 @@
+<div class="site-search" data-site-search hidden>
+    <div class="site-search__backdrop" data-site-search-close></div>
+    <div class="site-search__panel" role="dialog" aria-modal="true" aria-labelledby="site-search-label">
+        <form action="{{ url_for('site_search') }}" method="get" class="site-search__form" data-site-search-form>
+            <span class="icon site-search__form-icon" aria-hidden="true"><i class="fas fa-search"></i></span>
+            <label id="site-search-label" class="is-sr-only" for="site-search-input">Search peaks, users, and counties</label>
+            <input
+                id="site-search-input"
+                class="site-search__input"
+                type="search"
+                name="q"
+                maxlength="80"
+                placeholder="Search peaks, users, counties..."
+                value="{{ request.args.get('q', '') if request.endpoint == 'site_search' else '' }}"
+                autocomplete="off"
+                spellcheck="false"
+                data-site-search-input
+            >
+            <button type="button" class="button site-search__close" data-site-search-close aria-label="Close search">
+                <span class="icon" aria-hidden="true"><i class="fas fa-xmark"></i></span>
+            </button>
+        </form>
+        <div class="site-search__results" data-site-search-results aria-live="polite" hidden></div>
+    </div>
+</div>

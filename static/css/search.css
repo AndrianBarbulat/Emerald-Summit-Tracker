@@ -1,0 +1,122 @@
+.search-page {
+    padding-bottom: 2.5rem;
+}
+
+.search-page__hero {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 1.35rem;
+}
+
+.search-page__eyebrow {
+    color: var(--color-sage);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.search-page__title {
+    color: var(--color-forest);
+    margin-bottom: 0;
+}
+
+.search-page__subtitle {
+    color: var(--color-grey);
+    line-height: 1.7;
+    margin: 0;
+    max-width: 44rem;
+}
+
+.search-page__form-card {
+    margin-bottom: 1rem;
+}
+
+.search-page__form {
+    align-items: center;
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.search-page__input-wrap {
+    min-width: 0;
+}
+
+.search-page__input-wrap .icon {
+    color: var(--color-sage);
+}
+
+.search-page__input {
+    border-color: rgba(27, 67, 50, 0.12);
+    min-height: 3rem;
+}
+
+.search-page__submit {
+    background: var(--color-forest);
+    border-color: transparent;
+    color: var(--color-white);
+    font-weight: 700;
+}
+
+.search-page__submit:hover,
+.search-page__submit:focus-visible {
+    background: #153326;
+    color: var(--color-white);
+}
+
+.search-page__summary {
+    margin-bottom: 1rem;
+}
+
+.search-page__summary-text {
+    color: var(--color-grey);
+    margin: 0;
+}
+
+.search-page__section {
+    margin-bottom: 1rem;
+}
+
+.search-page__section-header {
+    align-items: center;
+    display: flex;
+    gap: 0.8rem;
+    justify-content: space-between;
+    margin-bottom: 0.6rem;
+}
+
+.search-page__section-title {
+    color: var(--color-forest);
+    margin-bottom: 0;
+}
+
+.search-page__section-count {
+    background: rgba(27, 67, 50, 0.08);
+    border-radius: 999px;
+    color: var(--color-sage);
+    font-size: 0.88rem;
+    font-weight: 700;
+    min-width: 2.1rem;
+    padding: 0.35rem 0.7rem;
+    text-align: center;
+}
+
+.search-page__results-list {
+    padding: 0;
+}
+
+.search-page__empty {
+    text-align: center;
+}
+
+@media screen and (max-width: 768px) {
+    .search-page__form {
+        grid-template-columns: 1fr;
+    }
+
+    .search-page__submit {
+        width: 100%;
+    }
+}

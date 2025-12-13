@@ -43,6 +43,7 @@ from supabase_utils import (
     get_user_peak_climbs,
     get_peak_statuses,
     is_bucket_listed as get_bucket_list_entry,
+    search_site_catalog,
     supabase,
 )
 from time_utils import format_display_date, format_time_ago, parse_datetime_value
@@ -2620,6 +2621,91 @@ def _build_dashboard_peak_search_data(peaks: list[dict]) -> list[dict]:
     )
 
 
+def _build_site_search_meta(*parts: str) -> str:
+    return " · ".join(part for part in (str(part or "").strip() for part in parts) if part)
+
+
+def _build_site_search_sections(search_catalog: dict, current_user_id: str | None) -> list[dict]:
+    peak_results = []
+    for peak in search_catalog.get("peaks") or []:
+        peak_id = peak.get("id")
+        if peak_id is None:
+            continue
+
+        peak_results.append(
+            {
+                "kind": "peak",
+                "meta": _build_site_search_meta(peak.get("county"), peak.get("province")),
+                "title": str(peak.get("name") or f"Peak #{peak_id}").strip() or f"Peak #{peak_id}",
+                "url": url_for("peak_detail", peak_id=peak_id),
+            }
+        )
+
+    user_results = []
+    for profile in search_catalog.get("users") or []:
+        display_name = str(profile.get("display_name") or "").strip()
+        if not display_name:
+            continue
+
+        profile_record = {
+            "id": profile.get("id"),
+            "display_name": display_name,
+        }
+        user_results.append(
+            {
+                "avatar_url": profile.get("avatar_url"),
+                "kind": "user",
+                "meta": str(profile.get("location") or "").strip() or "Public profile",
+                "profile_preview_name": None if str(profile.get("id") or "").strip() == str(current_user_id or "").strip() else display_name,
+                "title": display_name,
+                "url": _profile_url_for(profile_record, current_user_id),
+            }
+        )
+
+    county_results = []
+    for county in search_catalog.get("counties") or []:
+        county_name = str(county.get("name") or "").strip()
+        if not county_name:
+            continue
+
+        peak_count = int(county.get("peak_count") or 0)
+        county_results.append(
+            {
+                "kind": "county",
+                "meta": _build_site_search_meta(
+                    county.get("province"),
+                    f"{peak_count} peak" if peak_count == 1 else f"{peak_count} peaks",
+                ),
+                "title": county_name,
+                "url": url_for("summit_list", county=county_name),
+            }
+        )
+
+    sections = [
+        {
+            "icon": "fa-mountain",
+            "key": "peaks",
+            "label": "Peaks",
+            "results": peak_results,
+        },
+        {
+            "icon": "fa-user-group",
+            "key": "users",
+            "label": "Users",
+            "results": user_results,
+        },
+        {
+            "icon": "fa-map-pin",
+            "key": "counties",
+            "label": "Counties",
+            "results": county_results,
+        },
+    ]
+    for section in sections:
+        section["count"] = len(section.get("results") or [])
+    return sections
+
+
 @app.route("/")
 def index():
     context = get_session_context()
@@ -2977,6 +3063,29 @@ def counties():
         "counties.html",
         county_groups=county_groups,
         county_overview=county_overview,
+    )
+
+
+@app.route("/search")
+def site_search():
+    context = get_session_context()
+    current_user_id = str((context["profile"] or {}).get("id") or "").strip() or None
+    search_query = str(request.args.get("q") or "").strip()
+    search_catalog = search_site_catalog(
+        search_query,
+        peak_limit=None,
+        user_limit=None,
+        county_limit=None,
+    )
+    search_sections = _build_site_search_sections(search_catalog, current_user_id)
+    total_search_results = sum(int(section.get("count") or 0) for section in search_sections)
+
+    _set_active_page("search")
+    return render_template(
+        "search.html",
+        search_query=search_catalog.get("query") or "",
+        search_sections=search_sections,
+        total_search_results=total_search_results,
     )
 
 
