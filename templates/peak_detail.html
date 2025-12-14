@@ -352,34 +352,81 @@
             </div>
 
             <div class="column is-12-tablet is-5-desktop">
-                <div class="box peak-detail-map-box">
-                    <div class="peak-detail-section__header peak-detail-map-box__header">
-                        <div>
-                            <p class="peak-detail-section__eyebrow">Location</p>
-                            <h2 class="title is-5 peak-detail-section__title">Topo Map</h2>
+                <div class="peak-detail-side-panel">
+                    <div class="box peak-detail-weather-box">
+                        <div class="peak-detail-section__header peak-detail-weather-box__header">
+                            <div>
+                                <p class="peak-detail-section__eyebrow">Weather</p>
+                                <h2 class="title is-5 peak-detail-section__title">{{ peak_weather.title }}</h2>
+                            </div>
+                            {% if peak_weather.available %}
+                            <span class="peak-detail-weather-box__badge">Live from Open-Meteo</span>
+                            {% endif %}
                         </div>
-                        {% if avg_difficulty is not none %}
-                        <span class="peak-detail-map-box__badge">Avg. difficulty {{ '%.1f'|format(avg_difficulty) }}</span>
+
+                        {% if peak_weather.available and peak_weather.current %}
+                        <div class="peak-detail-weather-current">
+                            <span class="peak-detail-weather-current__icon peak-detail-weather-current__icon--{{ peak_weather.current.tone }}" aria-hidden="true">
+                                <i class="fas {{ peak_weather.current.icon }}"></i>
+                            </span>
+                            <div class="peak-detail-weather-current__copy">
+                                <p class="peak-detail-weather-current__temperature">{{ peak_weather.current.temperature_label }}</p>
+                                <p class="peak-detail-weather-current__description">{{ peak_weather.current.description }}</p>
+                            </div>
+                            <div class="peak-detail-weather-current__wind">
+                                <span class="peak-detail-weather-current__wind-label">Wind</span>
+                                <span class="peak-detail-weather-current__wind-value">{{ peak_weather.current.wind_speed_label }}</span>
+                            </div>
+                        </div>
+
+                        {% if peak_weather.forecast %}
+                        <div class="peak-detail-weather-forecast">
+                            {% for day in peak_weather.forecast %}
+                            <article class="peak-detail-weather-day">
+                                <p class="peak-detail-weather-day__label">{{ day.day_label }}</p>
+                                <span class="peak-detail-weather-day__icon peak-detail-weather-day__icon--{{ day.tone }}" aria-hidden="true">
+                                    <i class="fas {{ day.icon }}"></i>
+                                </span>
+                                <p class="peak-detail-weather-day__temps">{{ day.high_label }} / {{ day.low_label }}</p>
+                                <p class="peak-detail-weather-day__description">{{ day.description }}</p>
+                            </article>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        {% else %}
+                        <p class="peak-detail-weather-box__unavailable">{{ peak_weather.message }}</p>
                         {% endif %}
                     </div>
 
-                    {% if peak.latitude is not none and peak.longitude is not none %}
-                    <div class="peak-detail-map-frame loading-region" data-peak-detail-map-region>
-                        <div id="peak-detail-map" class="peak-detail-map-canvas"></div>
+                    <div class="box peak-detail-map-box">
+                        <div class="peak-detail-section__header peak-detail-map-box__header">
+                            <div>
+                                <p class="peak-detail-section__eyebrow">Location</p>
+                                <h2 class="title is-5 peak-detail-section__title">Topo Map</h2>
+                            </div>
+                            {% if avg_difficulty is not none %}
+                            <span class="peak-detail-map-box__badge">Avg. difficulty {{ '%.1f'|format(avg_difficulty) }}</span>
+                            {% endif %}
+                        </div>
+
+                        {% if peak.latitude is not none and peak.longitude is not none %}
+                        <div class="peak-detail-map-frame loading-region" data-peak-detail-map-region>
+                            <div id="peak-detail-map" class="peak-detail-map-canvas"></div>
+                        </div>
+                        <a
+                            class="peak-detail-map-link"
+                            href="https://www.openstreetmap.org/?mlat={{ peak_lat_display }}&mlon={{ peak_lng_display }}#map=13/{{ peak_lat_display }}/{{ peak_lng_display }}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            View on OpenStreetMap
+                        </a>
+                        {% else %}
+                        <div class="peak-detail-map-empty">
+                            Coordinates are not available for this peak yet.
+                        </div>
+                        {% endif %}
                     </div>
-                    <a
-                        class="peak-detail-map-link"
-                        href="https://www.openstreetmap.org/?mlat={{ peak_lat_display }}&mlon={{ peak_lng_display }}#map=13/{{ peak_lat_display }}/{{ peak_lng_display }}"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        View on OpenStreetMap
-                    </a>
-                    {% else %}
-                    <div class="peak-detail-map-empty">
-                        Coordinates are not available for this peak yet.
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>

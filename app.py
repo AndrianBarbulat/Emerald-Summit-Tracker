@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
+import requests
 from flask import Flask, abort, jsonify, render_template, request, redirect, session, url_for, g
 from werkzeug.exceptions import HTTPException
 
@@ -58,6 +59,9 @@ BADGE_NOTIFICATION_SEEN_SESSION_KEY = "badge_notifications_last_seen_at"
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
 RECENTLY_VIEWED_LIMIT = 3
 PROVINCE_ORDER = ("Munster", "Leinster", "Ulster", "Connacht")
+OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+PEAK_WEATHER_CACHE_TTL_SECONDS = 1800
+_PEAK_WEATHER_CACHE: dict[str, dict] = {}
 
 
 def get_session_context() -> dict:
@@ -331,6 +335,207 @@ def _to_float(value):
 
 def _format_short_date(value: str) -> str:
     return format_display_date(value, fallback="Recent climb")
+
+
+def _normalize_weather_code(value) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _weather_summary_from_code(weather_code) -> dict:
+    normalized_code = _normalize_weather_code(weather_code)
+    if normalized_code == 0:
+        return {"description": "Clear", "icon": "fa-sun", "tone": "clear"}
+    if normalized_code is not None and 1 <= normalized_code <= 3:
+        return {"description": "Cloudy", "icon": "fa-cloud", "tone": "cloudy"}
+    if normalized_code is not None and 45 <= normalized_code <= 48:
+        return {"description": "Fog", "icon": "fa-smog", "tone": "fog"}
+    if normalized_code is not None and 51 <= normalized_code <= 67:
+        return {"description": "Rain", "icon": "fa-cloud-rain", "tone": "rain"}
+    if normalized_code is not None and 71 <= normalized_code <= 77:
+        return {"description": "Snow", "icon": "fa-snowflake", "tone": "snow"}
+    if normalized_code is not None and normalized_code >= 80:
+        return {"description": "Storm", "icon": "fa-bolt", "tone": "storm"}
+    return {"description": "Weather", "icon": "fa-cloud", "tone": "default"}
+
+
+def _format_temperature_c(value) -> str:
+    numeric_value = _to_float(value)
+    return f"{int(round(numeric_value))}°C" if numeric_value is not None else "—"
+
+
+def _format_wind_speed_kmh(value) -> str:
+    numeric_value = _to_float(value)
+    return f"{int(round(numeric_value))} km/h" if numeric_value is not None else "—"
+
+
+def _parse_weather_datetime(value: str | None) -> datetime | None:
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return None
+
+    try:
+        return datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _peak_weather_cache_is_fresh(entry: dict | None) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    cached_at = float(entry.get("timestamp") or 0)
+    return (time.time() - cached_at) < PEAK_WEATHER_CACHE_TTL_SECONDS
+
+
+def _peak_weather_unavailable_payload(peak_name: str, message: str = "Weather data unavailable") -> dict:
+    resolved_peak_name = str(peak_name or "this peak").strip() or "this peak"
+    return {
+        "available": False,
+        "current": None,
+        "forecast": [],
+        "message": message,
+        "title": f"Current Conditions at {resolved_peak_name}",
+    }
+
+
+def _select_representative_weather_code(code_points: list[tuple[int, int]]) -> int | None:
+    if not code_points:
+        return None
+    return min(
+        code_points,
+        key=lambda code_point: (abs(int(code_point[0]) - 12), int(code_point[0])),
+    )[1]
+
+
+def _build_peak_weather_forecast(hourly_data: dict | None) -> list[dict]:
+    hourly = dict(hourly_data or {})
+    hourly_times = hourly.get("time") or []
+    hourly_temperatures = hourly.get("temperature_2m") or []
+    hourly_weather_codes = hourly.get("weathercode") or []
+    grouped_days: dict[str, dict] = {}
+
+    for index, time_value in enumerate(hourly_times):
+        timestamp = _parse_weather_datetime(time_value)
+        if timestamp is None:
+            continue
+
+        day_key = timestamp.date().isoformat()
+        day_entry = grouped_days.setdefault(
+            day_key,
+            {
+                "date": timestamp.date(),
+                "temperatures": [],
+                "weather_codes": [],
+            },
+        )
+
+        if index < len(hourly_temperatures):
+            temperature_value = _to_float(hourly_temperatures[index])
+            if temperature_value is not None:
+                day_entry["temperatures"].append(temperature_value)
+
+        if index < len(hourly_weather_codes):
+            weather_code = _normalize_weather_code(hourly_weather_codes[index])
+            if weather_code is not None:
+                day_entry["weather_codes"].append((timestamp.hour, weather_code))
+
+    forecast_days = []
+    for day_key in sorted(grouped_days.keys())[:3]:
+        day_entry = grouped_days[day_key]
+        temperatures = day_entry.get("temperatures") or []
+        representative_code = _select_representative_weather_code(day_entry.get("weather_codes") or [])
+        summary = _weather_summary_from_code(representative_code)
+        high_value = max(temperatures) if temperatures else None
+        low_value = min(temperatures) if temperatures else None
+        forecast_days.append(
+            {
+                "date": day_key,
+                "day_label": day_entry["date"].strftime("%a"),
+                "description": summary["description"],
+                "high_c": int(round(high_value)) if high_value is not None else None,
+                "high_label": _format_temperature_c(high_value),
+                "icon": summary["icon"],
+                "low_c": int(round(low_value)) if low_value is not None else None,
+                "low_label": _format_temperature_c(low_value),
+                "tone": summary["tone"],
+            }
+        )
+
+    return forecast_days
+
+
+def _fetch_peak_weather(peak_id: int, peak_name: str, latitude, longitude) -> dict:
+    cache_key = _peak_key(peak_id)
+    cached_entry = _PEAK_WEATHER_CACHE.get(cache_key)
+    if _peak_weather_cache_is_fresh(cached_entry):
+        return dict(cached_entry.get("data") or {})
+
+    latitude_value = _to_float(latitude)
+    longitude_value = _to_float(longitude)
+    if latitude_value is None or longitude_value is None:
+        return _peak_weather_unavailable_payload(peak_name)
+
+    unavailable_payload = _peak_weather_unavailable_payload(peak_name)
+
+    try:
+        response = requests.get(
+            OPEN_METEO_FORECAST_URL,
+            params={
+                "latitude": latitude_value,
+                "longitude": longitude_value,
+                "current_weather": "true",
+                "hourly": "temperature_2m,weathercode",
+                "forecast_days": 3,
+            },
+            timeout=5,
+        )
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError):
+        _PEAK_WEATHER_CACHE[cache_key] = {
+            "timestamp": time.time(),
+            "data": unavailable_payload,
+        }
+        return dict(unavailable_payload)
+
+    current_weather = dict(payload.get("current_weather") or {})
+    current_temperature = _to_float(current_weather.get("temperature"))
+    current_wind_speed = _to_float(current_weather.get("windspeed"))
+    current_weather_code = _normalize_weather_code(current_weather.get("weathercode"))
+    current_summary = _weather_summary_from_code(current_weather_code)
+    forecast_days = _build_peak_weather_forecast(payload.get("hourly"))
+    current_has_content = (
+        current_temperature is not None
+        or current_wind_speed is not None
+        or current_weather_code is not None
+    )
+
+    weather_payload = {
+        "available": current_has_content,
+        "current": {
+            "description": current_summary["description"],
+            "icon": current_summary["icon"],
+            "temperature_c": int(round(current_temperature)) if current_temperature is not None else None,
+            "temperature_label": _format_temperature_c(current_temperature),
+            "tone": current_summary["tone"],
+            "wind_speed_kmh": int(round(current_wind_speed)) if current_wind_speed is not None else None,
+            "wind_speed_label": _format_wind_speed_kmh(current_wind_speed),
+        },
+        "forecast": forecast_days,
+        "message": "",
+        "title": f"Current Conditions at {str(peak_name or 'this peak').strip() or 'this peak'}",
+    }
+
+    if not weather_payload["available"]:
+        weather_payload = unavailable_payload
+
+    _PEAK_WEATHER_CACHE[cache_key] = {
+        "timestamp": time.time(),
+        "data": weather_payload,
+    }
+    return dict(weather_payload)
 
 
 def _pluralize_weeks(value: int) -> str:
@@ -3349,6 +3554,7 @@ def peak_detail(peak_id: int):
     avg_difficulty = get_peak_average_difficulty(peak_id)
     peak_latitude = _to_float(peak.get("latitude") or peak.get("lat"))
     peak_longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
+    peak_weather = _fetch_peak_weather(peak_id, peak.get("name") or "this peak", peak_latitude, peak_longitude)
     total_climbers = len(climbers)
     related_peaks_data = _build_related_peaks(peak, user_id)
 
@@ -3371,6 +3577,7 @@ def peak_detail(peak_id: int):
         has_climbed=has_climbed,
         is_bucket_listed=is_bucket_listed,
         peak_status=peak_status,
+        peak_weather=peak_weather,
         related_peaks=related_peaks_data["peaks"],
         related_peaks_title=related_peaks_data["title"],
         user_climbs=user_climbs,

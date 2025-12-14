@@ -950,6 +950,12 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
     height: 100%;
 }
 
+.peak-detail-side-panel {
+    display: grid;
+    gap: 1.5rem;
+    height: 100%;
+}
+
 .peak-detail-info-grid {
     display: grid;
     gap: 1.25rem;
@@ -992,6 +998,181 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
 
 .peak-detail-map-box__header {
     align-items: center;
+}
+
+.peak-detail-weather-box {
+    display: grid;
+    gap: 1rem;
+}
+
+.peak-detail-weather-box__header {
+    align-items: center;
+}
+
+.peak-detail-weather-box__badge {
+    background: rgba(91, 143, 185, 0.14);
+    border: 1px solid rgba(91, 143, 185, 0.24);
+    border-radius: 999px;
+    color: #3e6d8c;
+    display: inline-flex;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.45rem 0.75rem;
+    white-space: nowrap;
+}
+
+.peak-detail-weather-box__unavailable {
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px dashed rgba(27, 67, 50, 0.16);
+    border-radius: var(--radius-md);
+    color: var(--color-grey);
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+}
+
+.peak-detail-weather-current {
+    align-items: center;
+    background:
+        radial-gradient(circle at top right, rgba(116, 198, 157, 0.18), transparent 40%),
+        linear-gradient(180deg, rgba(245, 241, 235, 0.84), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 1rem 1.1rem;
+}
+
+.peak-detail-weather-current__icon,
+.peak-detail-weather-day__icon {
+    align-items: center;
+    border-radius: 18px;
+    display: inline-flex;
+    font-size: 1.15rem;
+    height: 3rem;
+    justify-content: center;
+    width: 3rem;
+}
+
+.peak-detail-weather-current__icon--clear,
+.peak-detail-weather-day__icon--clear {
+    background: rgba(212, 168, 83, 0.18);
+    color: #b7851f;
+}
+
+.peak-detail-weather-current__icon--cloudy,
+.peak-detail-weather-day__icon--cloudy {
+    background: rgba(108, 117, 125, 0.14);
+    color: #66707a;
+}
+
+.peak-detail-weather-current__icon--fog,
+.peak-detail-weather-day__icon--fog {
+    background: rgba(162, 173, 183, 0.18);
+    color: #6a7883;
+}
+
+.peak-detail-weather-current__icon--rain,
+.peak-detail-weather-day__icon--rain {
+    background: rgba(91, 143, 185, 0.16);
+    color: #3e6d8c;
+}
+
+.peak-detail-weather-current__icon--snow,
+.peak-detail-weather-day__icon--snow {
+    background: rgba(214, 236, 247, 0.78);
+    color: #4e87a7;
+}
+
+.peak-detail-weather-current__icon--storm,
+.peak-detail-weather-day__icon--storm {
+    background: rgba(230, 126, 34, 0.14);
+    color: #b55e10;
+}
+
+.peak-detail-weather-current__icon--default,
+.peak-detail-weather-day__icon--default {
+    background: rgba(116, 198, 157, 0.16);
+    color: var(--color-sage);
+}
+
+.peak-detail-weather-current__copy {
+    min-width: 0;
+}
+
+.peak-detail-weather-current__temperature {
+    color: var(--color-forest);
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 0 0 0.2rem;
+}
+
+.peak-detail-weather-current__description {
+    color: var(--color-grey);
+    margin: 0;
+}
+
+.peak-detail-weather-current__wind {
+    display: grid;
+    gap: 0.2rem;
+    justify-items: end;
+    text-align: right;
+}
+
+.peak-detail-weather-current__wind-label {
+    color: var(--color-grey);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.peak-detail-weather-current__wind-value {
+    color: var(--color-slate);
+    font-weight: 700;
+}
+
+.peak-detail-weather-forecast {
+    display: grid;
+    gap: 0.9rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.peak-detail-weather-day {
+    align-items: center;
+    background: rgba(245, 241, 235, 0.72);
+    border: 1px solid rgba(27, 67, 50, 0.08);
+    border-radius: var(--radius-md);
+    display: grid;
+    gap: 0.6rem;
+    justify-items: center;
+    padding: 0.9rem 0.75rem;
+    text-align: center;
+}
+
+.peak-detail-weather-day__label {
+    color: var(--color-grey);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin: 0;
+    text-transform: uppercase;
+}
+
+.peak-detail-weather-day__temps {
+    color: var(--color-forest);
+    font-weight: 700;
+    line-height: 1.35;
+    margin: 0;
+}
+
+.peak-detail-weather-day__description {
+    color: var(--color-grey);
+    font-size: 0.88rem;
+    line-height: 1.4;
+    margin: 0;
 }
 
 .peak-detail-map-box__badge {
@@ -2895,6 +3076,20 @@ body.has-site-search-open {
     }
 
     .peak-detail-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-weather-current {
+        grid-template-columns: 1fr;
+        justify-items: start;
+    }
+
+    .peak-detail-weather-current__wind {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .peak-detail-weather-forecast {
         grid-template-columns: 1fr;
     }
 
