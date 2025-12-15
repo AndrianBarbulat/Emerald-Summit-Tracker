@@ -379,6 +379,24 @@
                             </div>
                         </div>
 
+                        {% if peak_weather.has_alerts %}
+                        <div class="peak-detail-weather-alert peak-detail-weather-alert--{{ peak_weather.alert_tone }}">
+                            <p class="peak-detail-weather-alert__title">
+                                <span class="icon" aria-hidden="true"><i class="fas fa-triangle-exclamation"></i></span>
+                                <span>Weather safety warning</span>
+                            </p>
+                            <div class="peak-detail-weather-alert__items">
+                                {% for alert in peak_weather.alerts %}
+                                <p class="peak-detail-weather-alert__item">
+                                    <span class="icon" aria-hidden="true"><i class="fas {{ alert.icon }}"></i></span>
+                                    <span>{{ alert.message }}</span>
+                                </p>
+                                {% endfor %}
+                            </div>
+                            <p class="peak-detail-weather-alert__disclaimer">{{ peak_weather.disclaimer }}</p>
+                        </div>
+                        {% endif %}
+
                         {% if peak_weather.forecast %}
                         <div class="peak-detail-weather-forecast">
                             {% for day in peak_weather.forecast %}
@@ -392,6 +410,10 @@
                             </article>
                             {% endfor %}
                         </div>
+                        {% endif %}
+
+                        {% if not peak_weather.has_alerts and peak_weather.disclaimer %}
+                        <p class="peak-detail-weather-box__source">{{ peak_weather.disclaimer }}</p>
                         {% endif %}
                         {% else %}
                         <p class="peak-detail-weather-box__unavailable">{{ peak_weather.message }}</p>

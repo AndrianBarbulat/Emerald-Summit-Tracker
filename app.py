@@ -361,6 +361,16 @@ def _weather_summary_from_code(weather_code) -> dict:
     return {"description": "Weather", "icon": "fa-cloud", "tone": "default"}
 
 
+def _is_snow_weather_code(weather_code) -> bool:
+    normalized_code = _normalize_weather_code(weather_code)
+    return normalized_code is not None and 71 <= normalized_code <= 77
+
+
+def _is_storm_weather_code(weather_code) -> bool:
+    normalized_code = _normalize_weather_code(weather_code)
+    return normalized_code is not None and normalized_code >= 80
+
+
 def _format_temperature_c(value) -> str:
     numeric_value = _to_float(value)
     return f"{int(round(numeric_value))}°C" if numeric_value is not None else "—"
@@ -454,16 +464,78 @@ def _build_peak_weather_forecast(hourly_data: dict | None) -> list[dict]:
                 "date": day_key,
                 "day_label": day_entry["date"].strftime("%a"),
                 "description": summary["description"],
+                "has_snow": any(_is_snow_weather_code(weather_code) for _, weather_code in (day_entry.get("weather_codes") or [])),
+                "has_storm": any(_is_storm_weather_code(weather_code) for _, weather_code in (day_entry.get("weather_codes") or [])),
                 "high_c": int(round(high_value)) if high_value is not None else None,
                 "high_label": _format_temperature_c(high_value),
                 "icon": summary["icon"],
                 "low_c": int(round(low_value)) if low_value is not None else None,
                 "low_label": _format_temperature_c(low_value),
                 "tone": summary["tone"],
+                "weather_code": representative_code,
             }
         )
 
     return forecast_days
+
+
+def _build_peak_weather_alerts(
+    current_temperature,
+    current_wind_speed,
+    current_weather_code,
+    forecast_days: list[dict] | None = None,
+) -> dict:
+    alerts = []
+    forecast_has_snow = any(bool(day.get("has_snow")) for day in (forecast_days or []))
+    forecast_has_storm = any(bool(day.get("has_storm")) for day in (forecast_days or []))
+
+    if current_wind_speed is not None and current_wind_speed > 50:
+        alerts.append(
+            {
+                "icon": "fa-wind",
+                "key": "high_wind",
+                "message": "High winds reported.",
+            }
+        )
+
+    if current_temperature is not None and current_temperature < 0:
+        alerts.append(
+            {
+                "icon": "fa-temperature-low",
+                "key": "freezing",
+                "message": "Freezing temperatures.",
+            }
+        )
+
+    if (
+        _is_snow_weather_code(current_weather_code)
+        or forecast_has_snow
+    ):
+        alerts.append(
+            {
+                "icon": "fa-snowflake",
+                "key": "snow",
+                "message": "Snow expected.",
+            }
+        )
+
+    if (
+        _is_storm_weather_code(current_weather_code)
+        or forecast_has_storm
+    ):
+        alerts.append(
+            {
+                "icon": "fa-bolt",
+                "key": "storm",
+                "message": "Storm conditions expected.",
+            }
+        )
+
+    return {
+        "has_alerts": bool(alerts),
+        "items": alerts,
+        "tone": "danger" if any(alert.get("key") in {"high_wind", "storm"} for alert in alerts) else "warning",
+    }
 
 
 def _fetch_peak_weather(peak_id: int, peak_name: str, latitude, longitude) -> dict:
@@ -506,6 +578,12 @@ def _fetch_peak_weather(peak_id: int, peak_name: str, latitude, longitude) -> di
     current_weather_code = _normalize_weather_code(current_weather.get("weathercode"))
     current_summary = _weather_summary_from_code(current_weather_code)
     forecast_days = _build_peak_weather_forecast(payload.get("hourly"))
+    weather_alerts = _build_peak_weather_alerts(
+        current_temperature,
+        current_wind_speed,
+        current_weather_code,
+        forecast_days,
+    )
     current_has_content = (
         current_temperature is not None
         or current_wind_speed is not None
@@ -524,6 +602,10 @@ def _fetch_peak_weather(peak_id: int, peak_name: str, latitude, longitude) -> di
             "wind_speed_label": _format_wind_speed_kmh(current_wind_speed),
         },
         "forecast": forecast_days,
+        "alert_tone": weather_alerts["tone"],
+        "alerts": weather_alerts["items"],
+        "disclaimer": "Weather from Open-Meteo. Always check local conditions before heading out.",
+        "has_alerts": weather_alerts["has_alerts"],
         "message": "",
         "title": f"Current Conditions at {str(peak_name or 'this peak').strip() or 'this peak'}",
     }
