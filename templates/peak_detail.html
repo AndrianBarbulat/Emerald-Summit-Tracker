@@ -2,7 +2,11 @@
 {% from 'macros/peak_status.html' import peak_status as render_peak_status %}
 {% from 'macros/user_avatar.html' import user_avatar %}
 
-{% block title %}{{ peak.name or 'Peak Detail' }}{% endblock %}
+{% block title %}{{ peak_share_meta.title if peak_share_meta else (peak.name or 'Peak Detail') }}{% endblock %}
+{% block meta_description %}{{ peak_share_meta.description if peak_share_meta else 'Explore this Irish summit on Emerald Peak Explorer.' }}{% endblock %}
+{% block og_title %}{{ peak_share_meta.title if peak_share_meta else (peak.name or 'Peak Detail') }}{% endblock %}
+{% block og_description %}{{ peak_share_meta.description if peak_share_meta else 'Explore this Irish summit on Emerald Peak Explorer.' }}{% endblock %}
+{% block og_url %}{{ peak_share_meta.url if peak_share_meta else request.url }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />

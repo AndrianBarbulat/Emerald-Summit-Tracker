@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Emerald Peak Explorer{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Track climbs, explore Ireland's peaks, and follow community progress on Emerald Peak Explorer.{% endblock %}">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:site_name" content="Emerald Peak Explorer">
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{{ self.meta_description() }}{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ request.url }}{% endblock %}">
+    <meta name="twitter:card" content="{% block twitter_card %}summary{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}{{ self.og_title() }}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{{ self.og_description() }}{% endblock %}">
     {% block extra_meta %}{% endblock %}
 
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">

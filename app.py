@@ -2533,6 +2533,34 @@ def _build_leaderboard_page_meta(active_tab: str, leaderboard_tabs: list[dict]) 
     return meta
 
 
+def _build_peak_detail_meta(peak: dict | None) -> dict:
+    current_peak = dict(peak or {})
+    peak_name = str(current_peak.get("name") or "Peak").strip() or "Peak"
+    height_value = _to_float(current_peak.get("height_m") or current_peak.get("height"))
+    county_name = str(current_peak.get("county") or "Unknown county").strip() or "Unknown county"
+    province_name = str(current_peak.get("province") or "Unknown province").strip() or "Unknown province"
+
+    try:
+        rank_value = int(current_peak.get("height_rank"))
+    except (TypeError, ValueError):
+        rank_value = None
+
+    description = f"{peak_name} is "
+    if height_value is not None:
+        description += f"{int(round(height_value))}m"
+    else:
+        description += "of unknown height"
+    description += f" in {county_name}, {province_name}."
+    if rank_value is not None and rank_value > 0:
+        description += f" Ranked #{rank_value}."
+
+    return {
+        "description": description,
+        "title": f"{peak_name} — Emerald Peak Explorer",
+        "url": request.url,
+    }
+
+
 def _build_dashboard_onboarding_steps() -> list[dict]:
     return [
         {
@@ -3637,6 +3665,13 @@ def peak_detail(peak_id: int):
     peak_latitude = _to_float(peak.get("latitude") or peak.get("lat"))
     peak_longitude = _to_float(peak.get("longitude") or peak.get("lon") or peak.get("lng"))
     peak_weather = _fetch_peak_weather(peak_id, peak.get("name") or "this peak", peak_latitude, peak_longitude)
+    peak_share_meta = _build_peak_detail_meta(
+        {
+            **peak,
+            "height_m": peak.get("height_m") or peak.get("height"),
+            "height_rank": peak.get("height_rank"),
+        }
+    )
     total_climbers = len(climbers)
     related_peaks_data = _build_related_peaks(peak, user_id)
 
@@ -3659,6 +3694,7 @@ def peak_detail(peak_id: int):
         has_climbed=has_climbed,
         is_bucket_listed=is_bucket_listed,
         peak_status=peak_status,
+        peak_share_meta=peak_share_meta,
         peak_weather=peak_weather,
         related_peaks=related_peaks_data["peaks"],
         related_peaks_title=related_peaks_data["title"],
@@ -3814,6 +3850,19 @@ def account_settings():
 
     _set_active_page("account")
     return render_template("account_profile.html")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    robots_content = "\n".join(
+        [
+            "User-agent: *",
+            "Allow: /",
+            "Disallow: /api/",
+            "Disallow: /account",
+        ]
+    )
+    return app.response_class(robots_content, mimetype="text/plain")
 
 
 @app.errorhandler(404)

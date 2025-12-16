@@ -2,17 +2,8 @@
 
 {% block title %}{{ badge_share_title }}{% endblock %}
 
-{% block extra_meta %}
-<meta name="description" content="{{ badge_share_description }}">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Emerald Peak Explorer">
-<meta property="og:title" content="{{ badge_share_title }}">
-<meta property="og:description" content="{{ badge_share_description }}">
-<meta property="og:url" content="{{ badge_share_url }}">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ badge_share_title }}">
-<meta name="twitter:description" content="{{ badge_share_description }}">
-{% endblock %}
+{% block meta_description %}{{ badge_share_description }}{% endblock %}
+{% block og_url %}{{ badge_share_url }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/badge_share.css') }}">

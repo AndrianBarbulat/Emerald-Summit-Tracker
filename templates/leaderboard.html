@@ -3,17 +3,8 @@
 
 {% block title %}{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}{% endblock %}
 
-{% block extra_meta %}
-<meta name="description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Emerald Peak Explorer">
-<meta property="og:title" content="{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}">
-<meta property="og:description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
-<meta property="og:url" content="{{ leaderboard_share_meta.url if leaderboard_share_meta else request.url }}">
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="{{ leaderboard_share_meta.title if leaderboard_share_meta else 'Leaderboard | Emerald Peak Explorer' }}">
-<meta name="twitter:description" content="{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}">
-{% endblock %}
+{% block meta_description %}{{ leaderboard_share_meta.description if leaderboard_share_meta else 'See the public climbers leading the way by distinct peaks, total elevation, and current streak.' }}{% endblock %}
+{% block og_url %}{{ leaderboard_share_meta.url if leaderboard_share_meta else request.url }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/leaderboard.css') }}">
