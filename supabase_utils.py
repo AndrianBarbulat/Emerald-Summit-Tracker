@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import time
@@ -6,7 +7,12 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import unquote, urlparse
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv(*args, **kwargs):
+        return False
+
 from supabase import Client, create_client
 from time_utils import parse_datetime_value
 from werkzeug.utils import secure_filename
@@ -637,6 +643,32 @@ def search_site_catalog(
     }
 
 
+def is_display_name_conflict(error_message: Any) -> bool:
+    message = str(error_message or "").lower()
+    return (
+        "display_name" in message
+        or "profiles_display_name_key" in message
+        or ("duplicate key" in message and "profile" in message)
+    )
+
+
+def _sanitize_display_name(email: str) -> str:
+    base = str(email or "").split("@")[0].strip().lower()
+    cleaned = re.sub(r"[^a-z0-9._-]+", "_", base)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("._-")
+    return cleaned or "climber"
+
+
+def _minimal_profile(user_id: str, email: str) -> Dict[str, Any]:
+    email_value = str(email or "").strip().lower()
+    display_name = email_value.split("@")[0] if "@" in email_value else "climber"
+    return {
+        "id": user_id,
+        "email": email_value,
+        "display_name": display_name or "climber",
+    }
+
+
 def get_user_profile(user_id: str) -> Optional[Dict[str, Any]]:
     try:
         query = _table(TABLE_PROFILES)
@@ -695,19 +727,105 @@ def get_profile_by_display_name(display_name: str) -> Optional[Dict[str, Any]]:
     except Exception:
         return None
 
-    return None
+        return None
 
 
-def create_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def try_create_user_profile(user_id: str, data: Dict[str, Any]) -> tuple[Optional[Dict[str, Any]], str]:
     try:
         query = _table(TABLE_PROFILES)
         if query is None:
-            return None
+            return None, ""
         payload = {"id": user_id, **(data or {})}
         response = query.insert(payload).execute()
-        return response.data[0] if response.data else None
-    except Exception:
+        return (response.data[0] if response.data else None), ""
+    except Exception as exc:
+        return None, str(exc)
+
+
+def create_user_profile(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    created_profile, _ = try_create_user_profile(user_id, data)
+    return created_profile
+
+
+def get_or_create_session_profile(user_id: str, email: str, logger: Any = None) -> Dict[str, Any]:
+    if supabase is None:
+        return _minimal_profile(user_id, email)
+
+    active_logger = logger or logging.getLogger(__name__)
+    existing_profile = get_user_profile(user_id)
+    if existing_profile:
+        return existing_profile
+
+    normalized_email = str(email or "").strip().lower()
+    base_name = _sanitize_display_name(normalized_email)
+    id_suffix = str(user_id or "")[:8] or "user"
+    candidate_names = [
+        base_name,
+        f"{base_name}_{id_suffix}",
+        f"{base_name}_{int(datetime.now(tz=timezone.utc).timestamp())}",
+    ]
+
+    for candidate in candidate_names:
+        payload_variants = [
+            {"email": normalized_email, "display_name": candidate},
+            {"display_name": candidate},
+            {},
+        ]
+
+        last_error = ""
+        for payload in payload_variants:
+            created_profile, create_error = try_create_user_profile(user_id, payload)
+            if created_profile:
+                return created_profile
+            if create_error and is_display_name_conflict(create_error):
+                last_error = create_error
+                break
+            if create_error:
+                last_error = create_error
+
+        if last_error and is_display_name_conflict(last_error):
+            active_logger.warning(
+                "Profile create conflict for user_id=%s display_name=%s. Retrying with a new suffix.",
+                user_id,
+                candidate,
+            )
+            continue
+
+        if last_error:
+            active_logger.warning("Profile create failed for user_id=%s: %s", user_id, last_error)
+            break
+
+    existing_profile = get_user_profile(user_id)
+    if existing_profile:
+        return existing_profile
+
+    active_logger.warning("Profile row not found for user_id=%s. Using minimal profile.", user_id)
+    return _minimal_profile(user_id, email)
+
+
+def auth_sign_up(email: str, password: str) -> Any:
+    if supabase is None:
         return None
+    return supabase.auth.sign_up({"email": email, "password": password})
+
+
+def auth_sign_in_with_password(email: str, password: str) -> Any:
+    if supabase is None:
+        return None
+    return supabase.auth.sign_in_with_password({"email": email, "password": password})
+
+
+def auth_get_current_user() -> Any:
+    if supabase is None:
+        return None
+    return supabase.auth.get_user()
+
+
+def auth_sign_out() -> bool:
+    if supabase is None:
+        return False
+    supabase.auth.sign_out()
+    return True
 
 
 def get_user_climbs(user_id: str) -> List[Dict[str, Any]]:
@@ -1921,3 +2039,180 @@ def delete_profile(user_id: str) -> Optional[Dict[str, Any]]:
         return response.data[0] if response.data else None
     except Exception:
         return None
+
+
+def get_index_page_data(user_id: Optional[str], recent_limit: int = 4) -> Dict[str, Any]:
+    all_peaks = get_all_peaks()
+    peak_ids = [peak.get("id") for peak in all_peaks if peak.get("id") is not None]
+    return {
+        "all_peaks": all_peaks,
+        "peak_statuses": get_peak_statuses(user_id or "", peak_ids),
+        "peaks_by_id": {
+            peak.get("id"): peak
+            for peak in all_peaks
+            if peak.get("id") is not None
+        },
+        "recent_climbs": get_community_recent_climbs(limit=recent_limit),
+    }
+
+
+def get_map_page_data(user_id: Optional[str]) -> Dict[str, Any]:
+    all_peaks = get_all_peaks()
+    peak_ids = [peak.get("id") for peak in all_peaks if peak.get("id") is not None]
+    return {
+        "all_peaks": all_peaks,
+        "peak_statuses": get_peak_statuses(user_id or "", peak_ids),
+    }
+
+
+def get_search_page_data(query: Any) -> Dict[str, Any]:
+    return search_site_catalog(
+        query,
+        peak_limit=None,
+        user_limit=None,
+        county_limit=None,
+    )
+
+
+def get_achievements_page_data(user_id: str) -> Dict[str, Any]:
+    return {
+        "all_peaks": get_all_peaks(),
+        "badges": get_user_badges(user_id),
+        "climbs": get_user_climbs(user_id),
+    }
+
+
+def get_leaderboard_page_data(highlight_display_name: str = "") -> Dict[str, Any]:
+    normalized_name = str(highlight_display_name or "").strip()
+    highlighted_profile = get_profile_by_display_name(normalized_name) if normalized_name else None
+    return {
+        "highlighted_profile": highlighted_profile,
+        "leaderboard_community_stats": get_leaderboard_community_stats(),
+        "leaderboard_elevation": get_leaderboard_elevation(limit=None),
+        "leaderboard_peaks": get_leaderboard_peaks(limit=None),
+        "leaderboard_popular_peaks": get_leaderboard_popular_peaks(limit=10),
+        "leaderboard_streaks": get_leaderboard_streaks(limit=None),
+    }
+
+
+def get_counties_page_data(user_id: Optional[str]) -> Dict[str, Any]:
+    climbs = get_user_climbs(user_id) if user_id else []
+    return {
+        "climbed_peak_ids": {
+            climb.get("peak_id")
+            for climb in climbs
+            if climb.get("peak_id") is not None
+        },
+        "peaks": get_all_peaks(sort_by="county"),
+    }
+
+
+def get_my_climbs_page_data(user_id: str) -> Dict[str, Any]:
+    return {
+        "climb_history": get_user_climb_history(user_id),
+    }
+
+
+def get_my_activity_page_data(user_id: str) -> Dict[str, Any]:
+    return get_dashboard_context(user_id, community_limit=0)
+
+
+def get_my_bucket_list_page_data(user_id: str) -> Dict[str, Any]:
+    all_peaks = get_all_peaks()
+    bucket_items = get_user_bucket_list(user_id)
+    peak_ids = [item.get("peak_id") for item in bucket_items if item.get("peak_id") is not None]
+    return {
+        "all_peaks": all_peaks,
+        "bucket_items": bucket_items,
+        "peak_statuses": get_peak_statuses(user_id, peak_ids),
+    }
+
+
+def get_summit_list_page_data(user_id: Optional[str]) -> Dict[str, Any]:
+    peaks = get_all_peaks()
+    peak_ids = [peak.get("id") for peak in peaks if peak.get("id") is not None]
+    return {
+        "peak_statuses": get_peak_statuses(user_id or "", peak_ids),
+        "peaks": peaks,
+    }
+
+
+def get_peak_detail_page_data(user_id: Optional[str], peak_id: Any) -> Dict[str, Any]:
+    peak = get_peak_by_id(peak_id)
+    all_peaks = get_all_peaks() if peak is not None else []
+    has_climbed_entry = get_user_has_climbed(user_id, peak_id) if user_id and peak is not None else None
+    bucket_entry = is_bucket_listed(user_id, peak_id) if user_id and peak is not None else None
+    user_peak_climbs = get_user_peak_climbs(user_id, peak_id) if user_id and peak is not None else []
+    climber_rows = get_peak_climbers_with_profiles(peak_id, limit=None) if peak is not None else []
+    comments = get_peak_comments_with_profiles(peak_id) if peak is not None else []
+    avg_difficulty = get_peak_average_difficulty(peak_id) if peak is not None else None
+
+    related_peaks = []
+    related_peak_statuses: Dict[str, str] = {}
+    if peak is not None:
+        current_peak_id = peak.get("id")
+        range_area = str(peak.get("range_area") or "").strip().lower()
+        county = str(peak.get("county") or "").strip().lower()
+        related_peaks = [
+            current_peak
+            for current_peak in all_peaks
+            if current_peak.get("id") != current_peak_id
+            and (
+                (range_area and str(current_peak.get("range_area") or "").strip().lower() == range_area)
+                or (county and str(current_peak.get("county") or "").strip().lower() == county)
+            )
+        ]
+        if user_id and related_peaks:
+            related_peak_statuses = get_peak_statuses(
+                user_id,
+                [current_peak.get("id") for current_peak in related_peaks if current_peak.get("id") is not None],
+            )
+
+    return {
+        "all_peaks": all_peaks,
+        "avg_difficulty": avg_difficulty,
+        "bucket_entry": bucket_entry,
+        "climber_rows": climber_rows,
+        "comments": comments,
+        "has_climbed_entry": has_climbed_entry,
+        "peak": peak,
+        "related_peak_statuses": related_peak_statuses,
+        "user_peak_climbs": user_peak_climbs,
+    }
+
+
+def get_public_profile_page_data(display_name: str, current_user_id: Optional[str]) -> Dict[str, Any]:
+    profile_record = get_profile_by_display_name(display_name)
+    profile_user_id = str((profile_record or {}).get("id") or "").strip()
+    return {
+        "all_peaks": get_all_peaks() if profile_record is not None else [],
+        "current_profile": get_user_profile(current_user_id) if current_user_id else None,
+        "profile_badges": get_user_badges(profile_user_id) if profile_user_id else [],
+        "profile_climbs": get_user_climb_history(profile_user_id) if profile_user_id else [],
+        "profile_record": profile_record,
+    }
+
+
+def get_badge_share_page_data(display_name: str) -> Dict[str, Any]:
+    profile_record = get_profile_by_display_name(display_name)
+    profile_user_id = str((profile_record or {}).get("id") or "").strip()
+    return {
+        "earned_badges": get_user_badges(profile_user_id) if profile_user_id else [],
+        "profile_record": profile_record,
+    }
+
+
+def get_profile_compare_page_data(name1: str, name2: str) -> Dict[str, Any]:
+    left_profile = get_profile_by_display_name(name1)
+    right_profile = get_profile_by_display_name(name2)
+    left_user_id = str((left_profile or {}).get("id") or "").strip()
+    right_user_id = str((right_profile or {}).get("id") or "").strip()
+    return {
+        "all_peaks": get_all_peaks() if left_profile is not None and right_profile is not None else [],
+        "left_badges": get_user_badges(left_user_id) if left_user_id else [],
+        "left_climbs": get_user_climb_history(left_user_id) if left_user_id else [],
+        "left_profile": left_profile,
+        "right_badges": get_user_badges(right_user_id) if right_user_id else [],
+        "right_climbs": get_user_climb_history(right_user_id) if right_user_id else [],
+        "right_profile": right_profile,
+    }
