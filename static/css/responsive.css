@@ -1,0 +1,380 @@
+@media screen and (min-width: 769px) and (max-width: 1023px) {
+    .site-footer .columns {
+        flex-wrap: wrap;
+    }
+
+    .site-footer .column {
+        flex: 0 0 50%;
+        width: 50%;
+    }
+
+    .site-footer .column:last-child {
+        flex-basis: 100%;
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 1023px) {
+    .peak-detail-loading-shell__community-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .site-navbar__menu {
+        align-items: stretch;
+    }
+
+    .site-navbar__center-links {
+        justify-content: flex-start;
+    }
+
+    .site-navbar .navbar-menu {
+        background: var(--color-forest);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .site-navbar .navbar-item {
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+
+    .site-navbar__actions {
+        align-items: stretch;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .site-navbar__actions .button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .site-navbar__search-item {
+        display: none;
+    }
+
+    .site-search-trigger--mobile {
+        display: inline-flex;
+    }
+
+    .site-navbar__user-dropdown {
+        margin-left: 0;
+    }
+
+    .site-navbar .navbar-dropdown {
+        background: rgba(255, 255, 255, 0.06);
+        border-top: 0;
+        box-shadow: none;
+        padding-bottom: 0.5rem;
+    }
+
+    .site-navbar .navbar-dropdown .navbar-item {
+        color: var(--color-white);
+        padding-left: 2.5rem;
+    }
+
+    .site-navbar .navbar-dropdown .navbar-item:hover,
+    .site-navbar .navbar-dropdown .navbar-item:focus {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--color-white);
+    }
+
+    .site-navbar .navbar-divider {
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .site-footer.footer {
+        text-align: center;
+    }
+
+    .site-footer__brand {
+        justify-content: center;
+    }
+
+    .site-footer__copy {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .site-footer__links {
+        justify-items: center;
+    }
+
+    .site-search__backdrop {
+        background: rgba(15, 24, 20, 0.52);
+        backdrop-filter: blur(4px);
+    }
+
+    .site-search__panel {
+        bottom: auto;
+        left: 0;
+        right: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .site-search__form,
+    .site-search__results {
+        border-radius: 0;
+        width: 100%;
+    }
+
+    .site-search__form {
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
+        padding-top: calc(0.45rem + env(safe-area-inset-top, 0px));
+    }
+
+    .site-search__results {
+        border-top: 1px solid rgba(27, 67, 50, 0.08);
+        box-shadow: none;
+        max-height: calc(100vh - 4.2rem - env(safe-area-inset-top, 0px));
+        min-height: calc(100vh - 4.2rem - env(safe-area-inset-top, 0px));
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .loading-spinner::before {
+        height: 2.05rem;
+        width: 2.05rem;
+    }
+
+    .peak-detail-loading-shell__info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-loading-shell__map {
+        height: 280px;
+    }
+
+    .site-navbar .container {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .site-navbar__brand {
+        column-gap: 0.55rem;
+        font-size: 0.95rem;
+        max-width: calc(100% - 6.75rem);
+    }
+
+    .site-navbar__title {
+        gap: 0.2rem;
+    }
+
+    .site-navbar .navbar-item,
+    .site-navbar .navbar-link {
+        font-size: 0.9375rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .site-navbar__display-name {
+        max-width: 100%;
+    }
+
+    .site-search-trigger {
+        height: 2.55rem;
+        min-height: 2.55rem;
+        width: 2.55rem;
+    }
+
+    .site-footer.footer {
+        padding: 2.5rem 1rem 1.25rem;
+    }
+
+    .site-footer__title,
+    .site-footer__copy,
+    .site-footer__links a,
+    .site-footer__bottom p {
+        font-size: 0.875rem;
+    }
+
+    .auth-modal__head,
+    .auth-modal__body {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+    }
+
+    .auth-modal__title {
+        font-size: 1.25rem;
+    }
+
+    .auth-modal__subtitle,
+    .auth-modal__toggle-copy,
+    .auth-modal__error {
+        font-size: 0.875rem;
+    }
+
+    .peak-status {
+        font-size: 0.8125rem;
+        padding: 0.4rem 0.65rem;
+    }
+
+    .peak-detail-hero {
+        padding: 1.5rem 0 2rem;
+    }
+
+    .peak-detail-hero__layout,
+    .peak-detail-hero__layout--with-actions {
+        flex-direction: column;
+    }
+
+    .peak-detail-hero__title {
+        font-size: 2rem;
+    }
+
+    .peak-detail-hero__status {
+        justify-items: stretch;
+        max-width: none;
+        width: 100%;
+    }
+
+    .peak-detail-hero__buttons {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .peak-detail-hero__buttons .peak-detail-action-button,
+    .peak-detail-hero__back {
+        width: 100%;
+    }
+
+    .peak-detail-hero__message {
+        text-align: left;
+    }
+
+    .peak-detail-log-form__field-head,
+    .peak-detail-log-form__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .peak-detail-log-form__actions .button {
+        width: 100%;
+    }
+
+    .peak-detail-pill {
+        font-size: 0.875rem;
+        min-height: 2.35rem;
+        padding: 0.55rem 0.8rem;
+        white-space: normal;
+    }
+
+    .peak-detail-card__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-weather-current {
+        grid-template-columns: 1fr;
+        justify-items: start;
+    }
+
+    .peak-detail-weather-current__wind {
+        justify-items: start;
+        text-align: left;
+    }
+
+    .peak-detail-weather-forecast {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-stat--wide {
+        grid-column: auto;
+    }
+
+    .peak-detail-section__header,
+    .peak-detail-list-item__header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .peak-detail-community__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .peak-detail-stars-display__value {
+        margin-left: 0.15rem;
+    }
+
+    .peak-detail-user-climb-item__actions {
+        align-items: stretch;
+        width: 100%;
+    }
+
+    .peak-detail-user-climb-item__action {
+        width: 100%;
+    }
+
+    .peak-detail-related-card__body {
+        align-items: flex-start;
+    }
+
+    .error-page {
+        min-height: auto;
+        padding-block: 2rem;
+    }
+
+    .error-page__panel {
+        padding: 2.2rem 1.25rem;
+    }
+
+    .error-page__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .error-page__actions .button {
+        width: 100%;
+    }
+
+    .peak-detail-comment-form__actions .button,
+    .peak-detail-community__toggle {
+        width: 100%;
+    }
+
+    .site-toast-container {
+        left: 1rem;
+        right: 1rem;
+        top: 4rem;
+    }
+
+    .site-toast {
+        max-width: none;
+    }
+
+    .badge-celebration-modal__card {
+        max-width: calc(100vw - 1rem);
+    }
+
+    .badge-celebration-modal__body {
+        padding: 1.15rem;
+    }
+
+    .badge-celebration-modal__list--scrollable {
+        max-height: min(18rem, 44vh);
+    }
+
+    .badge-celebration-card {
+        grid-template-columns: auto 1fr;
+        padding: 0.9rem;
+    }
+
+    .badge-celebration-card__icon {
+        font-size: 1.15rem;
+        height: 2.6rem;
+        width: 2.6rem;
+    }
+
+    .badge-celebration-modal__actions {
+        padding: 0 1.15rem 1.15rem;
+    }
+
+    .badge-celebration-modal__actions .button {
+        width: 100%;
+    }
+}

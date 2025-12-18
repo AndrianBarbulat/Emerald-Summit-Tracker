@@ -7,7 +7,7 @@
 {% block og_url %}{{ leaderboard_share_meta.url if leaderboard_share_meta else request.url }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/leaderboard.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/leaderboard.css') }}">
 {% endblock %}
 
 {% block extra_js %}

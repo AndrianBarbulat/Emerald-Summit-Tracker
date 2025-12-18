@@ -1,0 +1,66 @@
+@keyframes loadingSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes loadingShimmer {
+    from {
+        background-position: 200% 0;
+    }
+
+    to {
+        background-position: -200% 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes progressFill {
+    from {
+        opacity: 0.72;
+        transform: scaleX(0.72);
+        transform-origin: left center;
+    }
+
+    to {
+        opacity: 1;
+        transform: scaleX(1);
+        transform-origin: left center;
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.24s ease both;
+}
+
+.card-lift,
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-lift:hover,
+.card-lift:focus-visible,
+.hover-lift:hover,
+.hover-lift:focus-visible {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.progress-animate {
+    animation: progressFill 0.8s ease both;
+}
