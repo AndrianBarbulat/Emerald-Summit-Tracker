@@ -16,6 +16,9 @@
     window.myClimbsMapData = {{ my_climb_map.markers | tojson }};
 </script>
 {% endif %}
+<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/climbs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
 <script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
 {% endblock %}
 

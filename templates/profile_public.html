@@ -12,11 +12,13 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/badges.js') }}"></script>
 {% if current_profile_view == 'map' and public_profile_map.markers %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     window.myClimbsMapData = {{ public_profile_map.markers | tojson }};
 </script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
 <script src="{{ url_for('static', filename='js/my_climbs.js') }}"></script>
 {% endif %}
 {% endblock %}

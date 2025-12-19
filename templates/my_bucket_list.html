@@ -16,7 +16,11 @@
     window.bucketListMapData = {{ bucket_map.markers | tojson }};
 </script>
 {% endif %}
-<script src="{{ url_for('static', filename='js/my_bucket_list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/climbs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/badges.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/bucket-list.js') }}"></script>
 {% endblock %}
 
 {% block content %}

@@ -226,5 +226,6 @@
         statusTrackingEnabled: {{ 'true' if status_tracking_enabled else 'false' }}
     };
 </script>
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
 <script src="{{ url_for('static', filename='js/explore_map.js') }}"></script>
 {% endblock %}

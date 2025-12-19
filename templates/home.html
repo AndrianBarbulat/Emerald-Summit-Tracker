@@ -668,5 +668,8 @@
 <script>
     window.dashboardPeakSearchData = {{ dashboard_peak_search_data | tojson }};
 </script>
+<script src="{{ url_for('static', filename='js/weather.js') }}"></script>
+<script src="{{ url_for('static', filename='js/climbs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/badges.js') }}"></script>
 <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 {% endblock %}
