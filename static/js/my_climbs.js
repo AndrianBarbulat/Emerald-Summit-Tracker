@@ -666,11 +666,6 @@ function normalizeDifficultyValue(value) {
     return Math.max(0, Math.min(5, numericValue));
 }
 
-function normalizeDifficultyStars(value) {
-    const numericValue = normalizeDifficultyValue(value);
-    return numericValue ? Math.max(0, Math.min(5, Math.round(numericValue))) : 0;
-}
-
 function renderDifficultyStarsMarkup(value) {
     const filledCount = normalizeDifficultyStars(value);
     let markup = '<div class="my-climbs-table__stars" aria-label="Difficulty ' + (filledCount || 'not rated') + '">';
@@ -822,13 +817,4 @@ function escapeAttributeValue(value) {
         return window.CSS.escape(String(value || ''));
     }
     return String(value || '').replace(/"/g, '\\"');
-}
-
-function escapeHtml(value) {
-    return String(value || '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
 }

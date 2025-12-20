@@ -180,65 +180,45 @@
                 <h2 class="title is-2 has-text-success-dark mb-6">Recent summit logs</h2>
 
                 <div class="columns is-multiline landing-logs__grid">
-                    <div class="column is-12-mobile is-6-tablet is-4-desktop">
-                        <article class="landing-log-card">
-                            <div class="landing-log-card__accent" aria-hidden="true"></div>
-                            <span class="tag landing-log-card__province">Munster</span>
-                            <p class="landing-log-card__user">
-                                <span class="icon"><i class="fas fa-user"></i></span>
-                                Aoife Ni Shuilleabhain
-                            </p>
-                            <h3 class="landing-log-card__peak">Brandon Mountain</h3>
-                            <p class="landing-log-card__date">
-                                <span class="icon"><i class="far fa-calendar"></i></span>
-                                12 May 2025
-                            </p>
-                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-4">
-                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
-                                <p class="has-text-success-dark">summit view</p>
-                            </div>
-                        </article>
+                    {% if recent_climbs %}
+                        {% for climb in recent_climbs %}
+                        <div class="column is-12-mobile is-6-tablet is-4-desktop">
+                            <article class="landing-log-card">
+                                <div class="landing-log-card__accent" aria-hidden="true"></div>
+                                {% if climb.province %}
+                                <span class="tag landing-log-card__province">{{ climb.province }}</span>
+                                {% endif %}
+                                <p class="landing-log-card__user">
+                                    <span class="icon"><i class="fas fa-user"></i></span>
+                                    {{ climb.climber_name }}
+                                </p>
+                                <h3 class="landing-log-card__peak">
+                                    {% if climb.peak_url %}
+                                    <a href="{{ climb.peak_url }}">{{ climb.peak_name }}</a>
+                                    {% else %}
+                                    {{ climb.peak_name }}
+                                    {% endif %}
+                                </h3>
+                                <p class="landing-log-card__date">
+                                    <span class="icon"><i class="far fa-calendar"></i></span>
+                                    {{ climb.date_label }}
+                                </p>
+                                {% if climb.county %}
+                                <p class="landing-log-card__meta">{{ climb.county }}</p>
+                                {% endif %}
+                                <p class="landing-log-card__meta">
+                                    Logged <time data-timestamp="{{ climb.activity_time or '' }}">{{ climb.activity_time | timeago }}</time>
+                                </p>
+                            </article>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                    <div class="column is-12">
+                        <div class="box landing-logs__empty has-text-grey">
+                            No community summit logs have been shared yet.
+                        </div>
                     </div>
-
-                    <div class="column is-12-mobile is-6-tablet is-4-desktop">
-                        <article class="landing-log-card">
-                            <div class="landing-log-card__accent" aria-hidden="true"></div>
-                            <span class="tag landing-log-card__province">Leinster</span>
-                            <p class="landing-log-card__user">
-                                <span class="icon"><i class="fas fa-user"></i></span>
-                                Cian O Murchu
-                            </p>
-                            <h3 class="landing-log-card__peak">Mount Leinster</h3>
-                            <p class="landing-log-card__date">
-                                <span class="icon"><i class="far fa-calendar"></i></span>
-                                10 May 2025
-                            </p>
-                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-4">
-                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
-                                <p class="has-text-success-dark">cairn photo</p>
-                            </div>
-                        </article>
-                    </div>
-
-                    <div class="column is-12-mobile is-6-tablet is-4-desktop">
-                        <article class="landing-log-card">
-                            <div class="landing-log-card__accent" aria-hidden="true"></div>
-                            <span class="tag landing-log-card__province">Ulster</span>
-                            <p class="landing-log-card__user">
-                                <span class="icon"><i class="fas fa-user"></i></span>
-                                Orla Doherty
-                            </p>
-                            <h3 class="landing-log-card__peak">Errigal</h3>
-                            <p class="landing-log-card__date">
-                                <span class="icon"><i class="far fa-calendar"></i></span>
-                                9 May 2025
-                            </p>
-                            <div class="card-image-placeholder has-background-success-light p-5 has-text-centered mt-4">
-                                <span class="icon is-large has-text-success"><i class="fas fa-camera fa-2x"></i></span>
-                                <p class="has-text-success-dark">misty summit</p>
-                            </div>
-                        </article>
-                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>

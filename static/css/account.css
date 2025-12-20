@@ -1,10 +1,4 @@
-/* Account settings page specific styles */
-body {
-    font-family: 'Inter', sans-serif;
-    background-color: #f8faf9;
-}
-
-/* Breadcrumb styling */
+/* Shared account/profile page support */
 .breadcrumb {
     margin-bottom: 1rem;
 }
@@ -17,29 +11,6 @@ body {
     color: #1c3f3a;
 }
 
-/* Sidebar menu */
-.menu-list a {
-    border-radius: 6px;
-    transition: all 0.2s ease;
-}
-
-.menu-list a.is-active {
-    background-color: #48c78e;
-    color: white;
-}
-
-.menu-list a:hover {
-    background-color: #f0f7f3;
-    color: #1c3f3a;
-}
-
-.menu-label {
-    color: #7a7a7a;
-    font-size: 0.8rem;
-    letter-spacing: 0.5px;
-}
-
-/* Form styling */
 .input:focus, .select select:focus {
     border-color: #48c78e;
     box-shadow: 0 0 0 0.125em rgba(72, 199, 142, 0.25);
@@ -54,19 +25,6 @@ body {
     background-color: #e6f0ea;
 }
 
-/* Section dividers */
-.box hr {
-    background-color: #f0f7f3;
-    height: 2px;
-}
-
-/* Recent activity list */
-.content ul li {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-
-/* Hover effects */
 .button.is-success:hover,
 .button.is-warning:hover {
     transform: translateY(-1px);
@@ -77,37 +35,4 @@ body {
 .button.is-danger.is-light:hover {
     background-color: #fef5f5;
     color: #f14668;
-}
-
-/* Responsive */
-@media screen and (max-width: 768px) {
-    .columns .column.is-3 {
-        margin-bottom: 1rem;
-    }
-    
-    .menu-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    
-    .menu-list li {
-        flex: 1 1 auto;
-    }
-    
-    .menu-list a {
-        text-align: center;
-    }
-}
-
-/* Success notification */
-.notification.is-success.is-light {
-    background-color: #e6f7ef;
-    color: #1c3f3a;
-    border-left: 4px solid #48c78e;
-}
-
-/* Help text */
-.help.text-warning {
-    color: #f4a261;
 }

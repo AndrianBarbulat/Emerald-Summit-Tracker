@@ -448,7 +448,22 @@
     margin-bottom: 0.6rem;
 }
 
+.landing-log-card__peak a {
+    color: inherit;
+}
+
+.landing-log-card__peak a:hover,
+.landing-log-card__peak a:focus-visible {
+    color: var(--color-sage);
+}
+
 .landing-log-card__date {
+    color: var(--color-grey);
+    font-size: 0.92rem;
+    margin-bottom: 0.35rem;
+}
+
+.landing-log-card__meta {
     color: var(--color-grey);
     font-size: 0.92rem;
     margin-bottom: 0;
@@ -726,8 +741,4 @@
         padding-right: 0.65rem;
     }
 
-    .card-image-placeholder {
-        margin-top: 1rem !important;
-        padding: 1rem !important;
-    }
 }

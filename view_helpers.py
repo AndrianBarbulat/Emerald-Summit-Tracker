@@ -26,6 +26,8 @@ from time_utils import format_display_date
 from web_utils import (
     FEET_PER_METER,
     PROVINCE_ORDER,
+    RECENTLY_VIEWED_LIMIT,
+    RECENTLY_VIEWED_SESSION_KEY,
     current_height_unit_for_preference as _current_height_unit_for_preference,
     format_short_date as _format_short_date,
     height_display_value as _height_display_value,
@@ -1399,9 +1401,13 @@ def _enrich_recent_climbs(recent_climbs: list[dict], peaks_by_id: dict) -> list[
         climbed_at = climb.get("climbed_at") or climb.get("created_at")
         enriched.append(
             {
-                "climber_name": climber_name,
-                "peak_name": peak_name,
                 "activity_time": climbed_at,
+                "county": str(peak.get("county") or climb.get("peak_county") or "").strip(),
+                "climber_name": climber_name,
+                "date_label": _format_short_date(climbed_at),
+                "peak_name": peak_name,
+                "peak_url": url_for("peak_detail", peak_id=peak_id) if peak_id is not None else None,
+                "province": str(peak.get("province") or climb.get("peak_province") or "").strip(),
                 "relative_time": _relative_time(climbed_at),
             }
         )

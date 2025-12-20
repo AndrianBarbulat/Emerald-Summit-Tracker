@@ -90,17 +90,6 @@ function getClimbFieldSelectorMap(overrides) {
     );
 }
 
-function getFirstFieldErrorMessage(fieldErrors) {
-    if (!fieldErrors || typeof fieldErrors !== 'object') {
-        return '';
-    }
-
-    const firstMessage = Object.values(fieldErrors).find(function(message) {
-        return String(message || '').trim();
-    });
-    return String(firstMessage || '').trim();
-}
-
 function validateClimbFormClient(form, selectorOverrides) {
     if (!form) {
         return { fieldErrors: {}, firstInvalidControl: null, isValid: true };
@@ -866,17 +855,6 @@ function buildUserClimbPhotoMarkup(photoUrls, peakName) {
     }).join('');
 }
 
-function buildWeatherOptionsMarkup(selectedWeather) {
-    const normalizedWeather = String(selectedWeather || '').trim().toLowerCase();
-    let markup = '<option value="">Select weather</option>';
-    Object.keys(CLIMB_WEATHER_META).forEach(function(weatherKey) {
-        const meta = CLIMB_WEATHER_META[weatherKey];
-        const selected = weatherKey === normalizedWeather ? ' selected' : '';
-        markup += '<option value="' + escapeHtml(weatherKey) + '"' + selected + '>' + escapeHtml(meta.label) + '</option>';
-    });
-    return markup;
-}
-
 function buildClimbEditStarsMarkup(activeStars) {
     const starCount = Number(activeStars || 0);
     let markup = '';
@@ -996,18 +974,6 @@ function normalizeDifficultyStars(value) {
         extreme: 5
     };
     return namedValues[String(value || '').trim().toLowerCase()] || 0;
-}
-
-function escapeHtml(value) {
-    return String(value || '').replace(/[&<>"']/g, function(character) {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        }[character] || character;
-    });
 }
 
 function initPeakCommunitySection(section) {

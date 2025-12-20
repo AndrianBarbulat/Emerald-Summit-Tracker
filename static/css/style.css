@@ -1,7 +1,0 @@
-/* Legacy compatibility entry point.
-   Shared styles now live in base.css, components.css, animations.css, and responsive.css.
-   Page-level styles are loaded per template from css/pages/*.css and existing page-specific files. */
-@import url("./base.css");
-@import url("./components.css");
-@import url("./animations.css");
-@import url("./responsive.css");

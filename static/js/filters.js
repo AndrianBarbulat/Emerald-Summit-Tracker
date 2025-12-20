@@ -944,15 +944,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return Number.isFinite(parsed) ? parsed : null;
     }
 
-    function escapeHtml(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
     function buildExtraClass(className) {
         return className ? ' ' + className : '';
     }
