@@ -22,7 +22,7 @@ from supabase_utils import (
     get_user_badges,
     get_user_climb_history,
 )
-from time_utils import format_display_date
+from time_utils import format_display_date, format_time_ago
 from web_utils import (
     FEET_PER_METER,
     PROVINCE_ORDER,

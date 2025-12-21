@@ -382,7 +382,13 @@ select.field-error {
 .site-navbar {
     background: var(--color-forest);
     box-shadow: var(--shadow-md);
+    isolation: isolate;
     min-height: 52px;
+    z-index: 900;
+}
+
+.navbar.is-fixed-top.site-navbar {
+    z-index: 900;
 }
 
 .site-navbar .navbar-brand {
@@ -391,6 +397,7 @@ select.field-error {
 
 .site-navbar .navbar-menu {
     background: transparent;
+    z-index: 910;
 }
 
 .site-navbar__menu {
@@ -485,6 +492,7 @@ select.field-error {
 .site-navbar__user-dropdown {
     margin-left: auto;
     position: relative;
+    z-index: 920;
 }
 
 .site-navbar__user-trigger {
@@ -544,6 +552,7 @@ select.field-error {
     background: var(--color-cream);
     border-top: 2px solid var(--color-gold);
     min-width: 14rem;
+    z-index: 930;
 }
 
 .site-navbar .navbar-dropdown .navbar-item {

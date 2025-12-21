@@ -78,8 +78,12 @@ function initExploreMapPage() {
     };
 
     const map = L.map(mapElement, {
-        zoomControl: true
+        zoomControl: false
     }).setView(config.defaultCenter || [53.25, -8.1], Number(config.defaultZoom) || 7);
+
+    L.control.zoom({
+        position: 'bottomright'
+    }).addTo(map);
 
     map.createPane('mapOverlayClimbed');
     map.getPane('mapOverlayClimbed').style.zIndex = '640';
@@ -465,7 +469,7 @@ function initExploreMapPage() {
             };
         }
 
-        const sidebarWidth = elements.sidebar && !elements.sidebar.classList.contains('is-collapsed') ? 360 : 80;
+        const sidebarWidth = elements.sidebar && !elements.sidebar.classList.contains('is-collapsed') ? 360 : 40;
         return {
             maxZoom: 12,
             paddingBottomRight: [40, 40],

@@ -70,6 +70,11 @@
     z-index: 1;
 }
 
+.dashboard-welcome__intro,
+.dashboard-welcome__actions-column {
+    min-width: 0;
+}
+
 .dashboard-welcome__eyebrow {
     color: var(--color-sage);
     display: inline-block;
@@ -97,8 +102,11 @@
 
 .dashboard-welcome__actions {
     align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.75rem;
     justify-content: flex-end;
+    margin-bottom: 0;
 }
 
 .dashboard-welcome__action-group {
@@ -297,13 +305,23 @@
 
 .dashboard-grid {
     align-items: stretch;
+    margin-top: 0.25rem;
+}
+
+.dashboard-grid > .column {
+    display: flex;
+}
+
+.dashboard-grid > .column > .dashboard-card {
+    margin-bottom: 0;
+    width: 100%;
 }
 
 .dashboard-card {
     background: rgba(255, 255, 255, 0.96);
     border: 1px solid rgba(27, 67, 50, 0.08);
     box-shadow: 0 12px 28px rgba(27, 67, 50, 0.08);
-    height: 100%;
+    padding: 1.1rem 1.15rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -317,6 +335,7 @@
     color: var(--color-forest);
     display: flex;
     gap: 0.55rem;
+    line-height: 1.25;
 }
 
 .dashboard-card__footer-link a {
@@ -327,8 +346,7 @@
     background: linear-gradient(180deg, rgba(245, 241, 235, 0.78) 0%, rgba(216, 243, 220, 0.5) 100%);
     border: 1px solid rgba(27, 67, 50, 0.08);
     border-radius: var(--radius-md);
-    height: 100%;
-    padding: 1rem;
+    padding: 0.95rem;
 }
 
 .dashboard-progress-card__status {
@@ -344,6 +362,12 @@
     align-items: stretch;
 }
 
+.dashboard-progress-card__overview {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-rows: minmax(0, 1fr) auto;
+}
+
 .dashboard-progress-card__totals {
     align-items: baseline;
     display: flex;
@@ -356,10 +380,14 @@
     color: var(--color-slate);
     line-height: 1.6;
     margin: 0.6rem 0 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-progress-card__bar {
+    display: block;
     height: 0.9rem;
+    margin: 0;
+    width: 100%;
 }
 
 .dashboard-progress-card__bar::-webkit-progress-value {
@@ -380,7 +408,8 @@
     border: 1px solid rgba(27, 67, 50, 0.08);
     border-radius: var(--radius-md);
     height: 100%;
-    padding: 0.95rem;
+    min-width: 0;
+    padding: 0.85rem 0.9rem;
 }
 
 .dashboard-progress-card__stat-label {
@@ -392,6 +421,7 @@
     color: var(--color-forest);
     line-height: 1.4;
     margin-bottom: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-progress-card__stat-link {
@@ -408,6 +438,7 @@
     font-size: 0.9rem;
     line-height: 1.5;
     margin: 0.45rem 0 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-province-card__summary {
@@ -493,7 +524,7 @@
     display: flex;
     gap: 0.85rem;
     margin-bottom: 1rem;
-    padding: 0.95rem 1rem;
+    padding: 0.9rem 0.95rem;
 }
 
 .dashboard-streak-banner__icon {
@@ -592,6 +623,8 @@
 .dashboard-timeline__content {
     color: var(--color-slate);
     line-height: 1.6;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-timeline__link {
@@ -621,7 +654,7 @@
     border-radius: var(--radius-md);
     column-gap: 0.9rem;
     margin: 0 !important;
-    padding: 0.9rem;
+    padding: 0.8rem 0.85rem;
 }
 
 .dashboard-community-feed__item > .column,
@@ -640,6 +673,8 @@
 
 .dashboard-community-feed__content {
     line-height: 1.6;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-community-feed__link {
@@ -667,7 +702,7 @@
     border: 1px solid rgba(221, 170, 34, 0.2);
     border-radius: var(--radius-md);
     margin-bottom: 1rem;
-    padding: 0.95rem 1rem;
+    padding: 0.9rem 0.95rem;
 }
 
 .dashboard-achievement-next--complete {
@@ -723,7 +758,7 @@
     gap: 0.55rem;
     height: 100%;
     justify-content: center;
-    padding: 1rem 0.8rem;
+    padding: 0.9rem 0.75rem;
 }
 
 .dashboard-achievement-grid__item--earned {
@@ -812,6 +847,7 @@
 .dashboard-bucket-list__name {
     color: var(--color-forest);
     margin-bottom: 0.2rem;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-peak-list__link,
@@ -828,6 +864,7 @@
 .dashboard-peak-list__meta,
 .dashboard-bucket-list__meta {
     margin-bottom: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-peak-list__reason,
@@ -835,9 +872,16 @@
     color: var(--color-slate);
     line-height: 1.5;
     margin-bottom: 0;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-peak-list__details,
+.dashboard-bucket-list__details {
+    min-width: 0;
 }
 
 .dashboard-peak-list__actions .buttons {
+    flex-wrap: wrap;
     justify-content: flex-end;
     margin-bottom: 0;
 }
@@ -848,7 +892,7 @@
     border-radius: var(--radius-md);
     color: var(--color-grey);
     line-height: 1.6;
-    padding: 1rem;
+    padding: 0.9rem 0.95rem;
 }
 
 .dashboard-recently-viewed-grid {
@@ -867,7 +911,7 @@
     display: flex;
     justify-content: space-between;
     min-height: 100%;
-    padding: 1rem;
+    padding: 0.9rem 0.95rem;
     text-decoration: none;
 }
 
@@ -886,6 +930,7 @@
 .dashboard-recently-viewed-item__header {
     align-items: flex-start;
     display: flex;
+    flex-wrap: wrap;
     gap: 0.65rem;
     justify-content: space-between;
 }
@@ -895,6 +940,7 @@
     font-weight: 700;
     line-height: 1.4;
     margin: 0 0 0.35rem;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-recently-viewed-item__status {
@@ -907,6 +953,7 @@
     font-size: 0.86rem;
     line-height: 1.5;
     margin: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-recently-viewed-item__time {
@@ -945,7 +992,76 @@
     }
 }
 
+@media screen and (max-width: 1023px) {
+    .dashboard-welcome__layout,
+    .dashboard-progress-card__content,
+    .dashboard-progress-card__overview,
+    .dashboard-progress-card__stats,
+    .dashboard-timeline__item,
+    .dashboard-peak-list__item,
+    .dashboard-bucket-list__item {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .dashboard-timeline__item,
+    .dashboard-peak-list__item,
+    .dashboard-bucket-list__item {
+        display: grid;
+        gap: 0.75rem;
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dashboard-progress-card__overview {
+        grid-template-rows: none;
+    }
+
+    .dashboard-timeline__marker,
+    .dashboard-peak-list__status,
+    .dashboard-peak-list__actions,
+    .dashboard-bucket-list__status {
+        justify-self: start;
+        min-width: 0;
+    }
+
+    .dashboard-timeline__tag {
+        min-width: 0;
+    }
+
+    .dashboard-timeline__time,
+    .dashboard-community-feed__time {
+        display: block;
+        margin-left: 0 !important;
+        white-space: normal;
+    }
+
+    .dashboard-peak-list__actions {
+        width: 100%;
+    }
+
+    .dashboard-peak-list__actions .buttons {
+        justify-content: flex-start;
+        width: 100%;
+    }
+
+    .dashboard-peak-list__actions .button {
+        flex: 1 1 9rem;
+    }
+
+    .dashboard-recently-viewed-item {
+        align-items: flex-start;
+    }
+
+    .dashboard-recently-viewed-item__arrow {
+        align-self: flex-end;
+    }
+}
+
 @media screen and (max-width: 768px) {
+    .dashboard-grid {
+        margin-top: 0;
+    }
+
     .dashboard-welcome__layout {
         align-items: flex-start;
     }
@@ -1008,6 +1124,22 @@
     }
 }
 
+@media screen and (max-width: 640px) {
+    .dashboard-quick-stats__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-progress-card__stats > .column,
+    .dashboard-achievement-grid .column {
+        flex: none;
+        width: 100%;
+    }
+
+    .dashboard-recently-viewed-item {
+        flex-direction: column;
+    }
+}
+
 @media screen and (max-width: 480px) {
     .dashboard-welcome {
         padding-bottom: 1.5rem;
@@ -1038,7 +1170,7 @@
     }
 
     .dashboard-card {
-        padding: 1rem;
+        padding: 0.95rem;
     }
 
     .dashboard-quick-stat {

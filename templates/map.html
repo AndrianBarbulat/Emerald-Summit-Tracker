@@ -13,7 +13,7 @@
     <section class="explore-map-page__shell">
         <aside class="box explore-map-sidebar is-open" data-map-sidebar>
             <div class="explore-map-sidebar__header">
-                <div>
+                <div class="explore-map-sidebar__header-copy">
                     <p class="explore-map-sidebar__eyebrow">Interactive Terrain View</p>
                     <h1 class="title is-3 explore-map-sidebar__title">
                         <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
@@ -146,6 +146,38 @@
                     </label>
                 </div>
 
+                <div class="explore-map-sidebar__legend">
+                    <p class="explore-map-sidebar__layers-title">Legend</p>
+                    <div class="explore-map-legend__items explore-map-sidebar__legend-items">
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__dot explore-map-legend__dot--munster"></span>
+                            Munster
+                        </span>
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__dot explore-map-legend__dot--leinster"></span>
+                            Leinster
+                        </span>
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__dot explore-map-legend__dot--ulster"></span>
+                            Ulster
+                        </span>
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__dot explore-map-legend__dot--connacht"></span>
+                            Connacht
+                        </span>
+                        {% if profile %}
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__dot explore-map-legend__dot--climbed"></span>
+                            Climbed
+                        </span>
+                        <span class="explore-map-legend__item">
+                            <span class="explore-map-legend__star" aria-hidden="true"><i class="fas fa-star"></i></span>
+                            Bucket List
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
                 <div class="explore-map-sidebar__actions">
                     <button type="button" class="button explore-map-sidebar__reset" data-map-reset>
                         Reset Filters
@@ -172,42 +204,8 @@
                     <span class="icon" aria-hidden="true"><i class="fas fa-layer-group"></i></span>
                     <span data-map-sidebar-toggle-label>Hide Filters</span>
                 </button>
-                <div class="explore-map-toolbar__count" data-map-marker-count>
-                    Showing {{ peaks | length }} peaks
-                </div>
             </div>
 
-            <div class="explore-map-legend">
-                <p class="explore-map-legend__title">Legend</p>
-                <div class="explore-map-legend__items">
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__dot explore-map-legend__dot--munster"></span>
-                        Munster
-                    </span>
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__dot explore-map-legend__dot--leinster"></span>
-                        Leinster
-                    </span>
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__dot explore-map-legend__dot--ulster"></span>
-                        Ulster
-                    </span>
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__dot explore-map-legend__dot--connacht"></span>
-                        Connacht
-                    </span>
-                    {% if profile %}
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__dot explore-map-legend__dot--climbed"></span>
-                        Climbed
-                    </span>
-                    <span class="explore-map-legend__item">
-                        <span class="explore-map-legend__star" aria-hidden="true"><i class="fas fa-star"></i></span>
-                        Bucket List
-                    </span>
-                    {% endif %}
-                </div>
-            </div>
         </div>
     </section>
 </div>

@@ -93,20 +93,16 @@
         <section class="section pt-0 home-dashboard dashboard-page__main">
             <div class="container">
                 <div class="columns is-multiline dashboard-grid">
-
-                    <!-- Left Column -->
-                    <div class="column is-12-tablet is-8-desktop dashboard-grid__primary">
-                        
-                        <!-- Progress Overview Card -->
-                        <div class="box mb-5 dashboard-card dashboard-progress-card">
+                    <div class="column is-12 dashboard-grid__item dashboard-grid__progress">
+                        <div class="box dashboard-card dashboard-progress-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-success"><i class="fas fa-chart-line"></i></span>
                                 Progress Overview
                             </h2>
                             
                             <div class="columns is-multiline dashboard-progress-card__content">
-                                <div class="column is-12-tablet is-4-desktop">
-                                    <div class="mb-3 dashboard-progress-card__summary">
+                                <div class="column is-12-tablet is-4-desktop dashboard-progress-card__overview">
+                                    <div class="dashboard-progress-card__summary">
                                         <div class="dashboard-progress-card__totals">
                                             <span class="is-size-4 has-text-weight-semibold">{{ dashboard_progress.completed_count }} <span class="has-text-grey-light">/ {{ dashboard_progress.total_peaks }}</span></span>
                                         </div>
@@ -191,9 +187,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Recent Activity Card -->
-                        <div class="box mb-5 dashboard-card dashboard-activity-card">
+                    <div class="column is-12-tablet is-7-desktop dashboard-grid__item dashboard-grid__activity">
+                        <div class="box dashboard-card dashboard-activity-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-info"><i class="fas fa-history"></i></span>
                                 Recent Activity
@@ -254,8 +251,59 @@
                                 <a class="dashboard-timeline__link has-text-weight-semibold ml-2" href="{{ url_for('my_activity') }}">View All Activity</a>
                             </p>
                         </div>
+                    </div>
 
-                        <!-- Latest Community Activity Card -->
+                    <div class="column is-12-tablet is-5-desktop dashboard-grid__item dashboard-grid__achievements">
+                        <div class="box dashboard-card dashboard-achievements-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
+                                <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
+                                Achievements
+                            </h2>
+
+                            {% if dashboard_achievements.next_badge %}
+                            <div class="dashboard-achievement-next">
+                                <p class="dashboard-achievement-next__eyebrow">Next to Earn</p>
+                                <p class="dashboard-achievement-next__title">
+                                    <span class="icon"><i class="fas {{ dashboard_achievements.next_badge.icon }}"></i></span>
+                                    {{ dashboard_achievements.next_badge.label }}
+                                </p>
+                                <progress class="progress is-warning dashboard-achievement-next__progress" value="{{ dashboard_achievements.next_badge.progress_count }}" max="{{ dashboard_achievements.next_badge.threshold }}">{{ dashboard_achievements.next_badge.progress_percent }}%</progress>
+                                <p class="dashboard-achievement-next__meta">{{ dashboard_achievements.next_badge.progress_label }}</p>
+                            </div>
+                            {% else %}
+                            <div class="dashboard-achievement-next dashboard-achievement-next--complete">
+                                <p class="dashboard-achievement-next__eyebrow">Achievement Progress</p>
+                                <p class="dashboard-achievement-next__title">
+                                    <span class="icon"><i class="fas fa-trophy"></i></span>
+                                    All current badges earned
+                                </p>
+                                <p class="dashboard-achievement-next__meta">You have unlocked every badge in the current catalog.</p>
+                            </div>
+                            {% endif %}
+
+                            <div class="columns is-multiline dashboard-achievement-grid">
+                                {% for badge in dashboard_achievements.badges %}
+                                <div class="column is-6">
+                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item{% if badge.is_earned %} dashboard-achievement-grid__item--earned{% elif badge.is_next %} dashboard-achievement-grid__item--next{% else %} dashboard-achievement-grid__item--locked{% endif %}">
+                                        <span class="icon is-large dashboard-achievement-grid__icon">
+                                            <i class="fas {{ badge.icon }} fa-2x"></i>
+                                        </span>
+                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">{{ badge.label }}</p>
+                                        <span class="tag is-small dashboard-achievement-grid__status{% if badge.is_earned %} dashboard-achievement-grid__status--earned{% elif badge.is_next %} dashboard-achievement-grid__status--next{% else %} dashboard-achievement-grid__status--locked{% endif %}">{{ badge.earned_label }}</span>
+                                        {% if not badge.is_earned %}
+                                        <div class="dashboard-achievement-grid__progress-wrap">
+                                            <progress class="progress is-small dashboard-achievement-grid__progress" value="{{ badge.progress_count if badge.progress_count <= badge.threshold else badge.threshold }}" max="{{ badge.threshold if badge.threshold > 0 else 1 }}">{{ badge.progress_percent }}%</progress>
+                                            <p class="dashboard-achievement-grid__progress-meta">{{ badge.progress_label }}</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="column is-12-tablet is-7-desktop dashboard-grid__item dashboard-grid__community">
                         <div class="box dashboard-card dashboard-community-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-danger"><i class="fas fa-users"></i></span>
@@ -322,87 +370,8 @@
                         </div>
                     </div>
 
-                    <!-- Right Column -->
-                    <div class="column is-12-tablet is-4-desktop dashboard-grid__secondary">
-
-                        <!-- Achievements Card -->
-                        <div class="box mb-5 dashboard-card dashboard-achievements-card">
-                            <h2 class="title is-4 mb-4 dashboard-card__title">
-                                <span class="icon has-text-warning"><i class="fas fa-trophy"></i></span>
-                                Achievements
-                            </h2>
-
-                            {% if dashboard_achievements.next_badge %}
-                            <div class="dashboard-achievement-next">
-                                <p class="dashboard-achievement-next__eyebrow">Next to Earn</p>
-                                <p class="dashboard-achievement-next__title">
-                                    <span class="icon"><i class="fas {{ dashboard_achievements.next_badge.icon }}"></i></span>
-                                    {{ dashboard_achievements.next_badge.label }}
-                                </p>
-                                <progress class="progress is-warning dashboard-achievement-next__progress" value="{{ dashboard_achievements.next_badge.progress_count }}" max="{{ dashboard_achievements.next_badge.threshold }}">{{ dashboard_achievements.next_badge.progress_percent }}%</progress>
-                                <p class="dashboard-achievement-next__meta">{{ dashboard_achievements.next_badge.progress_label }}</p>
-                            </div>
-                            {% else %}
-                            <div class="dashboard-achievement-next dashboard-achievement-next--complete">
-                                <p class="dashboard-achievement-next__eyebrow">Achievement Progress</p>
-                                <p class="dashboard-achievement-next__title">
-                                    <span class="icon"><i class="fas fa-trophy"></i></span>
-                                    All current badges earned
-                                </p>
-                                <p class="dashboard-achievement-next__meta">You have unlocked every badge in the current catalog.</p>
-                            </div>
-                            {% endif %}
-
-                            <div class="columns is-multiline dashboard-achievement-grid">
-                                {% for badge in dashboard_achievements.badges %}
-                                <div class="column is-6">
-                                    <div class="has-text-centered p-2 dashboard-achievement-grid__item{% if badge.is_earned %} dashboard-achievement-grid__item--earned{% elif badge.is_next %} dashboard-achievement-grid__item--next{% else %} dashboard-achievement-grid__item--locked{% endif %}">
-                                        <span class="icon is-large dashboard-achievement-grid__icon">
-                                            <i class="fas {{ badge.icon }} fa-2x"></i>
-                                        </span>
-                                        <p class="is-size-7 has-text-weight-bold dashboard-achievement-grid__label">{{ badge.label }}</p>
-                                        <span class="tag is-small dashboard-achievement-grid__status{% if badge.is_earned %} dashboard-achievement-grid__status--earned{% elif badge.is_next %} dashboard-achievement-grid__status--next{% else %} dashboard-achievement-grid__status--locked{% endif %}">{{ badge.earned_label }}</span>
-                                        {% if not badge.is_earned %}
-                                        <div class="dashboard-achievement-grid__progress-wrap">
-                                            <progress class="progress is-small dashboard-achievement-grid__progress" value="{{ badge.progress_count if badge.progress_count <= badge.threshold else badge.threshold }}" max="{{ badge.threshold if badge.threshold > 0 else 1 }}">{{ badge.progress_percent }}%</progress>
-                                            <p class="dashboard-achievement-grid__progress-meta">{{ badge.progress_label }}</p>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                        
-                        <!-- Province Progress Card -->
-                        <div class="box mb-5 dashboard-card dashboard-province-card">
-                            <h2 class="title is-4 mb-4 dashboard-card__title">
-                                <span class="icon has-text-warning"><i class="fas fa-map-marked-alt"></i></span>
-                                Climbed by Province
-                            </h2>
-
-                            <p class="dashboard-province-card__summary">
-                                {% if dashboard_progress.completed_count %}
-                                {{ dashboard_progress.completed_count }} unique peaks across {{ dashboard_progress.active_province_count }} province{% if dashboard_progress.active_province_count != 1 %}s{% endif %}.
-                                {% else %}
-                                Start logging climbs and your province breakdown will appear here.
-                                {% endif %}
-                            </p>
-
-                            <div class="dashboard-province-pill-list">
-                                {% for province in dashboard_progress.province_breakdown %}
-                                <span class="dashboard-province-pill dashboard-province-pill--{{ province.key }}">
-                                    <span class="dashboard-province-pill__name">{{ province.name }}</span>
-                                    <span class="dashboard-province-pill__count">{{ province.count }}</span>
-                                </span>
-                                {% endfor %}
-                            </div>
-
-                            <p class="dashboard-province-card__caption">Distinct climbed peaks grouped by province.</p>
-                        </div>
-
-                        <!-- Suggested Peaks Card -->
-                        <div class="box mb-5 dashboard-card dashboard-peaks-card">
+                    <div class="column is-12-tablet is-5-desktop dashboard-grid__item dashboard-grid__peaks">
+                        <div class="box dashboard-card dashboard-peaks-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-success"><i class="fas fa-lightbulb"></i></span>
                                 Suggested for You
@@ -431,8 +400,37 @@
                             </div>
                             {% endfor %}
                         </div>
+                    </div>
 
-                        <!-- Bucket List Preview Card -->
+                    <div class="column is-12-tablet is-5-desktop dashboard-grid__item dashboard-grid__province">
+                        <div class="box dashboard-card dashboard-province-card">
+                            <h2 class="title is-4 mb-4 dashboard-card__title">
+                                <span class="icon has-text-warning"><i class="fas fa-map-marked-alt"></i></span>
+                                Climbed by Province
+                            </h2>
+
+                            <p class="dashboard-province-card__summary">
+                                {% if dashboard_progress.completed_count %}
+                                {{ dashboard_progress.completed_count }} unique peaks across {{ dashboard_progress.active_province_count }} province{% if dashboard_progress.active_province_count != 1 %}s{% endif %}.
+                                {% else %}
+                                Start logging climbs and your province breakdown will appear here.
+                                {% endif %}
+                            </p>
+
+                            <div class="dashboard-province-pill-list">
+                                {% for province in dashboard_progress.province_breakdown %}
+                                <span class="dashboard-province-pill dashboard-province-pill--{{ province.key }}">
+                                    <span class="dashboard-province-pill__name">{{ province.name }}</span>
+                                    <span class="dashboard-province-pill__count">{{ province.count }}</span>
+                                </span>
+                                {% endfor %}
+                            </div>
+
+                            <p class="dashboard-province-card__caption">Distinct climbed peaks grouped by province.</p>
+                        </div>
+                    </div>
+
+                    <div class="column is-12-tablet is-7-desktop dashboard-grid__item dashboard-grid__bucket">
                         <div class="box dashboard-card dashboard-bucket-card">
                             <h2 class="title is-4 mb-4 dashboard-card__title">
                                 <span class="icon has-text-warning"><i class="fas fa-bookmark"></i></span>
