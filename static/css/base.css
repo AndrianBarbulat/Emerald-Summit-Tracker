@@ -51,6 +51,45 @@ body {
     min-width: 2.75rem;
 }
 
+.input,
+.textarea,
+.select select {
+    background-color: var(--color-white);
+    border-color: rgba(27, 67, 50, 0.14);
+    box-shadow: none;
+    color: var(--color-slate);
+}
+
+.input:hover,
+.textarea:hover,
+.select select:hover {
+    border-color: rgba(27, 67, 50, 0.22);
+}
+
+.input:focus,
+.input:focus-visible,
+.textarea:focus,
+.textarea:focus-visible,
+.select select:focus,
+.select select:focus-visible {
+    background-color: var(--color-white);
+    color: var(--color-slate);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+    color: rgba(108, 117, 125, 0.78);
+}
+
+.input[readonly],
+.textarea[readonly],
+.input:disabled,
+.textarea:disabled,
+.select select:disabled {
+    background-color: rgba(245, 241, 235, 0.92);
+    color: var(--color-grey);
+}
+
 .input.field-error,
 .textarea.field-error,
 .select select.field-error,
@@ -556,6 +595,11 @@ select.field-error {
 }
 
 .site-navbar .navbar-dropdown .navbar-item {
+    color: var(--color-forest);
+}
+
+.site-navbar .navbar-dropdown .navbar-item:not(.is-active, .is-selected) {
+    background-color: transparent;
     color: var(--color-forest);
 }
 

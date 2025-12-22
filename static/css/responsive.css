@@ -61,25 +61,27 @@
     }
 
     .site-navbar .navbar-dropdown {
-        background: rgba(255, 255, 255, 0.06);
-        border-top: 0;
-        box-shadow: none;
+        background: var(--color-cream);
+        border-radius: var(--radius-md);
+        border-top: 2px solid var(--color-gold);
+        box-shadow: var(--shadow-md);
+        margin-top: 0.4rem;
         padding-bottom: 0.5rem;
     }
 
     .site-navbar .navbar-dropdown .navbar-item {
-        color: var(--color-white);
+        color: var(--color-forest);
         padding-left: 2.5rem;
     }
 
     .site-navbar .navbar-dropdown .navbar-item:hover,
     .site-navbar .navbar-dropdown .navbar-item:focus {
-        background: rgba(255, 255, 255, 0.12);
-        color: var(--color-white);
+        background: rgba(27, 67, 50, 0.08);
+        color: var(--color-forest);
     }
 
     .site-navbar .navbar-divider {
-        background-color: rgba(255, 255, 255, 0.15);
+        background-color: rgba(27, 67, 50, 0.12);
     }
 
     .site-footer.footer {

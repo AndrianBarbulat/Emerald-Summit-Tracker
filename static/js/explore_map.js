@@ -73,6 +73,7 @@ function initExploreMapPage() {
         maxHeight: '',
         minHeight: '',
         province: '',
+        isMobileView: isExploreMapMobile(),
         sidebarOpen: !isExploreMapMobile(),
         visiblePeaks: []
     };
@@ -206,18 +207,36 @@ function initExploreMapPage() {
 
     elements.toggleButtons.forEach(function(button) {
         button.addEventListener('click', function() {
-            if (isExploreMapMobile()) {
-                state.sidebarOpen = !elements.sidebar.classList.contains('is-open');
+            if (state.isMobileView) {
+                state.sidebarOpen = !state.sidebarOpen;
             } else {
                 state.sidebarOpen = elements.sidebar.classList.contains('is-collapsed');
             }
             syncSidebarState();
+            invalidateMapSoon();
         });
     });
 
-    window.addEventListener('resize', function() {
-        state.sidebarOpen = !isExploreMapMobile();
+    document.addEventListener('keydown', function(event) {
+        if (event.key !== 'Escape' || !state.isMobileView || !state.sidebarOpen) {
+            return;
+        }
+
+        state.sidebarOpen = false;
         syncSidebarState();
+        invalidateMapSoon();
+    });
+
+    window.addEventListener('resize', function() {
+        const nextIsMobileView = isExploreMapMobile();
+        const layoutModeChanged = nextIsMobileView !== state.isMobileView;
+
+        state.isMobileView = nextIsMobileView;
+        if (layoutModeChanged) {
+            state.sidebarOpen = !nextIsMobileView;
+            syncSidebarState();
+        }
+
         window.setTimeout(function() {
             map.invalidateSize();
         }, 40);
@@ -444,7 +463,7 @@ function initExploreMapPage() {
             return;
         }
 
-        const isMobile = isExploreMapMobile();
+        const isMobile = state.isMobileView;
         elements.sidebar.classList.toggle('is-open', state.sidebarOpen);
         elements.sidebar.classList.toggle('is-collapsed', !isMobile && !state.sidebarOpen);
 
@@ -460,12 +479,18 @@ function initExploreMapPage() {
         });
     }
 
+    function invalidateMapSoon() {
+        window.setTimeout(function() {
+            map.invalidateSize();
+        }, 260);
+    }
+
     function getMapFitOptions() {
         if (isExploreMapMobile()) {
             return {
                 maxZoom: 12,
-                paddingBottomRight: [28, 240],
-                paddingTopLeft: [28, 88]
+                paddingBottomRight: [28, 28],
+                paddingTopLeft: [28, 28]
             };
         }
 
