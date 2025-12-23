@@ -48,10 +48,10 @@
 
                 {% if profile %}
                 <div class="peak-detail-hero__status" data-peak-tracking data-peak-id="{{ peak.id }}" data-initial-status="{{ peak_status }}">
-                    <div class="peak-detail-hero__status-chip" data-peak-status-chip>
+                    <div class="peak-detail-hero__status-chip" data-peak-status-chip{% if not has_climbed %} hidden{% endif %}>
                         {{ render_peak_status(peak_status) }}
                     </div>
-                    <div class="buttons peak-detail-actions__buttons peak-detail-hero__buttons">
+                    <div class="buttons peak-detail-actions__buttons peak-detail-hero__buttons" data-peak-tracking-actions{% if has_climbed %} hidden{% endif %}>
                         <button
                             type="button"
                             class="button peak-detail-action-button peak-detail-action-button--log"
@@ -59,7 +59,7 @@
                             {% if has_climbed %}disabled{% endif %}
                         >
                             <span class="icon" aria-hidden="true"><i class="fas fa-mountain"></i></span>
-                            <span>{% if has_climbed %}Climbed &#10003;{% else %}Mark as Climbed{% endif %}</span>
+                            <span>{% if has_climbed %}Climb Logged{% else %}Log Climb{% endif %}</span>
                         </button>
                         <button
                             type="button"
@@ -69,7 +69,7 @@
                             {% if has_climbed %}disabled{% endif %}
                         >
                             <span class="icon" aria-hidden="true"><i class="fas fa-bookmark"></i></span>
-                            <span>{% if is_bucket_listed %}In Bucket List &#10003;{% else %}Add to Bucket List{% endif %}</span>
+                            <span>{% if is_bucket_listed %}Remove from Bucket List{% else %}Add to Bucket List{% endif %}</span>
                         </button>
                     </div>
                     <div class="peak-detail-log-form-wrap" data-peak-log-form-wrap>
@@ -173,7 +173,15 @@
                             </div>
                         </form>
                     </div>
-                    <p class="peak-detail-actions__message peak-detail-hero__message" data-peak-tracking-message aria-live="polite"></p>
+                    <p class="peak-detail-actions__message peak-detail-hero__message" data-peak-tracking-message aria-live="polite">
+                        {% if has_climbed %}
+                        Your climb is already logged.
+                        {% elif is_bucket_listed %}
+                        Log your climb whenever you're ready.
+                        {% else %}
+                        Track this peak from here.
+                        {% endif %}
+                    </p>
                 </div>
                 {% endif %}
 

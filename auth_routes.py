@@ -11,11 +11,13 @@ from supabase_utils import (
 )
 from web_utils import (
     RECENTLY_VIEWED_SESSION_KEY,
+    clear_supabase_auth_session,
     form_error_response,
     form_success_response,
     is_email_registered_error,
     is_invalid_login_error,
     looks_like_email,
+    store_supabase_auth_session,
 )
 
 
@@ -67,6 +69,7 @@ def signup():
     if not result or not result.user:
         return form_error_response("We could not create your account right now.", 400)
 
+    store_supabase_auth_session(result)
     session["user"] = result.user.model_dump()
     session["profile"] = get_or_create_session_profile(
         result.user.id,
@@ -113,6 +116,7 @@ def login():
             fields={"email": "Invalid email or password", "password": "Invalid email or password"},
         )
 
+    store_supabase_auth_session(result)
     session["user"] = result.user.model_dump()
     session["profile"] = get_or_create_session_profile(
         result.user.id,
@@ -145,6 +149,7 @@ def logout():
         except Exception as exc:
             current_app.logger.warning("Supabase sign out failed: %s", exc)
 
+    clear_supabase_auth_session()
     session.pop("user", None)
     session.pop("profile", None)
     session.pop(RECENTLY_VIEWED_SESSION_KEY, None)

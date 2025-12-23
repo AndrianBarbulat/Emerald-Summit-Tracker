@@ -87,17 +87,16 @@
 }
 
 .peak-detail-hero__buttons {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: grid;
     gap: 0.8rem;
-    justify-content: flex-end;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin-bottom: 0;
+    width: 100%;
 }
 
 .peak-detail-hero__buttons .peak-detail-action-button {
-    min-width: 13rem;
-    width: auto;
+    min-width: 0;
+    width: 100%;
 }
 
 .peak-detail-log-form-wrap {
@@ -673,6 +672,7 @@
 
 .peak-detail-map-canvas {
     height: 350px;
+    width: 100%;
 }
 
 .peak-detail-map-canvas.leaflet-container {

@@ -10,6 +10,33 @@ document.addEventListener('DOMContentLoaded', function() {
     initPeakDetailMap();
 });
 
+function scheduleLeafletLayoutRefresh(map, options) {
+    if (!map || typeof map.invalidateSize !== 'function') {
+        return;
+    }
+
+    const refreshOptions = options || {};
+    const center = Array.isArray(refreshOptions.center) ? refreshOptions.center : null;
+
+    const refresh = function() {
+        const container = map.getContainer ? map.getContainer() : null;
+        if (!container || !container.isConnected) {
+            return;
+        }
+
+        map.invalidateSize({ pan: false });
+        if (center) {
+            map.setView(center, map.getZoom(), { animate: false });
+        }
+    };
+
+    window.requestAnimationFrame(function() {
+        window.requestAnimationFrame(refresh);
+    });
+
+    window.setTimeout(refresh, 180);
+}
+
 function getProvinceColor(provinceName) {
     const provinceKey = String(provinceName || '').trim().toLowerCase();
     return LANDING_MAP_PROVINCE_COLORS[provinceKey] || '#74C69D';
@@ -126,12 +153,18 @@ function initPeakDetailMap() {
     }
 
     const peakDetailMap = L.map('peak-detail-map').setView([peakLat, peakLng], 13);
+    const refreshPeakDetailMapLayout = function() {
+        scheduleLeafletLayoutRefresh(peakDetailMap, {
+            center: [peakLat, peakLng]
+        });
+    };
 
     const tileLayer = L.tileLayer('https://tile.opentopomap.org/{z}/{x}/{y}.png', {
         attribution: 'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap'
     }).addTo(peakDetailMap);
 
     tileLayer.once('load', function() {
+        refreshPeakDetailMapLayout();
         if (peakDetailMapRegion) {
             window.setLoadingRegion(peakDetailMapRegion, false);
         }
@@ -145,7 +178,12 @@ function initPeakDetailMap() {
         weight: 3
     }).addTo(peakDetailMap);
 
+    refreshPeakDetailMapLayout();
+    window.addEventListener('load', refreshPeakDetailMapLayout, { once: true });
+    window.addEventListener('pageshow', refreshPeakDetailMapLayout);
+
     window.setTimeout(function() {
+        refreshPeakDetailMapLayout();
         if (peakDetailMapRegion) {
             window.setLoadingRegion(peakDetailMapRegion, false);
         }

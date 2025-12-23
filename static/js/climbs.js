@@ -1,5 +1,3 @@
-const CLIMB_WEATHER_META = window.CLIMB_WEATHER_META || {};
-
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('[data-peak-log-form], [data-user-climb-edit-form]').forEach(function(form) {
         initializeClimbFormValidation(form);
@@ -202,29 +200,43 @@ function setPeakTrackingMessage(panel, message, isError) {
     messageElement.classList.toggle('is-error', Boolean(isError));
 }
 
+function getPeakTrackingDefaultMessage(status) {
+    const normalizedStatus = normalizePeakStatusValue(status);
+    if (normalizedStatus === 'climbed') {
+        return 'Your climb is already logged.';
+    }
+
+    if (normalizedStatus === 'bucket_listed') {
+        return 'Log your climb whenever you\'re ready.';
+    }
+
+    return 'Track this peak from here.';
+}
+
 function updatePeakTrackingPanel(panel, status) {
     if (!panel) {
         return;
     }
 
     const normalizedStatus = normalizePeakStatusValue(status);
+    const actionsContainer = panel.querySelector('[data-peak-tracking-actions]');
     const statusChip = panel.querySelector('[data-peak-status-chip]');
     const form = panel.querySelector('[data-peak-log-form]');
     const logButton = panel.querySelector('[data-peak-track-action="log-climb"]');
     const bucketButton = panel.querySelector('[data-peak-track-action="toggle-bucket"]');
-    const copyElement = panel.querySelector('.peak-detail-actions__copy');
 
     panel.dataset.currentStatus = normalizedStatus;
 
     if (statusChip && getPeakStatusMarkupFragment(normalizedStatus)) {
         statusChip.innerHTML = getPeakStatusMarkupFragment(normalizedStatus);
+        statusChip.hidden = normalizedStatus !== 'climbed';
     }
 
     if (logButton) {
         const logLabel = logButton.querySelector('span:last-child');
         logButton.disabled = normalizedStatus === 'climbed';
         if (logLabel) {
-            logLabel.textContent = normalizedStatus === 'climbed' ? 'Climbed \u2713' : 'Mark as Climbed';
+            logLabel.textContent = normalizedStatus === 'climbed' ? 'Climb Logged' : 'Log Climb';
         }
     }
 
@@ -235,23 +247,19 @@ function updatePeakTrackingPanel(panel, status) {
         bucketButton.classList.toggle('is-active', isBucketListed);
         bucketButton.disabled = normalizedStatus === 'climbed';
         if (bucketLabel) {
-            bucketLabel.textContent = isBucketListed ? 'In Bucket List \u2713' : 'Add to Bucket List';
+            bucketLabel.textContent = isBucketListed ? 'Remove from Bucket List' : 'Add to Bucket List';
         }
+    }
+
+    if (actionsContainer) {
+        actionsContainer.hidden = normalizedStatus === 'climbed';
     }
 
     if (normalizedStatus === 'climbed') {
         closePeakLogForm(panel, form, true);
     }
 
-    if (copyElement) {
-        if (normalizedStatus === 'climbed') {
-            copyElement.textContent = 'You have already logged this peak.';
-        } else if (normalizedStatus === 'bucket_listed') {
-            copyElement.textContent = 'This peak is saved to your bucket list.';
-        } else {
-            copyElement.textContent = 'Keep this peak on your radar or log a climb in one click.';
-        }
-    }
+    setPeakTrackingMessage(panel, getPeakTrackingDefaultMessage(normalizedStatus), false);
 }
 
 function showLeaderboardRankImprovementToast(result, delayMs) {
@@ -757,7 +765,7 @@ function upsertUserClimbItem(section, climb) {
 
 function buildUserClimbItemMarkup(climb, peakName) {
     const normalizedClimb = normalizeUserClimbRecord(climb);
-    const weatherMeta = normalizedClimb.weather ? (CLIMB_WEATHER_META[normalizedClimb.weather] || null) : null;
+    const weatherMeta = normalizedClimb.weather ? ((window.CLIMB_WEATHER_META || {})[normalizedClimb.weather] || null) : null;
     const difficultyDisplayLabel = normalizedClimb.difficultyLabel || 'No rating';
     const weatherMarkup = weatherMeta
         ? '<p class="peak-detail-list-item__meta peak-detail-user-climb-item__weather">'

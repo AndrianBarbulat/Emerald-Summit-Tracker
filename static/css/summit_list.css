@@ -26,7 +26,7 @@
 }
 
 .summit-list-page__subtitle {
-    color: var(--color-grey);
+    color: #4f5f67;
     margin-bottom: 0;
     max-width: 40rem;
 }
@@ -72,8 +72,9 @@
 }
 
 .summit-list-results__count {
-    color: var(--color-grey);
+    color: #4f5f67;
     font-size: 0.95rem;
+    font-weight: 600;
     margin-bottom: 0.85rem;
 }
 
@@ -163,7 +164,7 @@
 }
 
 .summit-list-status-prompt__copy {
-    color: var(--color-grey);
+    color: #4f5f67;
     line-height: 1.6;
     margin-bottom: 0;
     max-width: 42rem;
@@ -205,6 +206,7 @@
 
 .summit-list-table tbody td {
     border-bottom: 1px solid var(--color-light-grey);
+    color: var(--color-slate);
     vertical-align: middle;
 }
 
@@ -222,6 +224,16 @@
 
 .summit-list-table__actions-cell {
     width: 19rem;
+}
+
+.summit-list-table__rank-cell {
+    color: #51606a;
+    font-weight: 700;
+}
+
+.summit-list-table__metric-cell {
+    color: var(--color-forest);
+    font-weight: 700;
 }
 
 .summit-list-table__link {
@@ -413,7 +425,7 @@
 .summit-province-pill--default {
     background: rgba(108, 117, 125, 0.08);
     border-color: rgba(108, 117, 125, 0.18);
-    color: var(--color-grey);
+    color: #4f5f67;
 }
 
 .summit-card-grid {
@@ -464,8 +476,9 @@
 }
 
 .summit-card__metrics {
-    color: var(--color-grey);
+    color: #4f5f67;
     font-size: 0.875rem;
+    font-weight: 600;
     line-height: 1.35;
     margin: 0 0 0.55rem;
 }
@@ -478,7 +491,7 @@
 }
 
 .summit-card__county {
-    color: var(--color-grey);
+    color: #4f5f67;
     font-size: 0.84rem;
     font-weight: 600;
 }
@@ -523,7 +536,7 @@
 }
 
 .summit-list-pagination__info {
-    color: var(--color-grey);
+    color: #4f5f67;
     font-weight: 600;
     margin: 0;
     min-width: 6.5rem;

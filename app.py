@@ -12,6 +12,7 @@ from web_utils import (
     register_blueprint_with_legacy_endpoints,
     register_context_processors,
     register_error_handlers,
+    register_request_hooks,
     register_template_filters,
 )
 
@@ -23,6 +24,7 @@ def create_app() -> Flask:
     register_template_filters(app)
     register_context_processors(app)
     register_error_handlers(app)
+    register_request_hooks(app)
 
     app.register_blueprint(api)
     for blueprint in (auth, main, peaks, users, community):

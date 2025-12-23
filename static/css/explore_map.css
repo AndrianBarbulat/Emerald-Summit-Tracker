@@ -48,6 +48,11 @@
     z-index: 760;
 }
 
+.explore-map-sidebar.box,
+.explore-map-sidebar.box:not(:last-child) {
+    margin-bottom: 0;
+}
+
 .explore-map-sidebar__header {
     align-items: flex-start;
     background:
@@ -199,6 +204,11 @@
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+}
+
+.explore-map-sidebar .field,
+.explore-map-sidebar .field:not(:last-child) {
+    margin-bottom: 0;
 }
 
 .explore-map-sidebar .input,

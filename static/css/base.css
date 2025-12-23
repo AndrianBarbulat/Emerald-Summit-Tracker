@@ -7,7 +7,7 @@
     --color-slate: #2D3436;
     --color-light-green: #D8F3DC;
     --color-white: #FFFFFF;
-    --color-grey: #6C757D;
+    --color-grey: #55636D;
     --color-light-grey: #E9ECEF;
     --color-danger: #C0392B;
     --color-warning: #E67E22;
@@ -37,6 +37,14 @@ body {
     font-family: 'Inter', sans-serif;
     color: var(--color-slate);
     padding-top: 52px;
+}
+
+.has-text-grey {
+    color: var(--color-grey) !important;
+}
+
+.has-text-grey-light {
+    color: #6c7a84 !important;
 }
 
 .button {
@@ -896,7 +904,6 @@ body.has-site-search-open {
 .site-footer.footer {
     background: var(--color-forest);
     color: var(--color-light-green);
-    margin-top: 4rem;
     padding: 3rem 1.5rem 1.5rem;
 }
 

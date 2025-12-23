@@ -233,8 +233,7 @@
     }
 
     .peak-detail-hero__buttons {
-        align-items: stretch;
-        flex-direction: column;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .peak-detail-hero__buttons .peak-detail-action-button,

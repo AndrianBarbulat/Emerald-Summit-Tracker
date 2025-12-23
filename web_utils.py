@@ -8,7 +8,14 @@ from flask import g, jsonify, redirect, render_template, request, session, url_f
 from werkzeug.exceptions import HTTPException
 
 from badges import COUNTY_PEAK_COUNTS, configure_county_badges
-from supabase_utils import get_all_peaks, get_county_peak_counts, get_peak_count, get_user_badges
+from supabase_utils import (
+    auth_clear_session,
+    auth_restore_session,
+    get_all_peaks,
+    get_county_peak_counts,
+    get_peak_count,
+    get_user_badges,
+)
 from time_utils import format_display_date, format_time_ago, parse_datetime_value
 
 
@@ -18,6 +25,7 @@ BADGE_NOTIFICATION_SEEN_SESSION_KEY = "badge_notifications_last_seen_at"
 RECENTLY_VIEWED_SESSION_KEY = "recently_viewed_peaks"
 RECENTLY_VIEWED_LIMIT = 3
 PROVINCE_ORDER = ("Munster", "Leinster", "Ulster", "Connacht")
+SUPABASE_AUTH_SESSION_KEY = "supabase_auth"
 
 
 def get_session_context() -> dict:
@@ -25,6 +33,68 @@ def get_session_context() -> dict:
         "user": session.get("user"),
         "profile": session.get("profile"),
     }
+
+
+def _serialize_supabase_auth_payload(auth_response) -> dict | None:
+    auth_session = getattr(auth_response, "session", None)
+    if not auth_session:
+        return None
+
+    access_token = str(getattr(auth_session, "access_token", "") or "").strip()
+    refresh_token = str(getattr(auth_session, "refresh_token", "") or "").strip()
+    if not access_token or not refresh_token:
+        return None
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+
+
+def store_supabase_auth_session(auth_response) -> bool:
+    serialized_payload = _serialize_supabase_auth_payload(auth_response)
+    if not serialized_payload:
+        session.pop(SUPABASE_AUTH_SESSION_KEY, None)
+        return False
+
+    session[SUPABASE_AUTH_SESSION_KEY] = serialized_payload
+    return True
+
+
+def clear_supabase_auth_session(clear_profile: bool = False) -> None:
+    session.pop(SUPABASE_AUTH_SESSION_KEY, None)
+    auth_clear_session()
+    if clear_profile:
+        session.pop("user", None)
+        session.pop("profile", None)
+        session.pop(RECENTLY_VIEWED_SESSION_KEY, None)
+
+
+def sync_supabase_auth_for_request() -> None:
+    auth_payload = session.get(SUPABASE_AUTH_SESSION_KEY)
+    access_token = str((auth_payload or {}).get("access_token") or "").strip()
+    refresh_token = str((auth_payload or {}).get("refresh_token") or "").strip()
+
+    if not access_token or not refresh_token:
+        if session.get("user") or session.get("profile"):
+            clear_supabase_auth_session(clear_profile=True)
+        else:
+            auth_clear_session()
+        return
+
+    try:
+        restored_auth = auth_restore_session(access_token, refresh_token)
+    except Exception:
+        clear_supabase_auth_session(clear_profile=True)
+        return
+
+    serialized_payload = _serialize_supabase_auth_payload(restored_auth)
+    if serialized_payload:
+        session[SUPABASE_AUTH_SESSION_KEY] = serialized_payload
+
+    restored_user = getattr(restored_auth, "user", None)
+    if restored_user is not None and hasattr(restored_user, "model_dump"):
+        session["user"] = restored_user.model_dump()
 
 
 def prime_total_peak_count_cache(app) -> None:
@@ -339,6 +409,14 @@ def register_context_processors(app) -> None:
             "unit_preference": unit_preference,
             "user": user,
         }
+
+
+def register_request_hooks(app) -> None:
+    @app.before_request
+    def restore_supabase_auth_session() -> None:
+        if request.endpoint == "static":
+            return
+        sync_supabase_auth_for_request()
 
 
 def register_error_handlers(app) -> None:

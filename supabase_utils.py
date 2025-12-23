@@ -25,7 +25,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TABLE_PEAKS = "IrelandPeacks"
 TABLE_PROFILES = "profiles"
 TABLE_CLIMBS = os.getenv("SUPABASE_CLIMBS_TABLE") or os.getenv("SUPABASE_USER_CLIMBED_PEAKS_TABLE") or "climbs"
-TABLE_BUCKET_LIST = "bucket_list"
+TABLE_BUCKET_LIST = os.getenv("SUPABASE_BUCKET_LIST_TABLE") or os.getenv("SUPABASE_USER_BUCKET_LIST_TABLE") or "user_bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
 STORAGE_BUCKET_SUMMIT_PHOTOS = os.getenv("SUPABASE_SUMMIT_PHOTOS_BUCKET") or "summit-photos"
@@ -48,6 +48,7 @@ SHARED_LEADERBOARD_CACHE_KEYS = (
     "leaderboard_streaks",
 )
 _SHARED_QUERY_CACHE: Dict[str, Dict[str, Any]] = {}
+_BUCKET_LIST_TABLE_NAME = TABLE_BUCKET_LIST
 
 
 def _build_client() -> Optional[Client]:
@@ -78,6 +79,50 @@ def _storage_bucket(name: str):
         return supabase.storage.from_(name)
     except Exception:
         return None
+
+
+def _is_missing_table_error(error: Exception) -> bool:
+    message = str(error or "")
+    return "PGRST205" in message or "Could not find the table" in message
+
+
+def _bucket_list_table_candidates() -> List[str]:
+    candidates = []
+    for table_name in (
+        _BUCKET_LIST_TABLE_NAME,
+        os.getenv("SUPABASE_BUCKET_LIST_TABLE"),
+        os.getenv("SUPABASE_USER_BUCKET_LIST_TABLE"),
+        "user_bucket_list",
+        "bucket_list",
+    ):
+        normalized_name = str(table_name or "").strip()
+        if normalized_name and normalized_name not in candidates:
+            candidates.append(normalized_name)
+    return candidates
+
+
+def _execute_bucket_list_query(run_query):
+    global _BUCKET_LIST_TABLE_NAME
+
+    last_error = None
+    for table_name in _bucket_list_table_candidates():
+        query = _table(table_name)
+        if query is None:
+            continue
+
+        try:
+            result = run_query(query)
+            _BUCKET_LIST_TABLE_NAME = table_name
+            return result
+        except Exception as exc:
+            last_error = exc
+            if _is_missing_table_error(exc):
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    return None
 
 
 def _cache_is_fresh(entry: Optional[Dict[str, Any]]) -> bool:
@@ -819,6 +864,36 @@ def auth_get_current_user() -> Any:
     if supabase is None:
         return None
     return supabase.auth.get_user()
+
+
+def auth_get_session() -> Any:
+    if supabase is None:
+        return None
+    return supabase.auth.get_session()
+
+
+def auth_restore_session(access_token: str, refresh_token: str) -> Any:
+    if supabase is None:
+        return None
+    return supabase.auth.set_session(access_token, refresh_token)
+
+
+def auth_clear_session() -> None:
+    if supabase is None:
+        return
+
+    remove_session = getattr(supabase.auth, "_remove_session", None)
+    if callable(remove_session):
+        try:
+            remove_session()
+            return
+        except Exception:
+            pass
+
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        return
 
 
 def auth_sign_out() -> bool:
@@ -1901,10 +1976,9 @@ def get_peak_statuses(user_id: str, peak_ids: List[Any]) -> Dict[str, str]:
 
 def get_user_bucket_list(user_id: str) -> List[Dict[str, Any]]:
     try:
-        query = _table(TABLE_BUCKET_LIST)
-        if query is None:
-            return []
-        response = query.select("*").eq("user_id", user_id).execute()
+        response = _execute_bucket_list_query(
+            lambda query: query.select("*").eq("user_id", user_id).execute()
+        )
         return response.data or []
     except Exception:
         return []
@@ -1912,22 +1986,25 @@ def get_user_bucket_list(user_id: str) -> List[Dict[str, Any]]:
 
 def add_to_bucket_list(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_BUCKET_LIST)
-        if query is None:
-            return None
         payload = {"user_id": user_id, "peak_id": peak_id}
-        response = query.insert(payload).execute()
+        response = _execute_bucket_list_query(
+            lambda query: query.insert(payload).execute()
+        )
         return response.data[0] if response.data else None
     except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to add peak %s to bucket list for user %s.",
+            peak_id,
+            user_id,
+        )
         return None
 
 
 def remove_from_bucket_list(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_BUCKET_LIST)
-        if query is None:
-            return None
-        response = query.delete().eq("user_id", user_id).eq("peak_id", peak_id).execute()
+        response = _execute_bucket_list_query(
+            lambda query: query.delete().eq("user_id", user_id).eq("peak_id", peak_id).execute()
+        )
         return response.data[0] if response.data else None
     except Exception:
         return None
@@ -1935,10 +2012,9 @@ def remove_from_bucket_list(user_id: str, peak_id: Any) -> Optional[Dict[str, An
 
 def is_bucket_listed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_BUCKET_LIST)
-        if query is None:
-            return None
-        response = query.select("*").eq("user_id", user_id).eq("peak_id", peak_id).limit(1).execute()
+        response = _execute_bucket_list_query(
+            lambda query: query.select("*").eq("user_id", user_id).eq("peak_id", peak_id).limit(1).execute()
+        )
         return response.data[0] if response.data else None
     except Exception:
         return None
