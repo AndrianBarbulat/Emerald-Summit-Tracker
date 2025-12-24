@@ -24,7 +24,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 TABLE_PEAKS = "IrelandPeacks"
 TABLE_PROFILES = "profiles"
-TABLE_CLIMBS = os.getenv("SUPABASE_CLIMBS_TABLE") or os.getenv("SUPABASE_USER_CLIMBED_PEAKS_TABLE") or "climbs"
+TABLE_CLIMBS = os.getenv("SUPABASE_CLIMBS_TABLE") or os.getenv("SUPABASE_USER_CLIMBED_PEAKS_TABLE") or "user_climbed_peaks"
 TABLE_BUCKET_LIST = os.getenv("SUPABASE_BUCKET_LIST_TABLE") or os.getenv("SUPABASE_USER_BUCKET_LIST_TABLE") or "user_bucket_list"
 TABLE_USER_BADGES = "user_badges"
 TABLE_COMMENTS = "peak_comments"
@@ -48,6 +48,7 @@ SHARED_LEADERBOARD_CACHE_KEYS = (
     "leaderboard_streaks",
 )
 _SHARED_QUERY_CACHE: Dict[str, Dict[str, Any]] = {}
+_CLIMBS_TABLE_NAME = TABLE_CLIMBS
 _BUCKET_LIST_TABLE_NAME = TABLE_BUCKET_LIST
 
 
@@ -99,6 +100,45 @@ def _bucket_list_table_candidates() -> List[str]:
         if normalized_name and normalized_name not in candidates:
             candidates.append(normalized_name)
     return candidates
+
+
+def _climbs_table_candidates() -> List[str]:
+    candidates = []
+    for table_name in (
+        _CLIMBS_TABLE_NAME,
+        os.getenv("SUPABASE_CLIMBS_TABLE"),
+        os.getenv("SUPABASE_USER_CLIMBED_PEAKS_TABLE"),
+        "user_climbed_peaks",
+        "climbs",
+    ):
+        normalized_name = str(table_name or "").strip()
+        if normalized_name and normalized_name not in candidates:
+            candidates.append(normalized_name)
+    return candidates
+
+
+def _execute_climbs_query(run_query):
+    global _CLIMBS_TABLE_NAME
+
+    last_error = None
+    for table_name in _climbs_table_candidates():
+        query = _table(table_name)
+        if query is None:
+            continue
+
+        try:
+            result = run_query(query)
+            _CLIMBS_TABLE_NAME = table_name
+            return result
+        except Exception as exc:
+            last_error = exc
+            if _is_missing_table_error(exc):
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    return None
 
 
 def _execute_bucket_list_query(run_query):
@@ -905,11 +945,21 @@ def auth_sign_out() -> bool:
 
 def get_user_climbs(user_id: str) -> List[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return []
-        response = query.select("*").eq("user_id", user_id).order("climbed_at", desc=True).execute()
-        return [_normalize_climb_record(climb) for climb in (response.data or [])]
+        response = None
+        for order_field in ("date_climbed", "climbed_at", "created_at"):
+            try:
+                response = _execute_climbs_query(
+                    lambda query, current_order=order_field: query.select("*").eq("user_id", user_id).order(current_order, desc=True).execute()
+                )
+                break
+            except Exception:
+                continue
+
+        if response is None:
+            response = _execute_climbs_query(
+                lambda query: query.select("*").eq("user_id", user_id).execute()
+            )
+        return [_normalize_climb_record(climb) for climb in ((response.data if response else []) or [])]
     except Exception:
         return []
 
@@ -1011,11 +1061,10 @@ def sync_user_current_streak(user_id: str, climbs: Optional[List[Dict[str, Any]]
 
 def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return None
         payload = {"user_id": user_id, "peak_id": peak_id, **(data or {})}
-        response = query.insert(payload).execute()
+        response = _execute_climbs_query(
+            lambda query: query.insert(payload).execute()
+        )
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         logging.getLogger(__name__).exception(
@@ -1029,10 +1078,9 @@ def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict
 
 def update_climb(climb_id: Any, user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return None
-        response = query.update(data).eq("id", climb_id).eq("user_id", user_id).execute()
+        response = _execute_climbs_query(
+            lambda query: query.update(data).eq("id", climb_id).eq("user_id", user_id).execute()
+        )
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         logging.getLogger(__name__).exception(
@@ -1046,10 +1094,9 @@ def update_climb(climb_id: Any, user_id: str, data: Dict[str, Any]) -> Optional[
 
 def get_climb_by_id(climb_id: Any) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return None
-        response = query.select("*").eq("id", climb_id).limit(1).execute()
+        response = _execute_climbs_query(
+            lambda query: query.select("*").eq("id", climb_id).limit(1).execute()
+        )
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
@@ -1057,10 +1104,9 @@ def get_climb_by_id(climb_id: Any) -> Optional[Dict[str, Any]]:
 
 def delete_climb(climb_id: Any, user_id: str) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return None
-        response = query.delete().eq("id", climb_id).eq("user_id", user_id).execute()
+        response = _execute_climbs_query(
+            lambda query: query.delete().eq("id", climb_id).eq("user_id", user_id).execute()
+        )
         return response.data[0] if response.data else None
     except Exception:
         return None
@@ -1068,15 +1114,23 @@ def delete_climb(climb_id: Any, user_id: str) -> Optional[Dict[str, Any]]:
 
 def get_peak_climbers(peak_id: Any, limit: int = 5) -> List[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return []
-        response = (
-            query.select("*")
-            .eq("peak_id", peak_id)
-            .order("climbed_at", desc=True)
-            .limit(limit)
-            .execute()
+        for order_field in ("date_climbed", "climbed_at", "created_at"):
+            try:
+                response = _execute_climbs_query(
+                    lambda query, current_order=order_field: (
+                        query.select("*")
+                        .eq("peak_id", peak_id)
+                        .order(current_order, desc=True)
+                        .limit(limit)
+                        .execute()
+                    )
+                )
+                return response.data or []
+            except Exception:
+                continue
+
+        response = _execute_climbs_query(
+            lambda query: query.select("*").eq("peak_id", peak_id).limit(limit).execute()
         )
         return response.data or []
     except Exception:
@@ -1099,6 +1153,16 @@ def _query_peak_climb_rows(
     limit: Optional[int] = None,
     select_clause: str = "*",
 ) -> List[Dict[str, Any]]:
+    def _build_peak_climb_query(query, current_select: str, current_order: Optional[str] = None):
+        current_query = query.select(current_select).eq("peak_id", peak_id)
+        if user_id:
+            current_query = current_query.eq("user_id", user_id)
+        if current_order:
+            current_query = current_query.order(current_order, desc=True)
+        if limit is not None:
+            current_query = current_query.limit(limit)
+        return current_query
+
     select_variants = [select_clause]
     if select_clause != "*":
         select_variants.append("*")
@@ -1106,30 +1170,21 @@ def _query_peak_climb_rows(
     for current_select in select_variants:
         for order_field in ("date_climbed", "climbed_at", "created_at"):
             try:
-                query = _table(TABLE_CLIMBS)
-                if query is None:
-                    return []
-                query = query.select(current_select).eq("peak_id", peak_id)
-                if user_id:
-                    query = query.eq("user_id", user_id)
-                query = query.order(order_field, desc=True)
-                if limit is not None:
-                    query = query.limit(limit)
-                response = query.execute()
+                response = _execute_climbs_query(
+                    lambda query, current_select_value=current_select, current_order=order_field: _build_peak_climb_query(
+                        query,
+                        current_select_value,
+                        current_order,
+                    ).execute()
+                )
                 return response.data or []
             except Exception:
                 continue
 
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return []
-        query = query.select("*").eq("peak_id", peak_id)
-        if user_id:
-            query = query.eq("user_id", user_id)
-        if limit is not None:
-            query = query.limit(limit)
-        response = query.execute()
+        response = _execute_climbs_query(
+            lambda query: _build_peak_climb_query(query, "*").execute()
+        )
         return response.data or []
     except Exception:
         return []
@@ -1256,10 +1311,9 @@ def get_peak_average_difficulty(peak_id: Any) -> Optional[float]:
 
 def get_user_has_climbed(user_id: str, peak_id: Any) -> Optional[Dict[str, Any]]:
     try:
-        query = _table(TABLE_CLIMBS)
-        if query is None:
-            return None
-        response = query.select("*").eq("user_id", user_id).eq("peak_id", peak_id).limit(1).execute()
+        response = _execute_climbs_query(
+            lambda query: query.select("*").eq("user_id", user_id).eq("peak_id", peak_id).limit(1).execute()
+        )
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
         return None
@@ -1598,12 +1652,13 @@ def _normalize_leaderboard_category(category: str | None) -> str:
 
 def _build_leaderboard_cache_payload() -> Dict[str, Any]:
     try:
-        climbs_query = _table(TABLE_CLIMBS)
         profiles_query = _table(TABLE_PROFILES)
-        if climbs_query is None or profiles_query is None:
+        if profiles_query is None:
             return _empty_leaderboard_cache_payload()
 
-        climbs_response = climbs_query.select("*").execute()
+        climbs_response = _execute_climbs_query(
+            lambda query: query.select("*").execute()
+        )
         profiles_response = profiles_query.select("*").execute()
         all_climbs = [_normalize_climb_record(climb) for climb in (climbs_response.data or [])]
         profiles_by_id = {
@@ -1936,14 +1991,10 @@ def get_peak_statuses(user_id: str, peak_ids: List[Any]) -> Dict[str, str]:
     bucket_peak_ids = set()
 
     try:
-        climbs_query = _table(TABLE_CLIMBS)
-        if climbs_query is not None:
-            climbs_response = (
-                climbs_query.select("peak_id")
-                .eq("user_id", user_id)
-                .in_("peak_id", raw_peak_ids)
-                .execute()
-            )
+        climbs_response = _execute_climbs_query(
+            lambda query: query.select("peak_id").eq("user_id", user_id).in_("peak_id", raw_peak_ids).execute()
+        )
+        if climbs_response is not None:
             climbed_peak_ids = {
                 str(item.get("peak_id"))
                 for item in (climbs_response.data or [])
