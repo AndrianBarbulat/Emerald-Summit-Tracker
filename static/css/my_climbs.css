@@ -256,6 +256,15 @@
     text-align: center;
 }
 
+.my-climbs-empty-state .title {
+    color: var(--color-forest);
+}
+
+.my-climbs-empty-state p,
+.my-climbs-empty-state .has-text-grey {
+    color: #4f5f67 !important;
+}
+
 .my-climbs-empty-state__icon {
     color: rgba(82, 121, 111, 0.45);
     font-size: 3rem;
