@@ -60,6 +60,17 @@ ALLOWED_CLIMB_WEATHER = {
     "foggy",
     "mixed",
 }
+NAMED_DIFFICULTY_VALUES = {
+    "easy": 1.0,
+    "moderate": 2.0,
+    "medium": 2.0,
+    "hard": 3.0,
+    "challenging": 3.0,
+    "very hard": 4.0,
+    "strenuous": 4.0,
+    "expert": 5.0,
+    "extreme": 5.0,
+}
 ALLOWED_DIFFICULTY_VALUES = {
     "1",
     "2",
@@ -507,6 +518,31 @@ def _normalize_date_value(raw_value, required: bool):
     return normalized, None
 
 
+def _normalize_difficulty_value(raw_value):
+    difficulty = _clean_text(raw_value, 40)
+    if difficulty is None:
+        return None, "Difficulty rating must be between 1 and 5."
+
+    if difficulty in {_UNSET, ""}:
+        return difficulty, None
+
+    normalized = str(difficulty).strip().lower()
+    numeric_value = NAMED_DIFFICULTY_VALUES.get(normalized)
+    if numeric_value is None:
+        try:
+            numeric_value = float(normalized)
+        except (TypeError, ValueError):
+            return None, "Difficulty rating must be between 1 and 5."
+
+    if numeric_value < 1 or numeric_value > 5:
+        return None, "Difficulty rating must be between 1 and 5."
+
+    if int(numeric_value) != numeric_value:
+        return None, "Difficulty rating must be between 1 and 5."
+
+    return str(int(numeric_value)), None
+
+
 def _normalize_climb_fields(payload: dict, require_date: bool):
     normalized_date, date_error = _normalize_date_value(
         _extract_field(payload, "date_climbed", "climbed_at", "date"),
@@ -527,18 +563,11 @@ def _normalize_climb_fields(payload: dict, require_date: bool):
         if weather not in ALLOWED_CLIMB_WEATHER:
             return None, {"weather": "Please choose a valid weather option."}
 
-    difficulty = _clean_text(_extract_field(payload, "difficulty_rating", "difficulty"), 40)
-    if difficulty is None:
-        return None, {"difficulty_rating": "Difficulty rating must be 1 to 5."}
-    if difficulty not in {_UNSET, ""}:
-        difficulty = str(difficulty).strip().lower()
-        if difficulty.isdigit():
-            difficulty_value = int(difficulty)
-            if difficulty_value < 1 or difficulty_value > 5:
-                return None, {"difficulty_rating": "Difficulty rating must be between 1 and 5."}
-            difficulty = str(difficulty_value)
-        else:
-            return None, {"difficulty_rating": "Difficulty rating must be between 1 and 5."}
+    difficulty, difficulty_error = _normalize_difficulty_value(
+        _extract_field(payload, "difficulty_rating", "difficulty")
+    )
+    if difficulty_error:
+        return None, {"difficulty_rating": difficulty_error}
 
     return {
         "date_climbed": normalized_date,
@@ -1057,29 +1086,89 @@ def api_log_climb():
         if updated_bucket_completion_climb is not None:
             created_climb = updated_bucket_completion_climb
 
-    streak_data = sync_user_current_streak(user_id)
-    clear_shared_data_cache()
-    current_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
-    _store_session_leaderboard_ranks(current_leaderboard_ranks)
-    rank_improvement_payload = _build_rank_improvement_payload(
-        previous_leaderboard_ranks,
-        current_leaderboard_ranks,
-    )
+    try:
+        streak_data = sync_user_current_streak(user_id)
+    except Exception:
+        current_app.logger.exception(
+            "Failed to refresh streak data after logging climb for user %s on peak %s.",
+            user_id,
+            peak_id,
+        )
+        warning_messages.append(
+            "Your climb was saved, but your streak could not be refreshed right away."
+        )
+        streak_data = calculate_climb_streak(get_user_climbs(user_id))
+        streak_data["profile"] = None
+
+    try:
+        clear_shared_data_cache()
+        current_leaderboard_ranks = _get_user_leaderboard_ranks(user_id)
+        _store_session_leaderboard_ranks(current_leaderboard_ranks)
+        rank_improvement_payload = _build_rank_improvement_payload(
+            previous_leaderboard_ranks,
+            current_leaderboard_ranks,
+        )
+    except Exception:
+        current_app.logger.exception(
+            "Failed to refresh leaderboard data after logging climb for user %s on peak %s.",
+            user_id,
+            peak_id,
+        )
+        warning_messages.append(
+            "Your climb was saved, but leaderboard updates may take a moment to refresh."
+        )
+        current_leaderboard_ranks = previous_leaderboard_ranks
+        rank_improvement_payload = {}
+
     if streak_data.get("profile") is not None:
         session["profile"] = streak_data["profile"]
     else:
-        _sync_session_profile(user_id)
+        try:
+            _sync_session_profile(user_id)
+        except Exception:
+            current_app.logger.exception(
+                "Failed to refresh session profile after logging climb for user %s.",
+                user_id,
+            )
+
+    try:
+        new_badges = _award_new_badges_for_user(user_id)
+    except Exception:
+        current_app.logger.exception(
+            "Failed to award badges after logging climb for user %s on peak %s.",
+            user_id,
+            peak_id,
+        )
+        warning_messages.append(
+            "Your climb was saved, but badge updates could not be refreshed right away."
+        )
+        new_badges = []
+
+    try:
+        user_status_payload = _current_user_status(user_id, peak_id)
+    except Exception:
+        current_app.logger.exception(
+            "Failed to refresh peak status after logging climb for user %s on peak %s.",
+            user_id,
+            peak_id,
+        )
+        user_status_payload = {
+            "is_climbed": True,
+            "is_bucket_listed": False,
+            "user_status": "climbed",
+        }
+
     success_payload = {
         "climb": created_climb,
         "climb_id": created_climb.get("id"),
-        "new_badges": _award_new_badges_for_user(user_id),
+        "new_badges": new_badges,
         "photo_count_received": len(uploaded_photos or []),
         "photo_upload_count": len(created_climb.get("photo_urls") or []),
         "peak_id": peak_id,
         "removed_from_bucket_list": removed_from_bucket_list,
         "saved_fields": sorted(saved_payload.keys()) if saved_payload else [],
         "streak": _serialize_streak(streak_data),
-        **_current_user_status(user_id, peak_id),
+        **user_status_payload,
     }
     success_payload.update(rank_improvement_payload)
     if warning_messages:

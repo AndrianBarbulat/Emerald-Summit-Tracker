@@ -69,7 +69,7 @@ function getDifficultyValidationMessage(value) {
     }
 
     const numericValue = Number(normalizedValue);
-    if (!Number.isFinite(numericValue) || numericValue < 1 || numericValue > 5) {
+    if (!Number.isFinite(numericValue) || !Number.isInteger(numericValue) || numericValue < 1 || numericValue > 5) {
         return 'Difficulty rating must be between 1 and 5.';
     }
 

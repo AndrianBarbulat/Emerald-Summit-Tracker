@@ -1018,6 +1018,12 @@ def log_climb(user_id: str, peak_id: Any, data: Dict[str, Any]) -> Optional[Dict
         response = query.insert(payload).execute()
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to log climb for user %s on peak %s with payload keys %s.",
+            user_id,
+            peak_id,
+            sorted((data or {}).keys()),
+        )
         return None
 
 
@@ -1029,6 +1035,12 @@ def update_climb(climb_id: Any, user_id: str, data: Dict[str, Any]) -> Optional[
         response = query.update(data).eq("id", climb_id).eq("user_id", user_id).execute()
         return _normalize_climb_record(response.data[0]) if response.data else None
     except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to update climb %s for user %s with payload keys %s.",
+            climb_id,
+            user_id,
+            sorted((data or {}).keys()),
+        )
         return None
 
 
