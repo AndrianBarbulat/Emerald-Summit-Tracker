@@ -87,6 +87,16 @@ def _is_missing_table_error(error: Exception) -> bool:
     return "PGRST205" in message or "Could not find the table" in message
 
 
+def _is_missing_column_error(error: Exception, column_name: str) -> bool:
+    message = str(error or "")
+    normalized_column_name = str(column_name or "").strip()
+    return bool(
+        normalized_column_name
+        and ("42703" in message or "does not exist" in message)
+        and normalized_column_name in message
+    )
+
+
 def _bucket_list_table_candidates() -> List[str]:
     candidates = []
     for table_name in (
@@ -2151,10 +2161,34 @@ def add_comment(user_id: str, peak_id: Any, text: str) -> Optional[Dict[str, Any
         query = _table(TABLE_COMMENTS)
         if query is None:
             return None
-        payload = {"user_id": user_id, "peak_id": peak_id, "text": text}
-        response = query.insert(payload).execute()
-        return response.data[0] if response.data else None
+
+        last_error = None
+        payload_variants = (
+            {"user_id": user_id, "peak_id": peak_id, "comment_text": text},
+            {"user_id": user_id, "peak_id": peak_id, "text": text},
+        )
+
+        for payload in payload_variants:
+            try:
+                response = query.insert(payload).execute()
+                return response.data[0] if response.data else None
+            except Exception as exc:
+                last_error = exc
+                payload_keys = set(payload.keys())
+                if "comment_text" in payload_keys and _is_missing_column_error(exc, "comment_text"):
+                    continue
+                if "text" in payload_keys and _is_missing_column_error(exc, "text"):
+                    continue
+                raise
+
+        if last_error is not None:
+            raise last_error
     except Exception:
+        logging.getLogger(__name__).exception(
+            "Failed to add comment for user %s on peak %s.",
+            user_id,
+            peak_id,
+        )
         return None
 
 
