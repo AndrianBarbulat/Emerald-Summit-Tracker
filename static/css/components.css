@@ -199,6 +199,19 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
     margin-bottom: 0;
 }
 
+.status-prompt .site-navbar__login {
+    background: rgba(27, 67, 50, 0.04);
+    border-color: rgba(27, 67, 50, 0.18);
+    color: var(--color-forest);
+}
+
+.status-prompt .site-navbar__login:hover,
+.status-prompt .site-navbar__login:focus-visible {
+    background: rgba(27, 67, 50, 0.08);
+    border-color: rgba(27, 67, 50, 0.28);
+    color: #163727;
+}
+
 
 .progress-shell {
     appearance: none;

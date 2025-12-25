@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% from 'macros/user_avatar.html' import user_avatar %}
+
+{% block title %}Compare {{ compare_left_profile.display_name }} vs {{ compare_right_profile.display_name }} | Emerald Peak Explorer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="profile-compare-page">
+    <section class="section profile-compare-hero">
+        <div class="container">
+            <div class="profile-compare-hero__copy">
+                <p class="profile-compare-hero__eyebrow">Climber Comparison</p>
+                <h1 class="title is-2 profile-compare-hero__title">{{ compare_left_profile.display_name }} vs {{ compare_right_profile.display_name }}</h1>
+                <p class="profile-compare-hero__subtitle">See how two public profiles stack up across summits, elevation, streaks, badges, and province coverage.</p>
+            </div>
+
+            <div class="profile-compare-board">
+                <div class="profile-compare-board__header profile-compare-board__header--spacer"></div>
+
+                <article class="box profile-compare-person">
+                    <div class="profile-compare-person__avatar">{{ user_avatar(compare_left_profile, '72') }}</div>
+                    <div class="profile-compare-person__copy">
+                        <p class="profile-compare-person__name">{{ compare_left_profile.display_name }}</p>
+                        <p class="profile-compare-person__meta">
+                            {% if compare_left_profile.location %}
+                            <span><i class="fas fa-location-dot"></i> {{ compare_left_profile.location }}</span>
+                            {% endif %}
+                            {% if compare_left.stats.member_since_label %}
+                            <span><i class="fas fa-calendar-alt"></i> Member since {{ compare_left.stats.member_since_label }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <a href="{{ url_for('public_profile', display_name=compare_left_profile.display_name) }}" class="button profile-compare-person__button">
+                        <span class="icon"><i class="fas fa-user"></i></span>
+                        <span>View Profile</span>
+                    </a>
+                </article>
+
+                <article class="box profile-compare-person">
+                    <div class="profile-compare-person__avatar">{{ user_avatar(compare_right_profile, '72') }}</div>
+                    <div class="profile-compare-person__copy">
+                        <p class="profile-compare-person__name">{{ compare_right_profile.display_name }}</p>
+                        <p class="profile-compare-person__meta">
+                            {% if compare_right_profile.location %}
+                            <span><i class="fas fa-location-dot"></i> {{ compare_right_profile.location }}</span>
+                            {% endif %}
+                            {% if compare_right.stats.member_since_label %}
+                            <span><i class="fas fa-calendar-alt"></i> Member since {{ compare_right.stats.member_since_label }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <a href="{{ url_for('public_profile', display_name=compare_right_profile.display_name) }}" class="button profile-compare-person__button">
+                        <span class="icon"><i class="fas fa-user"></i></span>
+                        <span>View Profile</span>
+                    </a>
+                </article>
+
+                {% for row in compare_metric_rows %}
+                <div class="profile-compare-board__label">
+                    <span class="icon"><i class="fas {{ row.icon }}"></i></span>
+                    <span>{{ row.label }}</span>
+                </div>
+
+                <div class="profile-compare-board__value{% if row.left_is_leader %} is-leading{% endif %}">
+                    <span class="profile-compare-board__value-main">
+                        {% if row.kind == 'height' %}
+                        {{ row.left_value | format_height(current_height_unit, row.left_value_ft) }}
+                        {% elif row.kind == 'weeks' %}
+                        {{ row.left_value }} {% if row.left_value == 1 %}week{% else %}weeks{% endif %}
+                        {% else %}
+                        {{ row.left_value }}
+                        {% endif %}
+                    </span>
+                </div>
+
+                <div class="profile-compare-board__value{% if row.right_is_leader %} is-leading{% endif %}">
+                    <span class="profile-compare-board__value-main">
+                        {% if row.kind == 'height' %}
+                        {{ row.right_value | format_height(current_height_unit, row.right_value_ft) }}
+                        {% elif row.kind == 'weeks' %}
+                        {{ row.right_value }} {% if row.right_value == 1 %}week{% else %}weeks{% endif %}
+                        {% else %}
+                        {{ row.right_value }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="section pt-0">
+        <div class="container">
+            <div class="box profile-compare-provinces">
+                <div class="profile-compare-section__head">
+                    <div>
+                        <p class="profile-compare-section__eyebrow">Coverage</p>
+                        <h2 class="title is-4 profile-compare-section__title">Province Breakdown</h2>
+                    </div>
+                    <p class="profile-compare-section__caption">Higher counts are highlighted in green for each province.</p>
+                </div>
+
+                {% if compare_province_rows %}
+                <div class="profile-compare-provinces__rows">
+                    {% for row in compare_province_rows %}
+                    <div class="profile-compare-provinces__row">
+                        <div class="profile-compare-provinces__label">
+                            <span class="profile-compare-province-pill profile-compare-province-pill--{{ row.key }}">{{ row.name }}</span>
+                        </div>
+                        <div class="profile-compare-provinces__value{% if row.left_is_leader %} is-leading{% endif %}">{{ row.left_count }}</div>
+                        <div class="profile-compare-provinces__value{% if row.right_is_leader %} is-leading{% endif %}">{{ row.right_count }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="profile-compare-empty">Neither climber has logged public climbs yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="profile-compare-peaks">
+                <article class="box profile-compare-peaks__card">
+                    <div class="profile-compare-section__head">
+                        <div>
+                            <p class="profile-compare-section__eyebrow">Shared Ground</p>
+                            <h2 class="title is-5 profile-compare-section__title">Both Have Climbed</h2>
+                        </div>
+                        <span class="profile-compare-peaks__count">{{ compare_peak_overlap.shared_count }}</span>
+                    </div>
+                    {% if compare_peak_overlap.shared_peaks %}
+                    <div class="profile-compare-peak-list">
+                        {% for peak in compare_peak_overlap.shared_peaks %}
+                        <a href="{{ url_for('peak_detail', peak_id=peak.peak_id) }}" class="profile-compare-peak-chip">
+                            <span class="profile-compare-peak-chip__name">{{ peak.name }}</span>
+                            <span class="profile-compare-peak-chip__meta">{{ peak.height_m | format_height(current_height_unit, peak.height_ft) }}{% if peak.county %} · {{ peak.county }}{% endif %}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="profile-compare-empty">No shared peaks yet.</p>
+                    {% endif %}
+                </article>
+
+                <article class="box profile-compare-peaks__card">
+                    <div class="profile-compare-section__head">
+                        <div>
+                            <p class="profile-compare-section__eyebrow">Unique Peaks</p>
+                            <h2 class="title is-5 profile-compare-section__title">{{ compare_left_profile.display_name }}</h2>
+                        </div>
+                        <span class="profile-compare-peaks__count">{{ compare_peak_overlap.left_only_count }}</span>
+                    </div>
+                    {% if compare_peak_overlap.left_only_peaks %}
+                    <div class="profile-compare-peak-list">
+                        {% for peak in compare_peak_overlap.left_only_peaks %}
+                        <a href="{{ url_for('peak_detail', peak_id=peak.peak_id) }}" class="profile-compare-peak-chip">
+                            <span class="profile-compare-peak-chip__name">{{ peak.name }}</span>
+                            <span class="profile-compare-peak-chip__meta">{{ peak.height_m | format_height(current_height_unit, peak.height_ft) }}{% if peak.county %} · {{ peak.county }}{% endif %}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="profile-compare-empty">No unique peaks to show.</p>
+                    {% endif %}
+                </article>
+
+                <article class="box profile-compare-peaks__card">
+                    <div class="profile-compare-section__head">
+                        <div>
+                            <p class="profile-compare-section__eyebrow">Unique Peaks</p>
+                            <h2 class="title is-5 profile-compare-section__title">{{ compare_right_profile.display_name }}</h2>
+                        </div>
+                        <span class="profile-compare-peaks__count">{{ compare_peak_overlap.right_only_count }}</span>
+                    </div>
+                    {% if compare_peak_overlap.right_only_peaks %}
+                    <div class="profile-compare-peak-list">
+                        {% for peak in compare_peak_overlap.right_only_peaks %}
+                        <a href="{{ url_for('peak_detail', peak_id=peak.peak_id) }}" class="profile-compare-peak-chip">
+                            <span class="profile-compare-peak-chip__name">{{ peak.name }}</span>
+                            <span class="profile-compare-peak-chip__meta">{{ peak.height_m | format_height(current_height_unit, peak.height_ft) }}{% if peak.county %} · {{ peak.county }}{% endif %}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="profile-compare-empty">No unique peaks to show.</p>
+                    {% endif %}
+                </article>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

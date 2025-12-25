@@ -109,6 +109,19 @@
     justify-content: flex-end;
 }
 
+.counties-page__prompt .site-navbar__login {
+    background: rgba(27, 67, 50, 0.04);
+    border-color: rgba(27, 67, 50, 0.18);
+    color: var(--color-forest);
+}
+
+.counties-page__prompt .site-navbar__login:hover,
+.counties-page__prompt .site-navbar__login:focus-visible {
+    background: rgba(27, 67, 50, 0.08);
+    border-color: rgba(27, 67, 50, 0.28);
+    color: #163727;
+}
+
 .counties-group {
     --bulma-box-background-color: #fcfaf5;
     background:
