@@ -85,8 +85,13 @@
 }
 
 .counties-page__prompt {
+    --bulma-box-background-color: #fbf8f0;
     align-items: center;
+    background:
+        radial-gradient(circle at top right, rgba(116, 198, 157, 0.12), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 244, 236, 0.96));
     border: 1px solid rgba(27, 67, 50, 0.08);
+    box-shadow: var(--shadow-sm);
     display: flex;
     gap: 1rem;
     justify-content: space-between;

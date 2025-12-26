@@ -730,7 +730,15 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
     background: var(--color-forest);
     border-bottom: 0;
     color: var(--color-white);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
     padding: 1.35rem 1.5rem 1.25rem;
+}
+
+.auth-modal__head > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .auth-modal__title {
@@ -750,7 +758,7 @@ html.has-initial-page-loading [data-initial-loading-region] > [data-loading-cont
 .auth-modal__close {
     background-color: rgba(255, 255, 255, 0.14);
     flex-shrink: 0;
-    margin-left: 1rem;
+    margin-left: auto;
 }
 
 .auth-modal__close:hover,

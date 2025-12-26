@@ -141,7 +141,7 @@ BASE_BADGES = [
         key="club_500m",
         name="500m Club",
         description="Climb any peak at or above 500 metres.",
-        icon="fa-arrow-up-right-dots",
+        icon="fa-arrow-up",
         category="height",
         criteria={"type": "height_min", "value": 500, "unit": "m"},
     ),
